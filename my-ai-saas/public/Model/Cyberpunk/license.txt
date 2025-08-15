@@ -1,0 +1,11 @@
+Model Information:
+* title:	Cyberpunk character
+* source:	https://sketchfab.com/3d-models/cyberpunk-character-019f4b3fd3c74ed0bc6c8dbe9cd50d51
+* author:	4d_Bob (https://sketchfab.com/3d_Bob)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Cyberpunk character" (https://sketchfab.com/3d-models/cyberpunk-character-019f4b3fd3c74ed0bc6c8dbe9cd50d51) by 4d_Bob (https://sketchfab.com/3d_Bob) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
