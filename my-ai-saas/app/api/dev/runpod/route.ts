@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const url: string = body?.url || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '';
+    const body = (await req.json()) as Record<string, unknown>;
+    const url = String(body?.url ?? process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL ?? '');
     const payload = body?.payload ?? {};
     if (!url) return NextResponse.json({ error: 'Missing url' }, { status: 400 });
 
@@ -19,11 +19,12 @@ export async function POST(req: NextRequest) {
     });
 
     const text = await res.text();
-    let data: any = {};
+    let data: unknown = {};
     try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
     return NextResponse.json({ status: res.status, data });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? 'error' }, { status: 500 });
+  } catch (err) {
+    console.error('runpod dev POST error', err);
+    return NextResponse.json({ error: (err as Error).message ?? 'error' }, { status: 500 });
   }
 }
 
