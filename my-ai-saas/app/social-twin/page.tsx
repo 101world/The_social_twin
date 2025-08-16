@@ -1233,6 +1233,7 @@ export default function SocialTwinPage() {
 
           {/* Chat Controls - only show for chat tab */}
           {activeTab === 'chat' && (
+            <>
             <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
             {/* Controls header: mode selector above the prompt box */}
               <div className="mb-2 flex flex-wrap items-end gap-3">
@@ -1556,9 +1557,7 @@ export default function SocialTwinPage() {
                 </div>
               ) : null}
             </div>
-          )}
-        </div>
-          <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
+            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
           {/* Controls header: mode selector above the prompt box */}
             <div className="mb-2 flex flex-wrap items-end gap-3">
             {!(mode==='image' || mode==='image-modify') && (
@@ -1876,6 +1875,7 @@ export default function SocialTwinPage() {
               </div>
             ) : null}
           </div>
+            </>
           )}
         </div>
       </section>
