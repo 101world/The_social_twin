@@ -4,6 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
+import GenerationsTab from "@/components/GenerationsTab";
+import UserAnalyticsDashboard from "@/components/UserAnalyticsDashboard";
+import GenerationCostDisplay, { CreditCostReference } from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
@@ -151,6 +154,9 @@ export default function SocialTwinPage() {
   const [steps, setSteps] = useState<number | ''>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
+  const [activeTab, setActiveTab] = useState<'chat' | 'generations' | 'analytics'>('chat');
+  const [generationCost, setGenerationCost] = useState<number>(0);
+  const [canAffordGeneration, setCanAffordGeneration] = useState<boolean>(true);
 
   // expose hoverPort setter for port buttons (simple shared state approach)
   useEffect(() => {
@@ -597,7 +603,7 @@ export default function SocialTwinPage() {
     }
 
     try {
-      // Route all generations through our API so they are logged per-user
+      // Route all generations through our enhanced tracking API
       const tempId = generateId();
       const placeholder: ChatMessage = {
         id: tempId,
@@ -608,7 +614,9 @@ export default function SocialTwinPage() {
         createdAt: new Date().toISOString(),
       };
       setMessages((prev)=> [...prev, placeholder]);
-          const res = await fetch("/api/social-twin/generate", {
+      
+      // Use the new tracking API endpoint
+      const res = await fetch("/api/generate-with-tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
         body: JSON.stringify({
@@ -911,6 +919,32 @@ export default function SocialTwinPage() {
           </div>
         </header>
 
+        {/* Tab Navigation */}
+        <div className={`flex border-b ${darkMode ? 'border-neutral-800' : 'border-gray-200'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+          {[
+            { id: 'chat', label: 'Chat', icon: '💬' },
+            { id: 'generations', label: 'Generations', icon: '🎨' },
+            { id: 'analytics', label: 'Analytics', icon: '📊' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
+                activeTab === tab.id
+                  ? darkMode
+                    ? 'border-b-2 border-blue-500 bg-blue-900/20 text-blue-300'
+                    : 'border-b-2 border-blue-500 bg-blue-50 text-blue-700'
+                  : darkMode
+                    ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
         {!chatCollapsed && showSettings && (
           <div className={`grid gap-2 border-b p-3 ${darkMode ? 'border-neutral-800' : ''}`}>
           <div className="grid gap-1">
@@ -1053,120 +1087,477 @@ export default function SocialTwinPage() {
         )}
 
         <div className={`flex min-h-0 flex-1 flex-col ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
-            {messages.length === 0 ? (
-            <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
-              {simpleMode ? (
-                <div className="w-full max-w-2xl">
-                  {/* Center prompt when empty in Normal Mode */}
-                  <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
-                  <div className="rounded-lg border p-2">
-                    <textarea
-                      value={input}
-                      onChange={(e)=> setInput(e.target.value)}
-                      placeholder="Ask anything"
-                      className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                      onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    />
-                  </div>
+          {/* Tab Content */}
+          {activeTab === 'chat' && (
+            <>
+              <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
+                {messages.length === 0 ? (
+                <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
+                  {simpleMode ? (
+                    <div className="w-full max-w-2xl">
+                      {/* Center prompt when empty in Normal Mode */}
+                      <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
+                      <div className="rounded-lg border p-2">
+                        <textarea
+                          value={input}
+                          onChange={(e)=> setInput(e.target.value)}
+                          placeholder="Ask anything"
+                          className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                        />
+                      </div>
+                    </div>
+                  ) : 'Start by entering a prompt below.'}
                 </div>
-              ) : 'Start by entering a prompt below.'}
-            </div>
-          ) : (
-            messages.map((m) => {
-              const isUser = m.role === 'user';
-              return (
-                <div key={m.id}>
-                  <div id={`msg-${m.id}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl border px-3 py-2 ${isUser ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600') : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-200')}`}
-                         style={{ borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}>
-                      <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                        <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
-                      </div>
-                      <div className="whitespace-pre-wrap text-sm">{m.content}</div>
-                      {m.loading && m.pendingType==='image' ? (
-                        <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
-                      ) : null}
-                      {m.loading && m.pendingType==='video' ? (
-                        <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
-                      ) : null}
-                      <div className={`mt-1 text-[10px] opacity-60 ${isUser ? 'text-white' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                        {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                      {/* Only render image preview when it is not a video URL */}
-                      {m.imageUrl && !/\.(mp4|webm)(\?|$)/i.test(m.imageUrl) ? (
-                        <div className="mt-2 group">
-                          <img
-                            alt="generated"
-                            src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
-                            className="max-h-80 w-full rounded-lg border"
-                            draggable
-                            onDragStart={(e)=>{
-                              try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.imageUrl, type: 'image' })); } catch {}
-                              e.dataTransfer.setData('text/uri-list', m.imageUrl!);
-                              e.dataTransfer.setData('text/plain', m.imageUrl!);
-                              e.dataTransfer.effectAllowed = 'copyMove';
-                            }}
-                          />
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              className="rounded border px-2 py-0.5 text-xs"
-                              onClick={()=>{ folderModalPayload.current = { url: m.imageUrl!, type: 'image', prompt: m.content }; setFolderModalOpen(true); }}
-                            >Add to project</button>
-                            {m.sourceImageUrl ? (
-                              <button
-                                className="rounded border px-2 py-0.5 text-xs"
-                                onClick={()=>{ setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] }); }}
-                              >Compare</button>
-                            ) : null}
+              ) : (
+                messages.map((m) => {
+                  const isUser = m.role === 'user';
+                  return (
+                    <div key={m.id}>
+                      <div id={`msg-${m.id}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[75%] rounded-2xl border px-3 py-2 ${isUser ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600') : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-200')}`}
+                             style={{ borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}>
+                          <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
+                            <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
                           </div>
-                        </div>
-                      ) : null}
-                      {(m as any).images && (m as any).images.length > 1 ? (
-                        <div className="mt-2 flex gap-2 overflow-x-auto">
-                          {(m as any).images.map((u: string, i: number) => (
-                            <a key={i} href={u} target="_blank" rel="noreferrer">
+                          <div className="whitespace-pre-wrap text-sm">{m.content}</div>
+                          {m.loading && m.pendingType==='image' ? (
+                            <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
+                          ) : null}
+                          {m.loading && m.pendingType==='video' ? (
+                            <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
+                          ) : null}
+                          <div className={`mt-1 text-[10px] opacity-60 ${isUser ? 'text-white' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
+                            {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </div>
+                          {/* Only render image preview when it is not a video URL */}
+                          {m.imageUrl && !/\.(mp4|webm)(\?|$)/i.test(m.imageUrl) ? (
+                            <div className="mt-2 group">
                               <img
-                                src={u.startsWith('http') && !u.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
-                                className="h-20 w-auto rounded border object-cover"
-                                alt="thumb"
+                                alt="generated"
+                                src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
+                                className="max-h-80 w-full rounded-lg border"
                                 draggable
                                 onDragStart={(e)=>{
-                                  try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: u, type: 'image' })); } catch {}
-                                  e.dataTransfer.setData('text/uri-list', u);
-                                  e.dataTransfer.setData('text/plain', u);
+                                  try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.imageUrl, type: 'image' })); } catch {}
+                                  e.dataTransfer.setData('text/uri-list', m.imageUrl!);
+                                  e.dataTransfer.setData('text/plain', m.imageUrl!);
                                   e.dataTransfer.effectAllowed = 'copyMove';
                                 }}
                               />
-                            </a>
-                          ))}
+                              <div className="mt-2 flex items-center gap-2">
+                                <button
+                                  className="rounded border px-2 py-0.5 text-xs"
+                                  onClick={()=>{ folderModalPayload.current = { url: m.imageUrl!, type: 'image', prompt: m.content }; setFolderModalOpen(true); }}
+                                >Add to project</button>
+                                {m.sourceImageUrl ? (
+                                  <button
+                                    className="rounded border px-2 py-0.5 text-xs"
+                                    onClick={()=>{ setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] }); }}
+                                  >Compare</button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+                          {(m as any).images && (m as any).images.length > 1 ? (
+                            <div className="mt-2 flex gap-2 overflow-x-auto">
+                              {(m as any).images.map((u: string, i: number) => (
+                                <a key={i} href={u} target="_blank" rel="noreferrer">
+                                  <img
+                                    src={u.startsWith('http') && !u.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
+                                    className="h-20 w-auto rounded border object-cover"
+                                    alt="thumb"
+                                    draggable
+                                    onDragStart={(e)=>{
+                                      try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: u, type: 'image' })); } catch {}
+                                      e.dataTransfer.setData('text/uri-list', u);
+                                      e.dataTransfer.setData('text/plain', u);
+                                      e.dataTransfer.effectAllowed = 'copyMove';
+                                    }}
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          ) : null}
+                          {m.videoUrl ? (
+                            <video
+                              src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
+                              className="mt-2 max-h-80 w-full rounded-lg border"
+                              controls
+                              draggable
+                              onDragStart={(e)=>{
+                                try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.videoUrl, type: 'video' })); } catch {}
+                                e.dataTransfer.setData('text/uri-list', m.videoUrl!);
+                                e.dataTransfer.setData('text/plain', m.videoUrl!);
+                                e.dataTransfer.effectAllowed = 'copyMove';
+                              }}
+                            />
+                          ) : null}
                         </div>
-                      ) : null}
-                      {m.videoUrl ? (
-                        <video
-                          src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
-                          className="mt-2 max-h-80 w-full rounded-lg border"
-                          controls
-                          draggable
-                          onDragStart={(e)=>{
-                            try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.videoUrl, type: 'video' })); } catch {}
-                            e.dataTransfer.setData('text/uri-list', m.videoUrl!);
-                            e.dataTransfer.setData('text/plain', m.videoUrl!);
-                            e.dataTransfer.effectAllowed = 'copyMove';
-                          }}
-                        />
+                      </div>
+                      {simpleMode ? (
+                        <div className={`my-2 border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`} />
                       ) : null}
                     </div>
-                  </div>
-                  {simpleMode ? (
-                    <div className={`my-2 border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`} />
-                  ) : null}
-                </div>
-              );
-            })
+                  );
+                })
+              )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Generation Cost Display */}
+              <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
+                <GenerationCostDisplay
+                  mode={mode}
+                  batchSize={typeof batchSize === 'number' ? batchSize : 1}
+                  darkMode={darkMode}
+                  onCostCalculated={(cost, canAfford) => {
+                    setGenerationCost(cost);
+                    setCanAffordGeneration(canAfford);
+                  }}
+                />
+              </div>
+            </>
           )}
-            <div ref={chatEndRef} />
-          </div>
+
+          {activeTab === 'generations' && (
+            <GenerationsTab
+              darkMode={darkMode}
+              onAddToCanvas={addToCanvas}
+            />
+          )}
+
+          {activeTab === 'analytics' && (
+            <UserAnalyticsDashboard darkMode={darkMode} />
+          )}
+
+          {/* Chat Controls - only show for chat tab */}
+          {activeTab === 'chat' && (
+            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
+            {/* Controls header: mode selector above the prompt box */}
+              <div className="mb-2 flex flex-wrap items-end gap-3">
+              {!(mode==='image' || mode==='image-modify') && (
+                <div className="grid gap-1">
+                  <label className="text-xs opacity-70">Mode</label>
+                  <select
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as Mode)}
+                    className={`w-[170px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
+                    title="Mode"
+                  >
+                    <option value="text">Text</option>
+                    <option value="image">Image</option>
+                    <option value="image-modify">Image Modify</option>
+                    <option value="video">Video</option>
+                  </select>
+                </div>
+              )}
+              {mode === 'text' ? (
+                <div className="grid gap-1">
+                  <label className="text-xs opacity-70">Provider</label>
+                  <select
+                    value={textProvider}
+                    onChange={(e)=> setTextProvider(e.target.value as any)}
+                    className={`w-[200px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
+                    title="Text provider"
+                  >
+                    <option value="social">Social Twin AI</option>
+                    <option value="openai">ChatGPT (OpenAI)</option>
+                    <option value="deepseek">DeepSeek</option>
+                  </select>
+                </div>
+              ) : null}
+              {(mode === 'image' || mode === 'image-modify') ? (
+                <>
+                  {/* Primary row: Mode, Effects, Character, Aspect Ratio */}
+                  <div className="relative">
+                    {/* Advanced button in top-right above the row */}
+                    <button
+                      className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
+                      onClick={()=> setAdvancedOpen(v=>!v)}
+                    >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
+                    <div className="mb-2 overflow-x-auto pr-1">
+                      <div className="inline-flex items-end gap-2 whitespace-nowrap">
+                        <div className="grid gap-1">
+                          <label className="text-xs opacity-70">Effects</label>
+                          <select
+                            className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
+                            onChange={(e)=> setLoraName(e.target.value)}
+                            title="Effects (LoRA)"
+                          >
+                            {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                          </select>
+                        </div>
+                        <div className="grid gap-1">
+                          <label className="text-xs opacity-70">Character</label>
+                          <select
+                            className={`w-[110px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={characterOn ? 'On' : 'Off'}
+                            onChange={(e)=> setCharacterOn(e.target.value === 'On')}
+                            title="Character"
+                          >
+                            <option value="Off">Off</option>
+                            <option value="On">On</option>
+                          </select>
+                        </div>
+                        <div className="grid gap-1">
+                          <label className="text-xs opacity-70">Ratio</label>
+                          <select
+                            className={`w-[88px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={aspectRatio}
+                            onChange={(e)=> setAspectRatio(e.target.value)}
+                          >
+                            <option value="">Select</option>
+                            {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Advanced row: Qty, Steps, CFG, Guidance, optional LoRA custom + scale */}
+                  {advancedOpen && (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">Qty</label>
+                        <select
+                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e)=> setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">Steps</label>
+                        <select
+                          className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={steps === '' ? '' : String(steps)}
+                          onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">CFG</label>
+                        <select
+                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={cfgScale === '' ? '' : String(cfgScale)}
+                          onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">Guidance</label>
+                        <select
+                          className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={guidance === '' ? '' : String(guidance)}
+                          onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      {loraName==='Custom...' && (
+                        <>
+                          <input
+                            className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            placeholder="lora file or hf path"
+                            value={loraName==='Custom...' ? '' : loraName}
+                            onChange={(e)=> setLoraName(e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            step="0.1"
+                            className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={loraScale === '' ? '' : String(loraScale)}
+                            onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
+                            title="LoRA Scale"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : null}
+
+              {mode === 'video' ? (
+                <>
+                  {/* Primary row for Video: Mode, Model, Effects */}
+                  <div className="relative">
+                    <button
+                      className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
+                      onClick={()=> setAdvancedOpen(v=>!v)}
+                    >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
+                    <div className="mb-2 overflow-x-auto pr-1">
+                      <div className="inline-flex items-end gap-2 whitespace-nowrap">
+                        <div className="grid gap-1">
+                          <label className="text-xs opacity-70">Model</label>
+                          <select
+                            value={videoModel}
+                            onChange={(e)=> setVideoModel(e.target.value as any)}
+                            className={`w-[120px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
+                            title="Video Model"
+                          >
+                            <option value="ltxv">LTXV</option>
+                            <option value="kling">Kling</option>
+                            <option value="wan">WAN</option>
+                          </select>
+                        </div>
+                        <div className="grid gap-1">
+                          <label className="text-xs opacity-70">Effects</label>
+                          <select
+                            className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
+                            onChange={(e)=> setLoraName(e.target.value)}
+                            title="Effects (LoRA)"
+                          >
+                            {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Advanced row for Video: Steps, CFG, Guidance, optional LoRA custom+scale */}
+                  {advancedOpen && (
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">Steps</label>
+                        <select
+                          className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={steps === '' ? '' : String(steps)}
+                          onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">CFG</label>
+                        <select
+                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={cfgScale === '' ? '' : String(cfgScale)}
+                          onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      <div className="grid gap-1">
+                        <label className="text-xs opacity-70">Guidance</label>
+                        <select
+                          className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                          value={guidance === '' ? '' : String(guidance)}
+                          onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
+                        >
+                          <option value="">Default</option>
+                          {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
+                        </select>
+                      </div>
+                      {loraName==='Custom...' && (
+                        <>
+                          <input
+                            className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            placeholder="lora file or hf path"
+                            value={loraName==='Custom...' ? '' : loraName}
+                            onChange={(e)=> setLoraName(e.target.value)}
+                          />
+                          <input
+                            type="number"
+                            step="0.1"
+                            className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            value={loraScale === '' ? '' : String(loraScale)}
+                            onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
+                            title="LoRA Scale"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your prompt..."
+                className={`min-h-[44px] flex-1 resize-y rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
+              />
+              {/* Right-side vertical controls: Send above Upload */}
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={handleSend}
+                  disabled={!canAffordGeneration}
+                  className={`cursor-pointer rounded-full p-2 flex items-center justify-center transition-all ${
+                    canAffordGeneration 
+                      ? 'bg-black hover:opacity-90' 
+                      : 'bg-gray-400 cursor-not-allowed opacity-50'
+                  }`}
+                  title={canAffordGeneration ? "Send" : `Need ${generationCost} credits to generate`}
+                  aria-label="Send"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
+                    <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <label className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`} title="Attach image/video/pdf">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
+                    <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,application/pdf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const dataUrl = String(reader.result || "");
+                        setAttached({ name: f.name, type: f.type, dataUrl });
+                      };
+                      reader.readAsDataURL(f);
+                    }}
+                  />
+                </label>
+              </div>
+              </div>
+              {attached ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex items-center gap-2 rounded border p-2">
+                    {attached && attached.type.startsWith('image') ? (
+                      <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
+                    ) : attached && attached.type.startsWith('video') ? (
+                      <div className="h-12 w-12 overflow-hidden rounded border">
+                        <video src={attached.dataUrl} className="h-full w-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                        PDF
+                      </div>
+                    )}
+                    <div className="text-xs">
+                      <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
+                      <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
+                    </div>
+                  </div>
+                  <button
+                    className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
+                    onClick={() => setAttached(null)}
+                  >Remove</button>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
           <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
           {/* Controls header: mode selector above the prompt box */}
             <div className="mb-2 flex flex-wrap items-end gap-3">
@@ -1485,7 +1876,7 @@ export default function SocialTwinPage() {
               </div>
             ) : null}
           </div>
-          {/* Image controls compact row removed per request */}
+          )}
         </div>
       </section>
       {/* Canvas grid background */}
