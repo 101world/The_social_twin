@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=<project-ref>"
+      ],
+      "env": {
+        // NOTE: Do NOT store real tokens here. Set SUPABASE_ACCESS_TOKEN in your shell before running.
+        "SUPABASE_ACCESS_TOKEN": "<SET_IN_SHELL>"
+      }
+    }
+  }
+}
+
