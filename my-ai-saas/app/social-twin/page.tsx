@@ -419,6 +419,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   async function saveCurrentProject(title?: string) {
     try {
       // Validation: Make sure there's something to save
@@ -1589,30 +1590,37 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
       docEl.style.setProperty('--kb-offset', `${kb}px`);
     };
+    const updateComposerH = () => {
+      const h = composerRef.current?.offsetHeight || 64;
+      docEl.style.setProperty('--composer-h', `${h}px`);
+    };
     const onVvResize = () => { updateVh(); updateKb(); };
     const onVvScroll = () => { updateKb(); };
     updateVh();
     updateKb();
+    updateComposerH();
     window.addEventListener('resize', updateVh);
     window.addEventListener('orientationchange', updateVh);
     window.visualViewport?.addEventListener('resize', onVvResize);
     window.visualViewport?.addEventListener('scroll', onVvScroll);
+    window.addEventListener('resize', updateComposerH);
     return () => {
       window.removeEventListener('resize', updateVh);
       window.removeEventListener('orientationchange', updateVh);
       window.visualViewport?.removeEventListener('resize', onVvResize);
       window.visualViewport?.removeEventListener('scroll', onVvScroll);
+      window.removeEventListener('resize', updateComposerH);
     };
   }, []);
 
   return (
-    <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}`}>
+  <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95 border-neutral-300')}`}
-        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : '30vw', minWidth: chatCollapsed ? 40 : 320, maxWidth: chatCollapsed ? 40 : 520 }}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95 border-neutral-300')} min-w-0`}
+        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' }}
       >
         {/* Full-rail click target when collapsed */}
         {chatCollapsed ? (
@@ -1625,7 +1633,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         ) : null}
         {/* Collapse handle - Always visible for better UX */}
         <button
-          className="absolute left-[-40px] top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
           onClick={()=> setChatCollapsed(v=>!v)}
           title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
           aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
@@ -1704,7 +1712,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-              <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
+        <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
+          style={{ paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px))' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
@@ -1913,8 +1922,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-  <div className={`border-t p-2 safe-bottom-pad ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
-          style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined }}>
+        <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015] bg-transparent`}
+          style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
                 {/* Core controls - clean and tighter */}
                 <div className="mb-2 space-y-2">
                   {/* Primary row - mode-specific essentials */}

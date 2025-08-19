@@ -322,6 +322,8 @@
 .min-h-screen-dvh { min-height: calc(var(--vh) * 100); }
 .safe-bottom-pad { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px)); }
 .safe-bottom-mb { margin-bottom: env(safe-area-inset-bottom, 0px); }
+/* composer height var, default */
+:root { --composer-h: 64px; }
 
 /* iOS momentum scroll */
 .ios-smooth-scroll { -webkit-overflow-scrolling: touch; }
