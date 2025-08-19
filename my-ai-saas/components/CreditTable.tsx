@@ -56,9 +56,9 @@ const CREDIT_FUNCTIONS: CreditFunction[] = [
 ];
 
 const SUBSCRIPTION_PLANS = [
-  { name: 'One T', monthlyCredits: 10000, price: '$19', dailyCredits: 333, color: 'bg-blue-100 text-blue-800' },
-  { name: 'One Z', monthlyCredits: 50000, price: '$79', dailyCredits: 1666, color: 'bg-yellow-100 text-yellow-800' },
-  { name: 'One Pro', monthlyCredits: 100000, price: '$149', dailyCredits: 3333, color: 'bg-purple-100 text-purple-800' }
+  { name: 'One T', monthlyCredits: 1120, price: '$19', dailyCredits: 37, color: 'bg-blue-100 text-blue-800' },
+  { name: 'One Z', monthlyCredits: 4050, price: '$79', dailyCredits: 135, color: 'bg-yellow-100 text-yellow-800' },
+  { name: 'One Pro', monthlyCredits: 8700, price: '$149', dailyCredits: 290, color: 'bg-purple-100 text-purple-800' }
 ];
 
 interface CreditTableProps {
@@ -78,7 +78,7 @@ export default function CreditTable({ darkMode = false, showCalculator = false }
   });
 
   const selectedPlanData = SUBSCRIPTION_PLANS.find(p => p.name === selectedPlan);
-  const dailyCredits = selectedPlanData?.monthlyCredits || 10000; // Use monthly credits for calculator
+  const dailyCredits = selectedPlanData?.monthlyCredits || 1120; // Use monthly credits for calculator
 
   const calculateUsage = () => {
     const costs = {

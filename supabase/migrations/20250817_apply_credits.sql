@@ -4,7 +4,7 @@
 -- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- user_billing: track plan/status from Clerk/Stripe webhooks
+-- user_billing: track plan/status from Clerk/Razorpay webhooks
 CREATE TABLE IF NOT EXISTS public.user_billing (
   user_id TEXT PRIMARY KEY,
   plan TEXT,
@@ -123,8 +123,8 @@ BEGIN
   END IF;
 END$$;
 
--- Optional: Stripe/price mapping for one-off purchases
-CREATE TABLE IF NOT EXISTS public.stripe_price_to_credits (
+-- REMOVED: Stripe integration (using Razorpay instead)
+-- CREATE TABLE IF NOT EXISTS public.stripe_price_to_credits (
   price_id TEXT PRIMARY KEY,
   credits INTEGER NOT NULL
 );

@@ -6,7 +6,6 @@ import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import GenerationsTab from "@/components/GenerationsTab";
 import UserAnalyticsDashboard from "@/components/UserAnalyticsDashboard";
-import GenerationCostDisplay, { CreditCostReference } from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
@@ -157,6 +156,18 @@ export default function SocialTwinPage() {
   const [activeTab, setActiveTab] = useState<'chat' | 'generations' | 'analytics'>('chat');
   const [generationCost, setGenerationCost] = useState<number>(0);
   const [canAffordGeneration, setCanAffordGeneration] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
+  // Mobile detection effect
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // expose hoverPort setter for port buttons (simple shared state approach)
   useEffect(() => {
@@ -848,12 +859,26 @@ export default function SocialTwinPage() {
   }
 
   return (
-    <main className={`relative h-screen w-screen overflow-hidden ${darkMode ? 'bg-black text-neutral-100' : ''}`}>
+    <main 
+      className={`relative h-screen w-screen overflow-hidden ${darkMode ? 'bg-black text-neutral-100' : ''} touch-manipulation`}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        overflowY: 'hidden',
+        overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        overscrollBehavior: 'none',
+        touchAction: 'manipulation'
+      }}
+    >
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
-      {/* Mode toggle */}
+      {/* Mode toggle - hide on mobile in pro mode when chat collapsed */}
       <button
-        className={`fixed right-4 top-4 z-[10001] rounded-full px-3 py-1 text-xs shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'}`}
+        className={`fixed right-4 top-4 z-[10001] rounded-full px-3 py-1 text-xs shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'} ${!simpleMode && chatCollapsed ? 'hidden sm:block' : ''}`}
         onClick={()=> setSimpleMode(v=>!v)}
         title={simpleMode ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
       >
@@ -868,10 +893,14 @@ export default function SocialTwinPage() {
           {sidebarOpen ? 'Close' : 'Menu'}
         </button>
       )}
-      {/* Chat panel docked right (collapsible) */}
+      {/* Chat panel docked right (collapsible) - mobile optimized */}
       <section
         className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-50 pointer-events-auto flex flex-col ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95')}`}
-        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : '30vw', minWidth: chatCollapsed ? 40 : 320, maxWidth: chatCollapsed ? 40 : 520 }}
+        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { 
+          width: chatCollapsed ? 40 : isMobile ? '100vw' : '30vw', 
+          minWidth: chatCollapsed ? 40 : isMobile ? '100vw' : 320, 
+          maxWidth: chatCollapsed ? 40 : isMobile ? '100vw' : 520 
+        }}
       >
         {/* Full-rail click target when collapsed */}
         {chatCollapsed ? (
@@ -1090,7 +1119,15 @@ export default function SocialTwinPage() {
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-              <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
+              <div 
+                ref={listRef} 
+                className={`flex-1 space-y-3 overflow-y-auto p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
+                style={{
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain',
+                  touchAction: 'pan-y'
+                }}
+              >
                 {messages.length === 0 ? (
                 <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                   {simpleMode ? (
@@ -1204,32 +1241,6 @@ export default function SocialTwinPage() {
               )}
                 <div ref={chatEndRef} />
               </div>
-
-              {/* Generation Cost Display */}
-              <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-                <GenerationCostDisplay
-                  mode={mode}
-                  batchSize={typeof batchSize === 'number' ? batchSize : 1}
-                  darkMode={darkMode}
-                  onCostCalculated={(cost, canAfford) => {
-                    setGenerationCost(cost);
-                    setCanAffordGeneration(canAfford);
-                  }}
-                />
-              </div>
-            </>
-          )}
-
-          {activeTab === 'generations' && (
-            <GenerationsTab
-              darkMode={darkMode}
-              onAddToCanvas={addToCanvas}
-            />
-          )}
-
-          {activeTab === 'analytics' && (
-            <UserAnalyticsDashboard darkMode={darkMode} />
-          )}
 
           {/* Chat Controls - only show for chat tab */}
           {activeTab === 'chat' && (
@@ -1494,13 +1505,8 @@ export default function SocialTwinPage() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={handleSend}
-                  disabled={!canAffordGeneration}
-                  className={`cursor-pointer rounded-full p-2 flex items-center justify-center transition-all ${
-                    canAffordGeneration 
-                      ? 'bg-black hover:opacity-90' 
-                      : 'bg-gray-400 cursor-not-allowed opacity-50'
-                  }`}
-                  title={canAffordGeneration ? "Send" : `Need ${generationCost} credits to generate`}
+                  className="cursor-pointer rounded-full p-2 flex items-center justify-center transition-all bg-black hover:opacity-90"
+                  title="Send"
                   aria-label="Send"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
@@ -1875,7 +1881,6 @@ export default function SocialTwinPage() {
               </div>
             ) : null}
           </div>
-            </>
           )}
         </div>
       </section>

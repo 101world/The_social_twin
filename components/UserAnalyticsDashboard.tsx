@@ -23,17 +23,31 @@ export default function UserAnalyticsDashboard({ darkMode = false }: UserAnalyti
   const { userId } = useAuth();
   const { user } = useUser();
   const [stats, setStats] = useState<UsageStats | null>(null);
+  const [monthlyUsage, setMonthlyUsage] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
 
   useEffect(() => {
     if (userId) {
-      fetchAnalytics();
+      fetchStats();
+      fetchMonthlyUsage();
     }
   }, [userId, timeRange]);
 
-  const fetchAnalytics = async () => {
+  const fetchMonthlyUsage = async () => {
+    try {
+      const response = await fetch('/api/users/monthly-usage');
+      if (response.ok) {
+        const data = await response.json();
+        setMonthlyUsage(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch monthly usage:', err);
+    }
+  };
+
+  const fetchStats = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -173,7 +187,7 @@ export default function UserAnalyticsDashboard({ darkMode = false }: UserAnalyti
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button
-            onClick={fetchAnalytics}
+            onClick={fetchStats}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry

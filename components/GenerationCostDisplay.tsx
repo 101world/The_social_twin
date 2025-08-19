@@ -16,6 +16,7 @@ interface GenerationCostDisplayProps {
   darkMode?: boolean;
   onCostCalculated?: (cost: number, canAfford: boolean) => void;
   hideUI?: boolean; // when true, component only computes and reports cost without rendering UI
+  hideMobile?: boolean; // when true, hides on mobile devices
 }
 
 export default function GenerationCostDisplay({ 
@@ -24,10 +25,17 @@ export default function GenerationCostDisplay({
   darkMode = false,
   onCostCalculated,
   hideUI = false,
+  hideMobile = true, // Hide on mobile by default
 }: GenerationCostDisplayProps) {
   const { userId } = useAuth();
   const [currentCredits, setCurrentCredits] = useState<number>(0);
+  const [userPlan, setUserPlan] = useState<string>('');
+  const [planLimits, setPlanLimits] = useState<{ maxImages: number; maxVideos: number } | null>(null);
+  const [monthlyUsage, setMonthlyUsage] = useState<{ images: number; videos: number }>({ images: 0, videos: 0 });
+  const [oneMaxBalance, setOneMaxBalance] = useState<number>(0);
+  const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const CREDIT_COSTS: CreditCost = {
     text: 1,
@@ -36,17 +44,46 @@ export default function GenerationCostDisplay({
     imageModify: 3,
   };
 
+  // ONE MAX pricing (pay-per-use in USD)
+  const ONE_MAX_COSTS = {
+    text: 0.01,
+    image: 0.20,
+    video: 0.50,
+    imageModify: 0.15,
+  };
+
+  // Plan limits with exact specifications
+  const PLAN_LIMITS = {
+    'one_t': { maxImages: 200, maxVideos: 12, credits: 1120 },
+    'one_z': { maxImages: 700, maxVideos: 55, credits: 4050 },
+    'one_pro': { maxImages: 1500, maxVideos: 120, credits: 8700 }
+  };
+
   useEffect(() => {
     if (userId) {
       fetchCredits();
     }
   }, [userId]);
 
+  // Detect mobile devices
   useEffect(() => {
-    const cost = calculateCost();
-    const canAfford = currentCredits >= cost;
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640); // sm breakpoint
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const cost = isOneMaxUser 
+      ? calculateOneMaxCost() 
+      : calculateCost();
+    const canAfford = isOneMaxUser 
+      ? oneMaxBalance >= cost 
+      : currentCredits >= cost;
     onCostCalculated?.(cost, canAfford);
-  }, [mode, batchSize, currentCredits, onCostCalculated]);
+  }, [mode, batchSize, currentCredits, oneMaxBalance, isOneMaxUser, onCostCalculated]);
 
   const fetchCredits = async () => {
     try {
@@ -55,11 +92,55 @@ export default function GenerationCostDisplay({
       if (response.ok) {
         const data = await response.json();
         setCurrentCredits(data.credits || 0);
+        setUserPlan(data.subscription_plan || '');
+        
+        // Check if user is on ONE MAX plan
+        const isOneMax = data.subscription_plan?.toLowerCase() === 'one_max';
+        setIsOneMaxUser(isOneMax);
+        
+        if (isOneMax) {
+          // Fetch ONE MAX balance
+          fetchOneMaxBalance();
+        } else {
+          // Set plan limits for monthly plans
+          const plan = data.subscription_plan?.toLowerCase().replace(' ', '_');
+          if (plan && PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]) {
+            setPlanLimits(PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS]);
+          }
+          
+          // Fetch monthly usage
+          fetchMonthlyUsage();
+        }
       }
     } catch (err) {
       console.error('Failed to fetch credits:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOneMaxBalance = async () => {
+    try {
+      const response = await fetch('/api/user/balance');
+      if (response.ok) {
+        const data = await response.json();
+        setOneMaxBalance(data.balance_usd || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch ONE MAX balance:', err);
+    }
+  };
+
+  const fetchMonthlyUsage = async () => {
+    try {
+      // This would be a new API endpoint to track monthly image/video usage
+      const response = await fetch('/api/users/monthly-usage');
+      if (response.ok) {
+        const data = await response.json();
+        setMonthlyUsage(data.usage || { images: 0, videos: 0 });
+      }
+    } catch (err) {
+      console.error('Failed to fetch monthly usage:', err);
     }
   };
 
@@ -71,12 +152,25 @@ export default function GenerationCostDisplay({
     return baseCost * (batchSize || 1);
   };
 
-  const cost = calculateCost();
-  const canAfford = currentCredits >= cost;
-  const remainingAfter = currentCredits - cost;
+  const calculateOneMaxCost = () => {
+    const baseCost = mode === 'image-modify' 
+      ? ONE_MAX_COSTS.imageModify 
+      : ONE_MAX_COSTS[mode as keyof typeof ONE_MAX_COSTS] || ONE_MAX_COSTS.text;
+    
+    return baseCost * (batchSize || 1);
+  };
+
+  const cost = isOneMaxUser ? calculateOneMaxCost() : calculateCost();
+  const canAfford = isOneMaxUser ? oneMaxBalance >= cost : currentCredits >= cost;
+  const remainingAfter = isOneMaxUser ? oneMaxBalance - cost : currentCredits - cost;
 
   if (hideUI) {
     // Silent mode: still runs effects and passes cost up, but renders nothing
+    return null;
+  }
+
+  // Hide on mobile if hideMobile is true
+  if (hideMobile && isMobile) {
     return null;
   }
 
@@ -102,7 +196,17 @@ export default function GenerationCostDisplay({
           <span className="text-lg">{canAfford ? '✅' : '⚠️'}</span>
           <div>
             <div className="font-medium">
-              {cost} credit{cost !== 1 ? 's' : ''} required
+              {isOneMaxUser ? (
+                <div>
+                  <div>${cost.toFixed(3)} USD required</div>
+                  <div className="text-xs opacity-70">Pay-per-use pricing</div>
+                </div>
+              ) : (
+                <div>
+                  {cost} credit{cost !== 1 ? 's' : ''} required
+                  <div className="text-xs opacity-70">Monthly plan credits</div>
+                </div>
+              )}
             </div>
             <div className="text-xs opacity-80">
               {mode.charAt(0).toUpperCase() + mode.slice(1)} generation
@@ -113,30 +217,110 @@ export default function GenerationCostDisplay({
         
         <div className="text-right">
           <div className="text-sm">
-            <span className="opacity-70">Balance: </span>
-            <span className="font-bold">{currentCredits}</span>
+            <span className="opacity-70">
+              {isOneMaxUser ? 'Balance: ' : 'Credits: '}
+            </span>
+            <span className="font-bold">
+              {isOneMaxUser ? `$${oneMaxBalance.toFixed(2)}` : currentCredits}
+            </span>
           </div>
           {canAfford ? (
             <div className="text-xs opacity-70">
-              After: {remainingAfter} credits
+              After: {isOneMaxUser ? `$${remainingAfter.toFixed(2)}` : `${remainingAfter} credits`}
             </div>
           ) : (
             <div className="text-xs font-medium">
-              Need {cost - currentCredits} more credits
+              {isOneMaxUser 
+                ? `Need $${(cost - oneMaxBalance).toFixed(2)} more`
+                : `Need ${cost - currentCredits} more credits`
+              }
             </div>
           )}
         </div>
       </div>
 
-      {!canAfford && (
+      {/* ONE MAX Pricing Display */}
+      {isOneMaxUser && (
+        <div className="mt-2 pt-2 border-t border-current border-opacity-20">
+          <div className="text-xs">
+            <p className="mb-1"><strong>🚀 ONE MAX - Pay Per Use:</strong></p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="flex justify-between">
+                <span>Images:</span>
+                <span className="text-green-400 font-medium">$0.20 each</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Videos:</span>
+                <span className="text-blue-400 font-medium">$0.50 each</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Text:</span>
+                <span className="text-purple-400 font-medium">$0.01 each</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Image Edit:</span>
+                <span className="text-orange-400 font-medium">$0.15 each</span>
+              </div>
+            </div>
+            <div className="mt-1 text-xs text-green-400">
+              ✓ No monthly limits • Ultra-fast processing • Premium models
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan Limits Display for Monthly Plans */}
+      {!isOneMaxUser && planLimits && (mode === 'image' || mode === 'video') && (
+        <div className="mt-2 pt-2 border-t border-current border-opacity-20">
+          <div className="text-xs">
+            <p className="mb-1"><strong>📊 Monthly Limits ({userPlan}):</strong></p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {mode === 'image' && (
+                <div className="flex justify-between">
+                  <span>Images:</span>
+                  <span className={monthlyUsage.images >= planLimits.maxImages ? 'text-red-400 font-bold' : 'text-green-400'}>
+                    {monthlyUsage.images}/{planLimits.maxImages}
+                  </span>
+                </div>
+              )}
+              {mode === 'video' && (
+                <div className="flex justify-between">
+                  <span>Videos:</span>
+                  <span className={monthlyUsage.videos >= planLimits.maxVideos ? 'text-red-400 font-bold' : 'text-blue-400'}>
+                    {monthlyUsage.videos}/{planLimits.maxVideos}
+                  </span>
+                </div>
+              )}
+            </div>
+            {((mode === 'image' && monthlyUsage.images >= planLimits.maxImages) || 
+              (mode === 'video' && monthlyUsage.videos >= planLimits.maxVideos)) && (
+              <div className="mt-1 text-xs text-red-400 font-medium">
+                ⚠️ Monthly limit reached for {mode}s. Upgrade your plan to continue.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!canAfford && !isOneMaxUser && (
         <div className="mt-2 pt-2 border-t border-current border-opacity-20">
           <div className="text-xs">
             <p className="mb-1">💡 <strong>Get more credits:</strong></p>
             <ul className="space-y-0.5 ml-4">
-              <li>• Free daily top-up: 50 credits</li>
-              <li>• Upgrade to Pro plan for unlimited credits</li>
-              <li>• Purchase additional credit packs</li>
+              <li>• One T: 200 images + 12 videos monthly ($19)</li>
+              <li>• One Z: 700 images + 55 videos monthly ($79)</li>
+              <li>• One Pro: 1,500 images + 120 videos monthly ($149)</li>
+              <li>• <strong>ONE MAX: Pay per use • No limits • $0.20 per image • $0.50 per video</strong></li>
             </ul>
+          </div>
+        </div>
+      )}
+
+      {!canAfford && isOneMaxUser && (
+        <div className="mt-2 pt-2 border-t border-current border-opacity-20">
+          <div className="text-xs">
+            <p className="mb-1">💰 <strong>Top up your balance:</strong></p>
+            <p className="text-green-400">Visit the subscription page to add funds to your ONE MAX account.</p>
           </div>
         </div>
       )}
@@ -145,7 +329,10 @@ export default function GenerationCostDisplay({
       {batchSize > 1 && (
         <div className="mt-2 pt-2 border-t border-current border-opacity-20">
           <div className="text-xs opacity-80">
-            Cost breakdown: {CREDIT_COSTS[mode as keyof typeof CREDIT_COSTS] || CREDIT_COSTS.text} × {batchSize} = {cost} credits
+            Cost breakdown: {isOneMaxUser 
+              ? `$${(cost / batchSize).toFixed(3)} × ${batchSize} = $${cost.toFixed(3)}`
+              : `${(cost / batchSize)} × ${batchSize} = ${cost} credits`
+            }
           </div>
         </div>
       )}

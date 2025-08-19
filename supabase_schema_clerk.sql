@@ -193,8 +193,8 @@ BEGIN
   END IF;
 END$$;
 
--- Optional: Stripe price → credits mapping
-CREATE TABLE IF NOT EXISTS public.stripe_price_to_credits (
+-- REMOVED: Stripe integration (using Razorpay instead)
+-- CREATE TABLE IF NOT EXISTS public.stripe_price_to_credits (
   price_id TEXT PRIMARY KEY,
   credits INTEGER NOT NULL
 );

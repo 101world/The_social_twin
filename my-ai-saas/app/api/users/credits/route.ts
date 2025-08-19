@@ -46,11 +46,11 @@ export async function GET(_req: NextRequest) {
     const status = (planRow?.status || '').toLowerCase();
     const isActive = status === 'active' || status === 'trialing';
 
-    // Plan credit amounts (for display only, no auto-granting)
+    // Plan credit amounts (updated to match new billing system)
     const PLAN_CREDITS: Record<string, number> = {
-      'one t': 10000,    // $19 plan - 10k credits
-      'one z': 50000,    // $79 plan - 50k credits 
-      'one pro': 100000, // $149 plan - 100k credits
+      'one_t': 1120,     // $19 plan - 1,120 credits (200 images + 12 videos)
+      'one_z': 4050,     // $79 plan - 4,050 credits (700 images + 55 videos)
+      'one_pro': 8700,   // $149 plan - 8,700 credits (1500 images + 120 videos)
     };
     
     const planCredits = isActive && plan in PLAN_CREDITS ? PLAN_CREDITS[plan] : 0;
@@ -74,6 +74,19 @@ export async function GET(_req: NextRequest) {
       .eq('user_id', userId)
       .maybeSingle();
 
+    // Check if user is on ONE MAX plan and get balance
+    let oneMaxBalance = 0;
+    let isOneMaxUser = false;
+    if (userBilling?.plan === 'one_max' && (userBilling?.status === 'active' || userBilling?.status === 'trialing')) {
+      isOneMaxUser = true;
+      const { data: balanceData } = await supabase
+        .from('user_balance')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle();
+      oneMaxBalance = balanceData?.balance || 0;
+    }
+
     return NextResponse.json({
       credits: userCredits?.credits || 0,
       created_at: userCredits?.updated_at || new Date().toISOString(),
@@ -81,6 +94,8 @@ export async function GET(_req: NextRequest) {
       subscription_plan: userBilling?.plan || null,
       next_billing_at: userBilling?.next_billing_at || null,
       plan_credits: planCredits, // What the plan includes (for display)
+      oneMaxBalance,
+      isOneMaxUser,
     });
   } catch (e: any) {
     console.error('GET /api/users/credits error:', e);

@@ -9,6 +9,8 @@ import { usePathname } from "next/navigation";
 const Navbar = () => {
   // Minimal credits pill (compact)
   const [credits, setCredits] = useState<number | null>(null);
+  const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
+  const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const pathname = usePathname();
   const isTwin = pathname?.startsWith("/social-twin");
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -48,7 +50,11 @@ const Navbar = () => {
         const r = await fetch("/api/users/credits");
         if (!r.ok) return;
         const j = await r.json();
-        if (!ignore && typeof j?.credits === "number") setCredits(j.credits);
+        if (!ignore) {
+          if (typeof j?.credits === "number") setCredits(j.credits);
+          if (typeof j?.oneMaxBalance === "number") setOneMaxBalance(j.oneMaxBalance);
+          if (typeof j?.isOneMaxUser === "boolean") setIsOneMaxUser(j.isOneMaxUser);
+        }
       } catch {}
     };
     load();
@@ -104,50 +110,68 @@ const Navbar = () => {
   }, []);
 
   return (
-  <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 top-0 z-[20000] flex h-16 items-center justify-center p-4 transition-opacity duration-500" style={{ opacity: hidden ? 0 : 1 }}>
+  <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 top-0 z-[20000] flex h-8 sm:h-10 items-center justify-center p-1 sm:p-2 transition-opacity duration-500" style={{ opacity: hidden ? 0 : 1 }}>
       {(() => {
         // Always use white icons for consistency
         const iconClass = 'text-white';
         const linkClass = `${iconClass} hover:opacity-90 cursor-pointer pointer-events-auto`;
         return (
           <nav className="pointer-events-auto relative flex w-full items-center">
-            {/* Centered icon group with cool blending border */}
+            {/* Balance display in top right corner */}
+            <div className="absolute right-2 top-0 pointer-events-auto">
+              <SignedIn>
+                {(credits !== null || oneMaxBalance !== null) && (
+                  <div className={`px-2 py-1 rounded-b-md text-xs font-medium transition-all duration-300 ${
+                    isOneMaxUser 
+                      ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
+                      : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
+                  } backdrop-blur-sm`}>
+                    {isOneMaxUser 
+                      ? `$${(oneMaxBalance || 0).toFixed(2)}`
+                      : `${credits || 0} credits`
+                    }
+                  </div>
+                )}
+              </SignedIn>
+            </div>
+            
+            {/* Centered icon group with compact blending border */}
             <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
               <div className="pointer-events-auto relative">
-                {/* Cool border that blends into top edge with animations */}
-                <div className={`absolute -inset-4 -top-8 transition-all duration-800 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
+                {/* Compact border that blends into top edge with animations */}
+                <div className={`absolute -inset-1 sm:-inset-2 -top-2 sm:-top-3 transition-all duration-800 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
                   <div className="relative h-full w-full">
-                    {/* Main container with organic border */}
-                    <div className={`absolute inset-0 rounded-b-3xl bg-gradient-to-b from-black/20 via-black/10 to-transparent backdrop-blur-sm border-x border-b border-white/10 transition-all duration-800 ${isAnimating ? 'border-white/30 bg-gradient-to-b from-blue-500/20 via-purple-500/10 to-transparent' : ''}`}></div>
-                    {/* Top blend effect */}
-                    <div className={`absolute -top-4 inset-x-0 h-8 bg-gradient-to-b from-black/15 to-transparent rounded-t-2xl transition-all duration-800 ${isAnimating ? 'from-blue-400/25' : ''}`}></div>
-                    {/* Side glow effects - enhanced during animation */}
-                    <div className={`absolute -inset-2 rounded-3xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-50 transition-all duration-800 ${isAnimating ? 'via-blue-300/20 opacity-100' : ''}`}></div>
-                    {/* Subtle inner highlight */}
-                    <div className={`absolute inset-1 rounded-b-2xl border border-white/5 transition-all duration-800 ${isAnimating ? 'border-white/20' : ''}`}></div>
+                    {/* Main container with compact organic border */}
+                    <div className={`absolute inset-0 rounded-b-xl sm:rounded-b-2xl bg-gradient-to-b from-black/15 via-black/8 to-transparent backdrop-blur-sm border-x border-b border-white/8 transition-all duration-800 ${isAnimating ? 'border-white/20 bg-gradient-to-b from-blue-500/15 via-purple-500/8 to-transparent' : ''}`}></div>
+                    {/* Minimal top blend effect */}
+                    <div className={`absolute -top-1 sm:-top-2 inset-x-0 h-2 sm:h-4 bg-gradient-to-b from-black/10 to-transparent rounded-t-lg sm:rounded-t-xl transition-all duration-800 ${isAnimating ? 'from-blue-400/15' : ''}`}></div>
+                    {/* Subtle side glow effects */}
+                    <div className={`absolute -inset-0.5 sm:-inset-1 rounded-xl sm:rounded-2xl bg-gradient-to-r from-transparent via-white/3 to-transparent opacity-40 transition-all duration-800 ${isAnimating ? 'via-blue-300/15 opacity-80' : ''}`}></div>
+                    {/* Minimal inner highlight */}
+                    <div className={`absolute inset-0.5 rounded-b-lg sm:rounded-b-xl border border-white/3 transition-all duration-800 ${isAnimating ? 'border-white/15' : ''}`}></div>
                     {/* Wave animation overlay */}
                     {isAnimating && (
-                      <div className="absolute inset-0 rounded-b-3xl overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" style={{ animation: 'navbar-wave 0.8s ease-out' }}></div>
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400" style={{ animation: 'navbar-wave 0.6s ease-out 0.1s' }}></div>
+                      <div className="absolute inset-0 rounded-b-xl sm:rounded-b-2xl overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent" style={{ animation: 'navbar-wave 0.8s ease-out' }}></div>
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400" style={{ animation: 'navbar-wave 0.6s ease-out 0.1s' }}></div>
                         <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent" style={{ animation: 'navbar-wave 0.7s ease-out 0.2s' }}></div>
                       </div>
                     )}
                   </div>
                 </div>
                 
-                {/* Icons container with tighter spacing and animation effects */}
-                <div className={`relative flex items-center gap-3 px-6 py-3 transition-transform duration-300 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
+                {/* Icons container with minimal spacing and compact design */}
+                <div className={`relative flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 transition-transform duration-300 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
                 <Link href="/" className={linkClass} title="Home" onClick={triggerNavAnimation}>
                   <span className="sr-only">Home</span>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9,22 9,12 15,12 15,22"/>
                   </svg>
                 </Link>
                 <Link href="/social-twin" className={linkClass} title="The Social Twin" onClick={triggerNavAnimation}>
                   <span className="sr-only">Social Twin</span>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M8 7a4 4 0 1 0 0 8m8-8a4 4 0 1 0 0 8" />
                     <path d="M2 21c1.5-3 4.5-5 6-5s4.5 2 6 5m2-9c3 0 6 2 6 5" />
                   </svg>
@@ -155,18 +179,18 @@ const Navbar = () => {
                 {/* Dashboard link removed per request */}
                 <Link href="/subscription" className={linkClass} title="Subscriptions" onClick={triggerNavAnimation}>
                   <span className="sr-only">Subscriptions</span>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 6h18M3 12h18M3 18h18" />
                   </svg>
                 </Link>
                 <Link href="/one" className={linkClass} title="The Code of ONE" onClick={triggerNavAnimation}>
                   <span className="sr-only">Code of ONE</span>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2L12 22" />
                     <path d="M8 6L12 2L16 6" />
                   </svg>
                 </Link>
-                {/* Thunder toggle next to icons */}
+                {/* Thunder toggle next to icons - hidden on mobile */}
                 {isTwin && (() => {
                   const darkCtx = isTwin ? twinDark : (isDashboard || globalDark);
                   const toggle = () => {
@@ -181,12 +205,12 @@ const Navbar = () => {
                   };
                   return (
                     <button
-                      className={`rounded-full p-2 transition-colors ${darkCtx ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}
+                      className={`hidden sm:block rounded-full p-0.5 sm:p-1 transition-colors ${darkCtx ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}
                       onClick={toggle}
                       title={simple ? 'Switch to Pro' : 'Switch to Normal'}
                       aria-label="Toggle Normal/Pro"
                     >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill={simple ? '#ffffff' : '#facc15'} xmlns="http://www.w3.org/2000/svg">
+                      <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill={simple ? '#ffffff' : '#facc15'} xmlns="http://www.w3.org/2000/svg">
                         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                       </svg>
                     </button>
@@ -194,13 +218,13 @@ const Navbar = () => {
                 })()}
                 {/* User profile next to icons */}
                 <SignedIn>
-                  <div className="ml-1">
+                  <div className="ml-0.5 scale-90 sm:scale-100">
                     <UserButton />
                   </div>
                 </SignedIn>
                 <SignedOut>
                   <SignInButton>
-                    <Button>Sign In</Button>
+                    <Button size="sm" className="text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 h-6 sm:h-auto">Sign In</Button>
                   </SignInButton>
                 </SignedOut>
                 </div>

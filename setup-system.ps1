@@ -76,9 +76,10 @@ NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 
-# Stripe Payments (for future implementation)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
-STRIPE_SECRET_KEY=sk_test_your_secret_key_here
+# Razorpay Payments (configured for Indian market)
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_your_key_here
+RAZORPAY_KEY_SECRET=your_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
 "@
     
     $envTemplate | Out-File -FilePath ".env.local" -Encoding UTF8

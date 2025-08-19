@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Handle subscription/payment events from Stripe via Clerk
+    // Handle subscription/payment events from Razorpay via Clerk
     if (String(eventType).includes('subscription') || String(eventType).includes('payment')) {
       const userId = e?.data?.object?.metadata?.clerk_user_id || 
                     e?.data?.object?.metadata?.user_id ||
@@ -82,13 +82,12 @@ export async function POST(req: NextRequest) {
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
         
-        // Set initial monthly credits based on plan (upfront)
+        // Set initial monthly credits based on plan (updated to match new billing system)
         const monthlyGrants: Record<string, number> = {
           'free': 0,
-          'one t': 1000,
-          'one s': 5000,
-          'one xt': 10000,
-          'one z': 50000
+          'one_t': 1120,
+          'one_z': 4050,
+          'one_pro': 8700
         };
         const credits = monthlyGrants[planName.toLowerCase()] ?? 0;
         

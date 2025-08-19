@@ -9,7 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/dev/jwt",
   "/api/dev/runpod",
   "/api/webhooks/clerk",
-  "/api/webhooks/stripe",
+  "/api/webhooks/razorpay",
   // Allow these in dev; route handlers still enforce auth for real data
   "/api/users/credits",
   "/api/generations",

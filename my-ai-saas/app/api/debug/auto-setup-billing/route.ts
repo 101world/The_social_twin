@@ -16,32 +16,9 @@ async function detectUserSubscription(userId: string) {
       return { plan: metadata.subscription || metadata.plan, status: 'active' };
     }
 
-    // Method 2: Check Stripe for active subscriptions
-    if (process.env.STRIPE_SECRET_KEY) {
-      // Dynamic import to avoid build errors when stripe is not installed
-      const stripe = await import('stripe').then(mod => new mod.default(process.env.STRIPE_SECRET_KEY!));
-      
-      // Search for customer by Clerk user ID in metadata
-      const customers = await stripe.customers.search({
-        query: `metadata['clerk_user_id']:'${userId}'`
-      });
-
-      if (customers.data.length > 0) {
-        const customer = customers.data[0];
-        const subscriptions = await stripe.subscriptions.list({
-          customer: customer.id,
-          status: 'active'
-        });
-
-        if (subscriptions.data.length > 0) {
-          const sub = subscriptions.data[0];
-          const priceNickname = sub.items.data[0]?.price?.nickname;
-          if (priceNickname) {
-            return { plan: priceNickname, status: sub.status };
-          }
-        }
-      }
-    }
+    // Method 2: Check Razorpay for active subscriptions (when implemented)
+    // For now, we'll use plan detection from user metadata or database
+    // TODO: Add Razorpay subscription detection here
 
     // Method 3: Default plan detection (you can customize this)
     // For now, check if user email contains certain domains or patterns
@@ -87,9 +64,9 @@ export async function POST() {
       return Response.json({ error: billingError.message }, { status: 500 })
     }
 
-    // Set monthly upfront credits based on detected plan
+    // Updated monthly credit allocations to match new billing system
     const monthlyGrants: Record<string, number> = {
-      'free': 0, 'one t': 1000, 'one s': 5000, 'one xt': 10000, 'one z': 50000
+      'free': 0, 'one_t': 1120, 'one_z': 4050, 'one_pro': 8700
     };
     const credits = monthlyGrants[subscription.plan.toLowerCase()] ?? 0;
     

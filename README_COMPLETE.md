@@ -51,7 +51,7 @@ A production-ready, subscription-based AI chat platform with topic organization,
 - Git
 - Supabase account
 - Clerk account
-- Stripe account (for payments)
+- Razorpay account (for payments)
 
 ### 2. Database Setup
 
@@ -92,9 +92,10 @@ NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 
-# Stripe Payments (for future implementation)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
-STRIPE_SECRET_KEY=sk_test_your_secret_here
+# Razorpay Payments (configured for Indian market)
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_your_key_here
+RAZORPAY_KEY_SECRET=your_secret_here
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
 ```
 
 ### 4. Install Dependencies
@@ -187,7 +188,7 @@ Default plans are automatically created:
 ### 1. Environment Variables
 - Set production Clerk keys
 - Configure production Supabase instance
-- Add Stripe webhook endpoints
+- Add Razorpay webhook endpoints
 - Set proper CORS origins
 
 ### 2. Database Optimization
@@ -317,7 +318,7 @@ NODE_ENV=development
 - **Mobile App**: React Native mobile application
 
 ### Integration Opportunities
-- **Stripe Webhooks**: Automatic credit top-ups
+- **Razorpay Webhooks**: Automatic credit top-ups
 - **Analytics**: Usage tracking and insights
 - **CDN**: Media storage and delivery optimization
 - **Queue System**: Background job processing
