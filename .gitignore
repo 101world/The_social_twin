@@ -1,0 +1,25 @@
+# Node / Next.js
+node_modules/
+.next/
+
+# Local env
+.env
+.env.*
+my-ai-saas/.env.local
+
+# OS/editor
+.DS_Store
+.vscode/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Builds
+out/
+dist/
+
+# Misc
+.vercel
