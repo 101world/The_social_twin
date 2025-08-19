@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
 import { promises as fs } from 'fs';
 import path from 'path';
+import os from 'os';
 
 type PageInput = {
   images?: Array<{ url: string; x?: number; y?: number; w?: number; h?: number; fit?: 'cover'|'contain' }>;
@@ -12,9 +13,9 @@ type PageInput = {
 
 export async function POST(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const a = await auth();
+  let userId = a.userId as string | null;
+  const getToken = a.getToken as undefined | ((opts?: any) => Promise<string | null>);
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -41,11 +42,21 @@ export async function POST(req: NextRequest) {
         } as any);
       }
       for (const img of (p.images || [])) {
-        slide.addImage({ data: img.url, path: img.url.startsWith('data:') ? undefined : img.url, x: (img.x ?? 0) / 100, y: (img.y ?? 0) / 100, w: (img.w ?? 960) / 100, h: (img.h ?? 540) / 100, sizing: { type: (img.fit === 'cover' ? 'cover' : 'contain') as any } });
+        slide.addImage({
+          data: img.url,
+          path: img.url.startsWith('data:') ? undefined : img.url,
+          x: (img.x ?? 0) / 100,
+          y: (img.y ?? 0) / 100,
+          w: (img.w ?? 960) / 100,
+          h: (img.h ?? 540) / 100,
+          sizing: {
+            type: img.fit === 'cover' ? 'cover' : 'contain',
+          } as any,
+        });
       }
     }
 
-    const tmpDir = path.join(process.cwd(), '.next', 'cache', 'export');
+  const tmpDir = path.join(os.tmpdir(), 'export');
     await fs.mkdir(tmpDir, { recursive: true });
     const out = path.join(tmpDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.pptx`);
     await new Promise<void>((resolve, reject)=> {

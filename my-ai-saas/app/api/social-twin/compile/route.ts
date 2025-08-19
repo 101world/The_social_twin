@@ -4,8 +4,8 @@ import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
 import os from 'os';
+import { spawn } from 'child_process';
 // Resolve ffmpeg/ffprobe binaries from static deps if available; fallback to system PATH
 let FFMPEG_CMD: string = 'ffmpeg';
 let FFPROBE_CMD: string = 'ffprobe';
@@ -53,7 +53,7 @@ function run(cmd: string, args: string[], cwd?: string): Promise<{ code: number;
 }
 
 async function downloadToTmp(url: string, extHint: string): Promise<string> {
-  const tmp = path.join(process.cwd(), '.next', 'cache', 'compile');
+  const tmp = path.join(os.tmpdir(), 'compile');
   await fs.mkdir(tmp, { recursive: true });
   // Support data: URLs
   if (/^data:/i.test(url)) {
@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Concat using filter_complex (robust across containers)
-    const tmpDir = path.join(process.cwd(), '.next', 'cache', 'compile');
+  const tmpDir = path.join(os.tmpdir(), 'compile');
     const outPath = path.join(tmpDir, `${Date.now()}-${Math.random().toString(36).slice(2)}-out.mp4`);
     if (clips.length === 1) {
       await run('ffmpeg', ['-y', '-i', clips[0], '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', String(fps), outPath]);

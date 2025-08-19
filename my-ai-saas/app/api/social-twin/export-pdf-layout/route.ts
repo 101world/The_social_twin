@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient } from '@/lib/supabase';
 import { promises as fs } from 'fs';
 import path from 'path';
+import os from 'os';
 
 interface PdfItem {
   id: string;
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'PDF export feature not available - jsPDF dependency missing' }, { status: 503 });
     }
 
-    const tmpDir = path.join(process.cwd(), '.next', 'cache', 'export');
+  const tmpDir = path.join(os.tmpdir(), 'export');
     await fs.mkdir(tmpDir, { recursive: true });
     const tmpPath = path.join(tmpDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
 

@@ -193,24 +193,11 @@ export default function GenerationCostDisplay({
     }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{canAfford ? '✅' : '⚠️'}</span>
           <div>
-            <div className="font-medium">
-              {isOneMaxUser ? (
-                <div>
-                  <div>${cost.toFixed(3)} USD required</div>
-                  <div className="text-xs opacity-70">Pay-per-use pricing</div>
-                </div>
-              ) : (
-                <div>
-                  {cost} credit{cost !== 1 ? 's' : ''} required
-                  <div className="text-xs opacity-70">Monthly plan credits</div>
-                </div>
-              )}
-            </div>
             <div className="text-xs opacity-80">
               {mode.charAt(0).toUpperCase() + mode.slice(1)} generation
               {batchSize > 1 ? ` × ${batchSize}` : ''}
+              {isOneMaxUser ? ' • Pay-per-use' : ''}
             </div>
           </div>
         </div>
@@ -247,7 +234,7 @@ export default function GenerationCostDisplay({
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex justify-between">
                 <span>Images:</span>
-                <span className="text-green-400 font-medium">$0.20 each</span>
+                <span className="text-amber-400 font-medium">$0.20 each</span>
               </div>
               <div className="flex justify-between">
                 <span>Videos:</span>
@@ -262,7 +249,7 @@ export default function GenerationCostDisplay({
                 <span className="text-orange-400 font-medium">$0.15 each</span>
               </div>
             </div>
-            <div className="mt-1 text-xs text-green-400">
+            <div className="mt-1 text-xs text-amber-400">
               ✓ No monthly limits • Ultra-fast processing • Premium models
             </div>
           </div>
@@ -278,7 +265,7 @@ export default function GenerationCostDisplay({
               {mode === 'image' && (
                 <div className="flex justify-between">
                   <span>Images:</span>
-                  <span className={monthlyUsage.images >= planLimits.maxImages ? 'text-red-400 font-bold' : 'text-green-400'}>
+                  <span className={monthlyUsage.images >= planLimits.maxImages ? 'text-red-400 font-bold' : 'text-amber-400'}>
                     {monthlyUsage.images}/{planLimits.maxImages}
                   </span>
                 </div>
@@ -320,7 +307,7 @@ export default function GenerationCostDisplay({
         <div className="mt-2 pt-2 border-t border-current border-opacity-20">
           <div className="text-xs">
             <p className="mb-1">💰 <strong>Top up your balance:</strong></p>
-            <p className="text-green-400">Visit the subscription page to add funds to your ONE MAX account.</p>
+            <p className="text-amber-400">Visit the subscription page to add funds to your ONE MAX account.</p>
           </div>
         </div>
       )}

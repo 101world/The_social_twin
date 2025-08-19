@@ -1,44 +1,45 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useCredits } from '@/lib/credits-context';
 
 interface CreditCost {
   text: number;
   image: number;
   video: number;
+  videoCompile: number;
   imageModify: number;
+  pdfExport: number;
 }
 
 interface GenerationCostDisplayProps {
-  mode: 'text' | 'image' | 'image-modify' | 'video';
+  mode: 'text' | 'image' | 'image-modify' | 'video' | 'pdf-export';
   batchSize?: number;
   darkMode?: boolean;
   onCostCalculated?: (cost: number, canAfford: boolean) => void;
+  refreshToken?: any; // change to re-fetch credits
+  hideUI?: boolean; // compute-only mode
 }
 
-export default function GenerationCostDisplay({ 
-  mode, 
-  batchSize = 1, 
+export default function GenerationCostDisplay({
+  mode,
+  batchSize = 1,
   darkMode = false,
-  onCostCalculated 
+  onCostCalculated,
+  refreshToken,
+  hideUI = false,
 }: GenerationCostDisplayProps) {
-  const { userId } = useAuth();
-  const [currentCredits, setCurrentCredits] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  const { creditInfo, loading } = useCredits();
+  const currentCredits = creditInfo?.credits || 0;
 
   const CREDIT_COSTS: CreditCost = {
     text: 1,
     image: 5,
     video: 10,
+    videoCompile: 3,
     imageModify: 3,
+    pdfExport: 1,
   };
-
-  useEffect(() => {
-    if (userId) {
-      fetchCredits();
-    }
-  }, [userId]);
 
   useEffect(() => {
     const cost = calculateCost();
@@ -46,24 +47,11 @@ export default function GenerationCostDisplay({
     onCostCalculated?.(cost, canAfford);
   }, [mode, batchSize, currentCredits, onCostCalculated]);
 
-  const fetchCredits = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/users/credits');
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentCredits(data.credits || 0);
-      }
-    } catch (err) {
-      console.error('Failed to fetch credits:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const calculateCost = () => {
     const baseCost = mode === 'image-modify' 
       ? CREDIT_COSTS.imageModify 
+      : mode === 'pdf-export'
+      ? CREDIT_COSTS.pdfExport
       : CREDIT_COSTS[mode as keyof typeof CREDIT_COSTS] || CREDIT_COSTS.text;
     
     return baseCost * (batchSize || 1);
@@ -72,6 +60,10 @@ export default function GenerationCostDisplay({
   const cost = calculateCost();
   const canAfford = currentCredits >= cost;
   const remainingAfter = currentCredits - cost;
+
+  if (hideUI) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -86,21 +78,13 @@ export default function GenerationCostDisplay({
 
   return (
     <div className={`p-3 rounded-lg border ${
-      canAfford 
-        ? darkMode 
-          ? 'border-green-600 bg-green-900/20 text-green-300' 
-          : 'border-green-500 bg-green-50 text-green-700'
-        : darkMode
-          ? 'border-red-600 bg-red-900/20 text-red-300'
-          : 'border-red-500 bg-red-50 text-red-700'
+      canAfford
+        ? (darkMode ? 'border-gray-700 bg-gray-900/30 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-800')
+        : (darkMode ? 'border-red-600 bg-red-900/20 text-red-300' : 'border-red-500 bg-red-50 text-red-700')
     }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{canAfford ? '✅' : '⚠️'}</span>
           <div>
-            <div className="font-medium">
-              {cost} credit{cost !== 1 ? 's' : ''} required
-            </div>
             <div className="text-xs opacity-80">
               {mode.charAt(0).toUpperCase() + mode.slice(1)} generation
               {batchSize > 1 ? ` × ${batchSize}` : ''}
@@ -130,8 +114,7 @@ export default function GenerationCostDisplay({
           <div className="text-xs">
             <p className="mb-1">💡 <strong>Get more credits:</strong></p>
             <ul className="space-y-0.5 ml-4">
-              <li>• Free daily top-up: 50 credits</li>
-              <li>• Upgrade to Pro plan for unlimited credits</li>
+              <li>• Upgrade your plan for a larger monthly wallet</li>
               <li>• Purchase additional credit packs</li>
             </ul>
           </div>
@@ -156,7 +139,9 @@ export function CreditCostReference({ darkMode = false }: { darkMode?: boolean }
     text: 1,
     image: 5,
     video: 10,
+    videoCompile: 3,
     imageModify: 3,
+    pdfExport: 1,
   };
 
   return (
@@ -178,8 +163,16 @@ export function CreditCostReference({ darkMode = false }: { darkMode?: boolean }
           <span className="font-medium">{CREDIT_COSTS.video} credits</span>
         </div>
         <div className="flex justify-between">
+          <span>Video compiling:</span>
+          <span className="font-medium">{CREDIT_COSTS.videoCompile} credits</span>
+        </div>
+        <div className="flex justify-between">
           <span>Image modification:</span>
           <span className="font-medium">{CREDIT_COSTS.imageModify} credits</span>
+        </div>
+        <div className="flex justify-between">
+          <span>PDF export:</span>
+          <span className="font-medium">{CREDIT_COSTS.pdfExport} credit</span>
         </div>
       </div>
     </div>
