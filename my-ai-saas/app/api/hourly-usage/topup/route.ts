@@ -3,15 +3,26 @@ import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import Razorpay from 'razorpay';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase configuration missing');
+  }
+  return createClient(url, key);
+}
+
+function getRazorpay() {
+  // Prefer NEXT_PUBLIC_RAZORPAY_KEY_ID for consistency across app
+  const key_id = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!key_id || !key_secret) {
+    throw new Error('Razorpay configuration missing (key_id/key_secret)');
+  }
+  return new Razorpay({ key_id, key_secret });
+}
 
 // ============================================
 // CREATE HOURLY BALANCE TOP-UP ORDER
@@ -48,11 +59,15 @@ export async function POST(req: NextRequest) {
     // Convert USD to INR (using rate 83)
     const amountINR = amount * 83;
 
-    // Create Razorpay order for top-up
-    const razorpayOrder = await razorpay.orders.create({
+    // Create Razorpay order for top-up (lazy init to avoid build-time errors)
+    const rp = getRazorpay();
+    const compactReceipt = `ht_${Date.now().toString(36)}_${(userId || '').slice(-4)}_${Math.random()
+      .toString(36)
+      .slice(2, 6)}`.slice(0, 40);
+    const razorpayOrder = await rp.orders.create({
       amount: Math.round(amountINR * 100), // Amount in paise
       currency: 'INR',
-      receipt: `hourly_topup_${userId}_${Date.now()}`,
+      receipt: compactReceipt, // <= 40 chars
       notes: {
         user_id: userId,
         topup_amount_usd: amount.toString(),
@@ -62,7 +77,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Record pending transaction
-    const { error: insertError } = await supabase
+  const supabase = getSupabase();
+  const { error: insertError } = await supabase
       .from('hourly_topup_transactions')
       .insert({
         user_id: userId,
@@ -90,7 +106,7 @@ export async function POST(req: NextRequest) {
       amount_usd: amount,
       amount_inr: amountINR,
       currency: 'INR',
-      razorpay_key: process.env.RAZORPAY_KEY_ID,
+  razorpay_key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID,
       message: `Top-up order created for $${amount} (₹${amountINR.toLocaleString('en-IN')})`,
       features_unlocked: [
         'Unlimited AI generations at $15/hour',
@@ -125,6 +141,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get current balance and transaction history
+    const supabase = getSupabase();
     const [balanceResult, transactionsResult] = await Promise.all([
       supabase
         .from('hourly_account_balance')

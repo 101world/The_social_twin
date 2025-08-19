@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+export const runtime = 'nodejs';
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase configuration missing');
+  }
+  return createClient(url, key);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +27,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid generation type' }, { status: 400 });
     }
 
-    // Charge for generation using the RPC function
-    const { data, error } = await supabase
+  // Charge for generation using the RPC function
+  const supabase = getSupabase();
+  const { data, error } = await supabase
       .rpc('charge_for_generation', { 
         p_user_id: userId,
         p_generation_type: generation_type,
@@ -54,6 +61,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Charge generation API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    // Graceful fallback if env missing during build
+    return NextResponse.json({
+      error: 'Service temporarily unavailable',
+      note: 'Configure Supabase env vars to enable charges'
+    }, { status: 500 });
   }
 }

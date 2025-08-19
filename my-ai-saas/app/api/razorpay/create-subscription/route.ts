@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'nodejs';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient } from '@/lib/supabase';
 import Razorpay from 'razorpay';
