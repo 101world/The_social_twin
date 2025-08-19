@@ -1,8 +1,16 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// Allow unauthenticated access for developer tools
+// Allow unauthenticated access to public pages and webhooks
 export default clerkMiddleware({
-  publicRoutes: ["/dev", "/api/dev/runpod"],
+  publicRoutes: [
+    "/", // home
+    "/sign-in(.*)",
+    "/sign-up(.*)",
+    "/api/webhooks/(.*)",
+    "/dev",
+    "/api/dev/(.*)",
+    "/favicon.ico",
+  ],
 });
 
 export const config = {
