@@ -1640,8 +1640,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </svg>
           )}
         </button>
-  <header className={`flex items-center justify-between gap-4 px-6 py-4 ${darkMode ? '' : 'bg-white/90 backdrop-blur-sm'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <h1 className="text-xl font-semibold tracking-tight">
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white/90 backdrop-blur-sm'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+          <h1 className="text-base md:text-lg font-semibold tracking-tight">
             {creditInfo?.subscription_active && creditInfo?.subscription_plan
               ? (()=>{
                   const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim();
@@ -1654,10 +1654,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               : 'ONE'}
           </h1>
           
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
             {/* Credits */}
-            <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
-              <div className={`h-1.5 w-1.5 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
+            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
+              <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
               {creditInfo?.credits ?? '—'}
             </div>
             
@@ -1682,11 +1682,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                     activeTab === tab.id
                       ? (darkMode
-                          ? 'border-b-2 border-neutral-300 text-neutral-100'
-                          : 'border-b-2 border-neutral-800 text-neutral-900')
+                          ? 'border-b border-neutral-300 text-neutral-100'
+                          : 'border-b border-neutral-800 text-neutral-900')
                       : (darkMode
                           ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
                           : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
