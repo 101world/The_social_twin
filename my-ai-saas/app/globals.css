@@ -313,6 +313,19 @@
   }
 }
 
+/* Mobile viewport and safe-area helpers */
+:root {
+  --vh: 1vh; /* fallback, will be updated via JS on mobile */
+}
+
+.h-screen-dvh { height: calc(var(--vh) * 100); }
+.min-h-screen-dvh { min-height: calc(var(--vh) * 100); }
+.safe-bottom-pad { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px)); }
+.safe-bottom-mb { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* iOS momentum scroll */
+.ios-smooth-scroll { -webkit-overflow-scrolling: touch; }
+
 /* Hide scrollbars helper */
 .no-scrollbar {
   scrollbar-width: none;

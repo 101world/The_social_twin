@@ -1577,8 +1577,36 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return buildSmoothPath(pts, 1);
   }
 
+  // iOS viewport + keyboard-safe: set --vh and --kb-offset using visualViewport
+  useEffect(() => {
+    const docEl = document.documentElement;
+    const updateVh = () => {
+      const vh = (window.visualViewport?.height ?? window.innerHeight) * 0.01;
+      docEl.style.setProperty('--vh', `${vh}px`);
+    };
+    const updateKb = () => {
+      const vv = window.visualViewport;
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+      docEl.style.setProperty('--kb-offset', `${kb}px`);
+    };
+    const onVvResize = () => { updateVh(); updateKb(); };
+    const onVvScroll = () => { updateKb(); };
+    updateVh();
+    updateKb();
+    window.addEventListener('resize', updateVh);
+    window.addEventListener('orientationchange', updateVh);
+    window.visualViewport?.addEventListener('resize', onVvResize);
+    window.visualViewport?.addEventListener('scroll', onVvScroll);
+    return () => {
+      window.removeEventListener('resize', updateVh);
+      window.removeEventListener('orientationchange', updateVh);
+      window.visualViewport?.removeEventListener('resize', onVvResize);
+      window.visualViewport?.removeEventListener('scroll', onVvScroll);
+    };
+  }, []);
+
   return (
-    <main className={`relative h-screen w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}`}>
+    <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}`}>
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
@@ -1676,7 +1704,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-              <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
+              <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
@@ -1885,7 +1913,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-        <div className={`border-t p-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
+  <div className={`border-t p-2 safe-bottom-pad ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
           style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined }}>
                 {/* Core controls - clean and tighter */}
                 <div className="mb-2 space-y-2">
