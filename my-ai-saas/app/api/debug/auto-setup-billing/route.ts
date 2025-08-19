@@ -18,7 +18,8 @@ async function detectUserSubscription(userId: string) {
 
     // Method 2: Check Stripe for active subscriptions
     if (process.env.STRIPE_SECRET_KEY) {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      // Dynamic import to avoid build errors when stripe is not installed
+      const stripe = await import('stripe').then(mod => new mod.default(process.env.STRIPE_SECRET_KEY!));
       
       // Search for customer by Clerk user ID in metadata
       const customers = await stripe.customers.search({

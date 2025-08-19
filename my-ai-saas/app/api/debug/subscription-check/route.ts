@@ -19,7 +19,8 @@ export async function GET(_req: NextRequest) {
     // Check Stripe for this user
     if (process.env.STRIPE_SECRET_KEY) {
       try {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        // Dynamic import to avoid build errors when stripe is not installed
+        const stripe = await import('stripe').then(mod => new mod.default(process.env.STRIPE_SECRET_KEY!));
         const email = clerkUser?.email_addresses?.[0]?.email_address;
         
         // Search for customer by email

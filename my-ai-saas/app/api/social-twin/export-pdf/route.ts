@@ -16,9 +16,15 @@ export async function POST(req: NextRequest) {
     const fileNameHint: string = typeof body?.fileName === 'string' && body.fileName ? body.fileName : 'export.pdf';
     if (!images.length) return NextResponse.json({ error: 'No images' }, { status: 400 });
 
-    // Use jsPDF as a lighter alternative to avoid Next.js 15 compatibility issues
-    const { jsPDF } = await import('jspdf');
-
+    // Dynamic import to avoid build errors when jspdf is not installed
+    let jsPDF;
+    try {
+      const jsPDFModule = await import('jspdf');
+      jsPDF = jsPDFModule.jsPDF;
+    } catch (importError) {
+      return NextResponse.json({ error: 'PDF export feature not available - jsPDF dependency missing' }, { status: 503 });
+    }
+      
     const tmpDir = path.join(process.cwd(), '.next', 'cache', 'export');
     await fs.mkdir(tmpDir, { recursive: true });
     const tmpPath = path.join(tmpDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);

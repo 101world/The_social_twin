@@ -21,10 +21,11 @@ export async function GET() {
     // Check Stripe if available
     if (process.env.STRIPE_SECRET_KEY) {
       try {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        // Dynamic import to avoid build errors when stripe is not installed
+        const stripe = await import('stripe').then(mod => new mod.default(process.env.STRIPE_SECRET_KEY!));
         
         // Search for customer by Clerk user ID
-        let customers = [];
+        let customers: any[] = [];
         try {
           const customerSearch = await stripe.customers.search({
             query: `metadata['clerk_user_id']:'${userId}'`

@@ -67,8 +67,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No pages to export' }, { status: 400 });
     }
 
-    // Use jsPDF for client-side compatibility
-    const { jsPDF } = await import('jspdf');
+    // Dynamic import to avoid build errors when jspdf is not installed
+    let jsPDF;
+    try {
+      const jsPDFModule = await import('jspdf');
+      jsPDF = jsPDFModule.jsPDF;
+    } catch (importError) {
+      return NextResponse.json({ error: 'PDF export feature not available - jsPDF dependency missing' }, { status: 503 });
+    }
 
     const tmpDir = path.join(process.cwd(), '.next', 'cache', 'export');
     await fs.mkdir(tmpDir, { recursive: true });
