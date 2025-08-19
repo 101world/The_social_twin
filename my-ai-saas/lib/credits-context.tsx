@@ -30,7 +30,7 @@ export function CreditProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchCredits = useCallback(async () => {
-    if (!userId) {
+    if (!userId || typeof window === 'undefined') {
       setLoading(false);
       return;
     }
@@ -54,7 +54,7 @@ export function CreditProvider({ children }: { children: React.ReactNode }) {
   }, [userId]);
 
   const deductCredits = useCallback(async (amount: number): Promise<boolean> => {
-    if (!userId) return false;
+    if (!userId || typeof window === 'undefined') return false;
 
     try {
       const response = await fetch('/api/users/credits', {
@@ -80,7 +80,9 @@ export function CreditProvider({ children }: { children: React.ReactNode }) {
   }, [userId]);
 
   useEffect(() => {
-    fetchCredits();
+    if (typeof window !== 'undefined') {
+      fetchCredits();
+    }
   }, [fetchCredits]);
 
   const value: CreditContextValue = {
@@ -100,8 +102,18 @@ export function CreditProvider({ children }: { children: React.ReactNode }) {
 
 export function useCredits() {
   const context = useContext(CreditContext);
+  
+  // Always return safe defaults if context is undefined, regardless of environment
   if (context === undefined) {
-    throw new Error('useCredits must be used within a CreditProvider');
+    console.warn('useCredits called outside of CreditProvider, returning safe defaults');
+    return {
+      creditInfo: null,
+      loading: true,
+      error: null,
+      refresh: async () => {},
+      deductCredits: async () => false
+    };
   }
+  
   return context;
 }

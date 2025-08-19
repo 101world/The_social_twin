@@ -27,7 +27,7 @@ function IconButton({ children, title, onClick, className }: { children: React.R
 // Profile tab: keeping things lean; no colorful credit/analytics widgets here
 import GenerationCostDisplay from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useCredits } from "@/lib/credits-context";
+import { useSafeCredits } from "@/hooks/useSafeCredits";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
 type Mode = 'text'|'image'|'image-modify'|'video';
@@ -264,7 +264,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     if (viewerOpen) setViewerDetailsOpen(false);
   }, [viewerOpen, viewerItem]);
   
-  const { creditInfo, refresh: refreshCredits } = useCredits();
+  const { creditInfo, refresh: refreshCredits } = useSafeCredits();
   
   // Utility function for API calls that may deduct credits
   const handleCreditDeductingAPI = async <T,>(apiCall: () => Promise<T>, alwaysRefresh = false): Promise<T> => {
