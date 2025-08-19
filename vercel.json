@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs"
+  "buildCommand": "cd my-ai-saas && npm run build",
+  "outputDirectory": "my-ai-saas/.next",
+  "framework": "nextjs",
+  "installCommand": "cd my-ai-saas && npm install"
 }
