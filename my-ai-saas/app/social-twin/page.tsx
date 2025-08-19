@@ -7,6 +7,14 @@ import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
 
+// Utility function to safely get location origin
+function getLocationOrigin(): string {
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin;
+  }
+  return '';
+}
+
 // Small icon-only button used across Creator Studio for a minimal aesthetic
 function IconButton({ children, title, onClick, className }: { children: React.ReactNode; title?: string; onClick?: () => void; className?: string }) {
   return (
@@ -728,7 +736,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   function getDisplayUrl(raw?: string | null): string | undefined {
     if (!raw) return undefined;
     try {
-      if (typeof location !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(location.origin)) {
+      if (typeof window !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(getLocationOrigin())) {
         return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
       }
     } catch {}
@@ -1728,7 +1736,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 {!lowDataMode || mediaAllowed.has(m.id) ? (
                                   <img
                                   alt="generated"
-                                  src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
+                                  src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
                                   className="max-h-80 w-full rounded-lg border"
                                   loading="lazy"
                                   draggable
@@ -1765,7 +1773,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   (m as any).images.map((u: string, i: number) => (
                                     <a key={i} href={u} target="_blank" rel="noreferrer">
                                       <img
-                                        src={u.startsWith('http') && !u.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
+                                        src={u.startsWith('http') && !u.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
                                         className="h-20 w-auto rounded border object-cover"
                                         loading="lazy"
                                         alt="thumb"
@@ -1789,7 +1797,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             {m.videoUrl ? (
                               (!lowDataMode || mediaAllowed.has(m.id)) ? (
                                 <video
-                                  src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
+                                  src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
                                   className="mt-2 max-h-80 w-full rounded-lg border"
                                   controls
                                   preload="metadata"
@@ -2683,7 +2691,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               (url ? (
                                 (!lowDataMode || mediaAllowed.has(it.id)) ? (
                                   <video 
-                                    src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                    src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
                                     className="h-full w-full object-cover" 
                                     preload="metadata" 
                                     muted
@@ -2709,7 +2717,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               ))
                             ) : (
                               <img 
-                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
                                 className="h-full w-full object-cover" 
                                 loading="lazy" 
                                 alt="Generated content" 
@@ -3401,7 +3409,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className="relative mb-4">
                 {viewerItem.type === 'video' ? (
                   <video
-                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(location.origin)) 
+                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(getLocationOrigin())) 
                       ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
                       : (viewerItem.display_url || viewerItem.result_url)}
                     className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
@@ -3411,7 +3419,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                 ) : (
                   <img
-                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(location.origin)) 
+                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(getLocationOrigin())) 
                       ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
                       : (viewerItem.display_url || viewerItem.result_url)}
         className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
@@ -5458,7 +5466,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
         <div className="h-full w-full overflow-hidden relative group">
           <video
             ref={videoRef}
-            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof location!=='undefined' && !item.url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
+            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof window!=='undefined' && !item.url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
             className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer"
             preload="metadata"
             // No native controls to avoid overlay interference; click-drag moves node
@@ -5547,7 +5555,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
       ) : item.type==='image' ? (
         <div className="h-full w-full overflow-hidden relative">
           <img
-            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof location!=='undefined' && !item.url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
+            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof window!=='undefined' && !item.url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
             className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02]"
             loading="lazy"
             alt="canvas"
