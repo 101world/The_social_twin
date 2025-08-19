@@ -1,16 +1,27 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Allow unauthenticated access to public pages and webhooks
-export default clerkMiddleware({
-  publicRoutes: [
-    "/", // home
-    "/sign-in(.*)",
-    "/sign-up(.*)",
-    "/api/webhooks/(.*)",
-    "/dev",
-    "/api/dev/(.*)",
-    "/favicon.ico",
-  ],
+// Allow unauthenticated access for developer tools and select APIs
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/dev",
+  "/api/dev/jwt",
+  "/api/dev/runpod",
+  "/api/webhooks/clerk",
+  "/api/webhooks/stripe",
+  // Allow these in dev; route handlers still enforce auth for real data
+  "/api/users/credits",
+  "/api/generations",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    const { userId, redirectToSignIn } = await auth();
+    if (!userId) {
+      return redirectToSignIn({ returnBackUrl: req.url });
+    }
+  }
 });
 
 export const config = {

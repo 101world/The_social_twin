@@ -7,10 +7,7 @@ import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
-    if (!userId) userId = req.headers.get('x-user-id');
+    const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -19,66 +16,50 @@ export async function POST(req: NextRequest) {
     const fileNameHint: string = typeof body?.fileName === 'string' && body.fileName ? body.fileName : 'export.pdf';
     if (!images.length) return NextResponse.json({ error: 'No images' }, { status: 400 });
 
-    // Load all images into canvases server-side using a lightweight PDF builder
-    // Avoid heavy headless dependencies; build a simple A4 PDF with each image scaled to fit
-    const { default: PDFDocument } = await import('pdfkit');
+    // Use jsPDF as a lighter alternative to avoid Next.js 15 compatibility issues
+    const { jsPDF } = await import('jspdf');
 
     const tmpDir = path.join(process.cwd(), '.next', 'cache', 'export');
     await fs.mkdir(tmpDir, { recursive: true });
     const tmpPath = path.join(tmpDir, `${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`);
 
-    await new Promise<void>(async (resolve, reject) => {
-      try {
-        const doc: any = new (PDFDocument as any)({ autoFirstPage: false });
-        const stream = (await import('node:fs')).createWriteStream(tmpPath);
-        const out = (doc as any).pipe(stream);
-        // Add pages per image
-        for (const src of images) {
-          // Fetch image bytes
-          let buf: Uint8Array | null = null;
-          let contentType = 'image/png';
-          try {
-            if (src.startsWith('data:')) {
-              const m = /data:(.*?);base64,(.*)$/i.exec(src);
-              if (m) { contentType = m[1] || contentType; buf = Buffer.from(m[2], 'base64'); }
-            } else {
-              const res = await fetch(src);
-              contentType = res.headers.get('content-type') || contentType;
-              buf = new Uint8Array(await res.arrayBuffer());
-            }
-          } catch {}
-          if (!buf) continue;
-          // Create page and draw image to fit A4
-          const pageSize: [number, number] = [595.28, 841.89]; // A4 points
-          (doc as any).addPage({ size: pageSize });
-          try {
-            const img = (doc as any).openImage ? (doc as any).openImage(buf) : null;
-            // If openImage not available, fallback to embed via image() with buffer
-          } catch {}
-          // pdfkit supports passing a Buffer directly to image()
-          const margin = 36;
-          const maxW = pageSize[0] - margin * 2;
-          const maxH = pageSize[1] - margin * 2;
-          try {
-            (doc as any).image(Buffer.from(buf), {
-              fit: [maxW, maxH],
-              align: 'center',
-              valign: 'center',
-              margin,
-            });
-          } catch {}
-        }
-        (doc as any).end();
-        out.on('finish', async () => { resolve(); });
-        out.on('error', async (e: any) => { reject(e); });
-      } catch (e) {
-        reject(e);
-      }
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4'
     });
 
+    let firstPage = true;
+    for (const src of images) {
+      if (!firstPage) {
+        doc.addPage();
+      }
+      firstPage = false;
+
+      try {
+        // For jsPDF, we need to add the image directly
+        // Get image dimensions to calculate scaling
+        const pageWidth = 595.28; // A4 width in points
+        const pageHeight = 841.89; // A4 height in points
+        const margin = 36;
+        const maxW = pageWidth - margin * 2;
+        const maxH = pageHeight - margin * 2;
+
+        if (src.startsWith('data:') || src.startsWith('http')) {
+          // jsPDF can handle data URLs and HTTP URLs directly
+          doc.addImage(src, 'JPEG', margin, margin, maxW, maxH, undefined, 'FAST');
+        }
+      } catch (error) {
+        console.warn('Failed to add image to PDF:', error);
+        // Continue with other images
+      }
+    }
+
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    await fs.writeFile(tmpPath, pdfBuffer);
+
     // Upload to Supabase storage and log
-    const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSupabaseAdminClient(); // Use admin client for server routes
     const bucket = 'generated-pdfs';
     // @ts-ignore
     if ((supabase as any).storage?.createBucket) { try { await (supabase as any).storage.createBucket(bucket, { public: false }); } catch {}

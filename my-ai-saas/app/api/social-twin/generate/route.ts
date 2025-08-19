@@ -30,9 +30,9 @@ async function ensureSocialTwinTopic(supabase: ReturnType<typeof createSupabaseC
 
 export async function POST(req: NextRequest) {
   try {
-    const authState = auth();
-    let userId = authState.userId as string | null;
-    const getToken = (authState as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const authState = await auth();
+  let userId = authState.userId as string | null;
+  const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
 
     const body = await req.json();
     const mode: Mode = body?.mode;
@@ -91,6 +91,12 @@ export async function POST(req: NextRequest) {
       } else if (videoModel === 'wan') {
         graphFile = path.join(videoDir, videoType === 'text' ? 'Wan-text-video.json' : 'Wan-Image-video.json');
       }
+      // Validate the chosen workflow exists; if not, return 501 Not Implemented so UI can inform user
+      try {
+        await fs.access(graphFile);
+      } catch {
+        return NextResponse.json({ error: 'Requested video workflow not available yet', workflow: path.basename(graphFile) }, { status: 501 });
+      }
       // Business rule: image-to-video requires image + text
       if (videoType === 'image') {
         const hasRef = typeof body?.imageUrl === 'string' || typeof body?.attachment?.dataUrl === 'string';
@@ -98,7 +104,7 @@ export async function POST(req: NextRequest) {
         if (!prompt || String(prompt).trim().length === 0) return NextResponse.json({ error: 'Image-to-video requires text prompt' }, { status: 400 });
       }
     }
-    const graphRaw = await fs.readFile(graphFile, 'utf8');
+  const graphRaw = await fs.readFile(graphFile, 'utf8');
     const graph = JSON.parse(graphRaw);
 
     // If modify workflow, upload reference image to Comfy and inject into LoadImage node
@@ -146,7 +152,8 @@ export async function POST(req: NextRequest) {
         for (const pathUrl of candidatePaths) {
           for (const field of fieldNames) {
             const fd = new FormData();
-            fd.append(field, new Blob([bytes!], { type: contentType }), filename);
+            const ab = (bytes as Uint8Array).buffer.slice((bytes as Uint8Array).byteOffset, (bytes as Uint8Array).byteOffset + (bytes as Uint8Array).byteLength) as ArrayBuffer;
+            fd.append(field, new Blob([ab], { type: contentType }), filename);
             // Some deployments need these keys even as query params; keep in body too
             fd.append('type', 'input');
             fd.append('overwrite', 'true');
@@ -218,7 +225,11 @@ export async function POST(req: NextRequest) {
         const fields = ['image', 'file', 'files', 'files[]', 'image[]'];
         for (const url of candidates) {
           for (const f of fields) {
-            const fd = new FormData(); fd.append(f, new Blob([bytes!], { type: contentType }), filename); fd.append('type', 'input'); fd.append('overwrite', 'true');
+            const fd = new FormData();
+            const ab2 = (bytes as Uint8Array).buffer.slice((bytes as Uint8Array).byteOffset, (bytes as Uint8Array).byteOffset + (bytes as Uint8Array).byteLength) as ArrayBuffer;
+            fd.append(f, new Blob([ab2], { type: contentType }), filename);
+            fd.append('type', 'input');
+            fd.append('overwrite', 'true');
             try {
               const r = await fetch(url, { method: 'POST', headers: authOnlyHeaders, body: fd as any });
               if (r.ok) {
@@ -347,8 +358,8 @@ export async function POST(req: NextRequest) {
       rpJson = hJson;
       // Try pulling images/videos from any node outputs
       const outputsBag: any = hJson?.[promptId]?.outputs || hJson?.outputs || {};
-      let collectedImages: string[] = [];
-      let collectedVideos: string[] = [];
+      const collectedImages: string[] = [];
+      const collectedVideos: string[] = [];
       try {
         for (const key of Object.keys(outputsBag)) {
           const node = outputsBag[key];

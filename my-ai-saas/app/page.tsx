@@ -1,41 +1,70 @@
-import Hero3D from "@/components/Hero3D";
-import NoScroll from "@/components/NoScroll";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Inter } from 'next/font/google';
+import Link from 'next/link';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export default function Home() {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
+
   return (
-    <main className="w-screen h-screen overflow-hidden max-w-none mx-0 p-0">
-      <NoScroll />
-      <Hero3D>
-        <a className="group rounded-full border p-4 text-white hover:bg-white/10 cursor-pointer" href="/social-twin" title="The Social Twin">
-          <span className="sr-only">Social Twin</span>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-colors group-hover:text-white">
-            <path d="M8 7a4 4 0 1 0 0 8m8-8a4 4 0 1 0 0 8" />
-            <path d="M2 21c1.5-3 4.5-5 6-5s4.5 2 6 5m2-9c3 0 6 2 6 5" />
-          </svg>
-        </a>
-        <a className="group rounded-full border p-4 text-white hover:bg-white/10 cursor-pointer" href="/dashboard" title="Dashboard">
-          <span className="sr-only">Dashboard</span>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-colors group-hover:text-white">
-            <rect x="3" y="3" width="7" height="7" />
-            <rect x="14" y="3" width="7" height="7" />
-            <rect x="14" y="14" width="7" height="7" />
-            <rect x="3" y="14" width="7" height="7" />
-          </svg>
-        </a>
-        <a className="group rounded-full border p-4 text-white hover:bg-white/10 cursor-pointer" href="/subscription" title="Subscriptions">
-          <span className="sr-only">Subscriptions</span>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-colors group-hover:text-white">
-            <path d="M3 6h18M3 12h18M3 18h18" />
-          </svg>
-        </a>
-        <a className="group rounded-full border p-4 text-white hover:bg-white/10 cursor-pointer" href="/user" title="Profile">
-          <span className="sr-only">User Profile</span>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-colors group-hover:text-white">
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21c0-4 4-7 8-7s8 3 8 7" />
-          </svg>
-        </a>
-      </Hero3D>
+    <main className="relative h-screen w-screen bg-black text-white flex items-center justify-center overflow-hidden">
+      {/* Subtle gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
+      
+      <div className="relative z-10 text-center px-6">
+        {/* Main ONE text with fade animation */}
+        <div 
+          className={`transition-all duration-2000 ease-out transform ${
+            isVisible 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <h1 className={`${inter.className} text-[12rem] md:text-[16rem] font-black tracking-tighter text-white mb-6`}>
+            ONE
+          </h1>
+        </div>
+
+        {/* Subtitle with delayed fade */}
+        <div 
+          className={`transition-all duration-2000 delay-500 ease-out transform ${
+            isVisible 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 translate-y-4'
+          }`}
+        >
+          <p className={`${inter.className} text-lg md:text-xl text-gray-400 mb-12 tracking-wide`}>
+            one neural engine
+          </p>
+        </div>
+
+        {/* Buttons with staggered fade */}
+        <div 
+          className={`flex flex-col sm:flex-row gap-4 justify-center items-center transition-all duration-2000 delay-1000 ease-out transform ${
+            isVisible 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 translate-y-4'
+          }`}
+        >
+          <button className={`${inter.className} px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors duration-300 text-sm tracking-wide`}>
+            invest in ONE
+          </button>
+          
+          <Link 
+            href="/social-twin" 
+            className={`${inter.className} px-8 py-3 border border-white text-white font-semibold rounded-full hover:bg-white hover:text-black transition-colors duration-300 text-sm tracking-wide`}
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }

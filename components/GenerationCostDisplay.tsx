@@ -15,13 +15,15 @@ interface GenerationCostDisplayProps {
   batchSize?: number;
   darkMode?: boolean;
   onCostCalculated?: (cost: number, canAfford: boolean) => void;
+  hideUI?: boolean; // when true, component only computes and reports cost without rendering UI
 }
 
 export default function GenerationCostDisplay({ 
   mode, 
   batchSize = 1, 
   darkMode = false,
-  onCostCalculated 
+  onCostCalculated,
+  hideUI = false,
 }: GenerationCostDisplayProps) {
   const { userId } = useAuth();
   const [currentCredits, setCurrentCredits] = useState<number>(0);
@@ -73,6 +75,11 @@ export default function GenerationCostDisplay({
   const canAfford = currentCredits >= cost;
   const remainingAfter = currentCredits - cost;
 
+  if (hideUI) {
+    // Silent mode: still runs effects and passes cost up, but renders nothing
+    return null;
+  }
+
   if (loading) {
     return (
       <div className={`flex items-center gap-2 p-2 rounded text-sm ${
@@ -87,12 +94,8 @@ export default function GenerationCostDisplay({
   return (
     <div className={`p-3 rounded-lg border ${
       canAfford 
-        ? darkMode 
-          ? 'border-green-600 bg-green-900/20 text-green-300' 
-          : 'border-green-500 bg-green-50 text-green-700'
-        : darkMode
-          ? 'border-red-600 bg-red-900/20 text-red-300'
-          : 'border-red-500 bg-red-50 text-red-700'
+        ? (darkMode ? 'border-gray-700 bg-gray-900/30 text-gray-200' : 'border-gray-200 bg-gray-50 text-gray-800')
+        : (darkMode ? 'border-red-600 bg-red-900/20 text-red-300' : 'border-red-500 bg-red-50 text-red-700')
     }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

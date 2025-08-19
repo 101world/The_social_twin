@@ -5,7 +5,9 @@
 param(
   # Allow positional projectRef or named -projectRef
   [Parameter(Mandatory=$false, Position=0)]
-  [string]$projectRef
+  [string]$projectRef,
+  # By default we start in read-only (safer). Pass -Write to enable writes.
+  [switch]$Write
 )
 
 # Also support GNU-style --project-ref passed literally in $args
@@ -30,16 +32,22 @@ if (-not $env:SUPABASE_ACCESS_TOKEN) {
   exit 1
 }
 
-Write-Host "Starting MCP server for Supabase (project-ref: $projectRef)"
+$mode = if ($Write) { 'WRITE' } else { 'READ-ONLY' }
+Write-Host "Starting MCP server for Supabase (project-ref: $projectRef, mode: $mode)"
 Write-Host "Output is streamed to the console and saved to .\mcp-output.txt"
 Write-Host "Run in a separate terminal or Ctrl+C to stop."
 
 # Build arguments for npx
-$npxArgs = @('-y', '@supabase/mcp-server-supabase@latest', '--read-only', '--project-ref', $projectRef)
+$npxCmd = '@supabase/mcp-server-supabase@latest'
+$npxArgs = @('--project-ref', $projectRef)
+if (-not $Write) {
+  # default to read-only unless -Write is passed
+  $npxArgs += '--read-only'
+}
 
 # Use PowerShell to run npx directly and tee output to a file so the user can copy it safely.
 try {
-  & npx @npxArgs 2>&1 | Tee-Object -FilePath .\mcp-output.txt
+  & npx -y $npxCmd @npxArgs 2>&1 | Tee-Object -FilePath .\mcp-output.txt
 } catch {
   Write-Error "Failed to start MCP via npx. Ensure Node and npx are available. Error: $_"
   exit 1

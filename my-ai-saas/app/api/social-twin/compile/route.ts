@@ -89,11 +89,31 @@ async function fileExists(p: string): Promise<boolean> {
 
 export async function POST(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const a = await auth();
+  let userId = a.userId as string | null;
+  const getToken = a.getToken as undefined | ((opts?: any) => Promise<string | null>);
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Check credits before processing
+    const supabaseAdmin = createSupabaseAdminClient();
+    const { data: userCredits, error: creditError } = await supabaseAdmin
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (creditError || !userCredits) {
+      return NextResponse.json({ error: 'Failed to check credits' }, { status: 500 });
+    }
+
+    if (userCredits.credits < 3) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits', 
+        required: 3, 
+        available: userCredits.credits 
+      }, { status: 402 });
+    }
 
     const body = await req.json();
     const inputs: InputItem[] = Array.isArray(body?.inputs) ? body.inputs : [];
@@ -102,6 +122,16 @@ export async function POST(req: NextRequest) {
     const audioUrl: string | undefined = typeof body?.audioUrl === 'string' ? body.audioUrl : undefined;
     const ar: string | undefined = typeof body?.ar === 'string' ? body.ar : undefined;
     const topicId: string | undefined = typeof body?.topicId === 'string' ? body.topicId : undefined;
+
+    // Deduct credits before processing
+    const { data: newBalance, error: deductError } = await supabaseAdmin.rpc('deduct_credits_simple', {
+      p_user_id: userId,
+      p_amount: 3
+    });
+
+    if (deductError || newBalance === null) {
+      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 });
+    }
 
     // Only compile videos: ignore images entirely for this simplified flow
     const videoInputs = inputs.filter(i=> i.type === 'video');
@@ -185,7 +215,7 @@ export async function POST(req: NextRequest) {
 
     // Upload to Supabase storage
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? supabaseAdmin : createSupabaseClient(jwt || undefined);
     const bucket = 'compiled-videos';
     // @ts-ignore
     if ((supabase as any).storage?.createBucket) { try { await (supabase as any).storage.createBucket(bucket, { public: false }); } catch {}

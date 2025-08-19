@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> | { id: string } }) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const a = await auth();
+  let userId = a.userId as string | null;
+  const getToken = a.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const params = (typeof (ctx as any).params?.then === 'function') ? await (ctx as any).params : (ctx as any).params;
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

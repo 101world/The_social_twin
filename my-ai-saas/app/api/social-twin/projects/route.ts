@@ -6,9 +6,9 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const a = await auth();
+  let userId = a.userId as string | null;
+  const getToken = a.getToken as undefined | ((opts?: any) => Promise<string | null>);
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
-    const getToken = (a as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const a = await auth();
+  let userId = a.userId as string | null;
+  const getToken = a.getToken as undefined | ((opts?: any) => Promise<string | null>);
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -82,8 +82,8 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
+  const a = await auth();
+  let userId = a.userId as string | null;
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

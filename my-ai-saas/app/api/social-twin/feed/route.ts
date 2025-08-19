@@ -15,13 +15,13 @@ type FeedItem = {
 
 export async function GET(req: NextRequest) {
   try {
-    const authState = auth();
+  const authState = await auth();
     let userId = authState.userId as string | null;
     if (!userId) {
       const hdr = req.headers.get('x-user-id');
       if (hdr && typeof hdr === 'string') userId = hdr;
     }
-    const getToken = (authState as any)?.getToken as undefined | ((opts?: any) => Promise<string | null>);
+  const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);

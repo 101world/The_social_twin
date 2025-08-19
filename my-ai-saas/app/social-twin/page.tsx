@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
-import GenerationsTab from "@/components/GenerationsTab";
-import UserAnalyticsDashboard from "@/components/UserAnalyticsDashboard";
-import GenerationCostDisplay, { CreditCostReference } from "@/components/GenerationCostDisplay";
+import { Button } from "@/components/ui/button";
+
+// Small icon-only button used across Creator Studio for a minimal aesthetic
+function IconButton({ children, title, onClick, className }: { children: React.ReactNode; title?: string; onClick?: () => void; className?: string }) {
+  return (
+    <Button variant="ghost" size="icon" onClick={onClick} title={title} aria-label={title} className={className}>
+      {children}
+    </Button>
+  );
+}
+// import GenerationsTab from "@/components/GenerationsTab"; // Merged into chat via Generated Bin
+// Profile tab: keeping things lean; no colorful credit/analytics widgets here
+import GenerationCostDisplay from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
+import { useCredits } from "@/lib/credits-context";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
+type Mode = 'text'|'image'|'image-modify'|'video';
 
 type ChatMessage = {
   id: string;
@@ -17,6 +30,7 @@ type ChatMessage = {
   content: string;
   imageUrl?: string;
   videoUrl?: string;
+  pdfUrl?: string;
   createdAt?: string;
   loading?: boolean;
   pendingType?: 'text' | 'image' | 'video';
@@ -35,92 +49,156 @@ type CanvasItem = {
   y: number;
   w: number;
   h: number;
-  operatorKind?: 'compile' | 'export-pdf' | 'publish';
+  operatorKind?: 'compile' | 'publish';
   order?: number; // insertion sequence for fallback ordering
 };
-
-type Edge = {
-  id: string;
-  fromId: string;
-  fromPort: 'male' | 'female';
-  toId: string;
-  toPort: 'male' | 'female';
-  transitionMs?: number;
-  imageDurationSec?: number;
-};
-
-type Mode = "text" | "image" | "image-modify" | "video";
-
-const LOCAL_KEYS = {
-  text: "runpod_text_url",
-  image: "runpod_image_url",
-  imageModify: "runpod_image_modify_url",
-  video: "runpod_video_url", // default video (LTXV)
-  videoWan: "runpod_video_wan_url",
-  videoKling: "runpod_video_kling_url",
-  loraName: "runpod_lora_name",
-  loraScale: "runpod_lora_scale",
-  batchSize: "runpod_batch_size",
-  aspectRatio: "runpod_aspect_ratio",
-};
-
-function generateId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    // @ts-ignore
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+ 
+ type Edge = {
+   id: string;
+   fromId: string;
+   toId: string;
+   fromPort: 'male' | 'female';
+   toPort: 'male' | 'female';
+ };
+ 
+function SearchParamsWrapper({ children }: { children: (searchParams: URLSearchParams) => React.ReactNode }) {
+  const searchParams = useSearchParams();
+  return <>{children(searchParams)}</>;
 }
 
-export default function SocialTwinPage() {
-  const router = useRouter();
+export default function Page() {
+  return (
+    <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center">Loading...</div>}>
+      <SearchParamsWrapper>
+        {(searchParams) => <PageContent searchParams={searchParams} />}
+      </SearchParamsWrapper>
+    </Suspense>
+  );
+}
+
+function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
+  // Auth/user
   const { userId } = useAuth();
   const { user } = useUser();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [feedCursor, setFeedCursor] = useState<string | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [input, setInput] = useState("");
-  const [mode, setMode] = useState<Mode>("text");
-  const [showSettings, setShowSettings] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [textUrl, setTextUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageModifyUrl, setImageModifyUrl] = useState("");
-  const [videoUrl, setVideoUrl] = useState("");
-  const [videoWanUrl, setVideoWanUrl] = useState("");
-  const [videoKlingUrl, setVideoKlingUrl] = useState("");
-  const [loraName, setLoraName] = useState("");
-  const [loraScale, setLoraScale] = useState<number | "">("");
-  const [batchSize, setBatchSize] = useState<number | "">("");
-  const [aspectRatio, setAspectRatio] = useState<string>("");
+
+  // UI mode and header
+  const [simpleMode, setSimpleMode] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [chatCollapsed, setChatCollapsed] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+
+  // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
-  const LORA_CHOICES = ["None", "Custom..."];
-  const BATCH_CHOICES = [1, 2, 4, 8];
-  const AR_CHOICES = ["1:1", "3:2", "4:3", "16:9", "9:16", "2:3"];
+  const [textUrl, setTextUrl] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [imageModifyUrl, setImageModifyUrl] = useState<string>("");
+  const [videoUrl, setVideoUrl] = useState<string>("");
+  const [videoWanUrl, setVideoWanUrl] = useState<string>("");
+  const [videoKlingUrl, setVideoKlingUrl] = useState<string>("");
+
+  // LoRA and params
+  const [loraName, setLoraName] = useState<string>("");
+  const [loraScale, setLoraScale] = useState<number|''>('');
+  const [batchSize, setBatchSize] = useState<number|''>('');
+  const [aspectRatio, setAspectRatio] = useState<string>("");
+
+  // Quick Create enhanced state
+  const [showQuickAdvanced, setShowQuickAdvanced] = useState<boolean>(false);
+  const [sendToCanvas, setSendToCanvas] = useState<boolean>(true);
+  // Quick Create dropdown/tabs selections
+  const [quickTemplateSel, setQuickTemplateSel] = useState<string>('');
+  const [quickPresetSel, setQuickPresetSel] = useState<string>('');
+  const [quickImageStyle, setQuickImageStyle] = useState<'cinematic'|'ultra'|'cool'|''>('');
+  const [quickTextCategory, setQuickTextCategory] = useState<'instagram'|'linkedin'|'twitter'|'email'|'youtube'>('instagram');
+
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState<string>("");
+  const [mode, setMode] = useState<Mode>('text');
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
-  const [showBin, setShowBin] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [topics, setTopics] = useState<{id:string;title:string}[]>([]);
-  const [binItems, setBinItems] = useState<any[]>([]);
-  const [binCursor, setBinCursor] = useState<string | null>(null);
-  const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
+  const [feedCursor, setFeedCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [targetScrollTs, setTargetScrollTs] = useState<string | null>(null);
-  // Removed legacy pinned grid overlay in favor of main canvas-only flow
+  const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
+  const [currentTopic, setCurrentTopic] = useState<{ id: string; title: string } | null>(null);
+
+  // Canvas/grid
+  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [gridEnabled, setGridEnabled] = useState<boolean>(false);
   const [gridLinesOn, setGridLinesOn] = useState<boolean>(true);
-  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
-  const [chatCollapsed, setChatCollapsed] = useState<boolean>(false);
-  const [gridPan, setGridPan] = useState<{x:number;y:number}>({ x: 0, y: 0 });
-  const gridSectionRef = useRef<HTMLElement | null>(null);
+  const [gridPan, setGridPan] = useState<{ x:number; y:number }>({ x: 0, y: 0 });
   const [gridScale, setGridScale] = useState<number>(1);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const [linking, setLinking] = useState<{ id: string; port: 'male' | 'female' } | null>(null);
-  const [linkPos, setLinkPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [linkStartScreen, setLinkStartScreen] = useState<{ x: number; y: number } | null>(null);
-  const [linkAnim, setLinkAnim] = useState(0);
-  const [hoverPort, setHoverPort] = useState<{ id: string; port: 'male' | 'female' } | null>(null);
-  const [simpleMode, setSimpleMode] = useState<boolean>(true); // Start in Normal mode by default
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [hoverPort, setHoverPort] = useState<{ id: string; port: 'male'|'female' } | null>(null);
+  const gridSectionRef = useRef<HTMLElement | null>(null);
+
+  // Initialize simple/pro from localStorage on first render
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('social_twin_simple');
+      if (saved === '0') {
+        setSimpleMode(false);
+        setGridEnabled(true);
+      } else if (saved === '1') {
+        setSimpleMode(true);
+      }
+    } catch {}
+  }, []);
+
+  // Expose and persist Simple/Pro so Navbar can toggle it from outside
+  useEffect(() => {
+    (window as any).__getSimpleMode = () => simpleMode;
+    (window as any).__setSimpleMode = (next: boolean) => {
+      setSimpleMode(next);
+      if (!next) setGridEnabled(true);
+      try { localStorage.setItem('social_twin_simple', next ? '1' : '0'); } catch {}
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'social_twin_simple' && e.newValue != null) {
+        const next = e.newValue !== '0';
+        setSimpleMode(next);
+        if (!next) setGridEnabled(true);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      try {
+        delete (window as any).__getSimpleMode;
+        delete (window as any).__setSimpleMode;
+      } catch {}
+    };
+  }, [simpleMode]);
+
+  // Sidebar/topics and Generated Bin
+  const [showSidebar, setShowSidebar] = useState<boolean>(false);
+  const [topics, setTopics] = useState<Array<{ id:string; title:string }>>([]);
+  const [showBin, setShowBin] = useState<boolean>(false);
+  const [binItems, setBinItems] = useState<any[]>([]);
+  const [binCursor, setBinCursor] = useState<string | null>(null);
+
+  // Local storage keys and static choices
+  const LOCAL_KEYS = {
+    text: 'social_twin_text_url',
+    image: 'social_twin_image_url',
+    imageModify: 'social_twin_image_modify_url',
+    video: 'social_twin_video_url',
+    videoWan: 'social_twin_video_wan_url',
+    videoKling: 'social_twin_video_kling_url',
+    loraName: 'social_twin_lora_name',
+    loraScale: 'social_twin_lora_scale',
+    batchSize: 'social_twin_batch_size',
+    aspectRatio: 'social_twin_aspect_ratio',
+  } as const;
+  const LORA_CHOICES = ['None','Custom...','Character-A','Character-B'] as const;
+  const BATCH_CHOICES = [1,2,4,6,8] as const;
+  const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
+  const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
+
+  // Id helper
+  const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
   const [operatorMenu, setOperatorMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
@@ -133,14 +211,14 @@ export default function SocialTwinPage() {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [currentProjectTitle, setCurrentProjectTitle] = useState<string | null>(null);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
-  const folderModalPayload = useRef<{ url: string; type: 'image'|'video'; prompt?: string }|null>(null);
+  const folderModalPayload = useRef<{ url: string; type: 'image'|'video'|'pdf'; prompt?: string }|null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [viewer, setViewer] = useState<{ open: boolean; src: string; ref?: string; gallery?: string[] }>({ open: false, src: '' });
   // Compile modal state
   const [compileOpen, setCompileOpen] = useState<boolean>(false);
   const [compileChain, setCompileChain] = useState<Array<{ url:string; type:'video' }>>([]);
   const [compileOriginId, setCompileOriginId] = useState<string | null>(null);
   const [compileAR, setCompileAR] = useState<'16:9'|'1:1'|'9:16'>('16:9');
-  const [compileAudio, setCompileAudio] = useState<string>('');
   // Compose (PDF/PPT) modal
   const [composeOpen, setComposeOpen] = useState<boolean>(false);
   const [composeSize, setComposeSize] = useState<'A4P'|'A4L'|'16:9'>('A4P');
@@ -149,138 +227,508 @@ export default function SocialTwinPage() {
   const [imgTab, setImgTab] = useState<'effects'|'character'>('effects');
   const [effectsOn, setEffectsOn] = useState<boolean>(false);
   const [characterOn, setCharacterOn] = useState<boolean>(false);
+  const [effectsPreset, setEffectsPreset] = useState<'off'|'subtle'|'cinematic'|'stylized'>('off');
   const [cfgScale, setCfgScale] = useState<number | ''>('');
   const [guidance, setGuidance] = useState<number | ''>('');
   const [steps, setSteps] = useState<number | ''>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'generations' | 'analytics'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard'>('chat');
+  // Dashboard collapsibles
+  const [dashOverviewOpen, setDashOverviewOpen] = useState(true);
+  const [dashSettingsOpen, setDashSettingsOpen] = useState(false);
+  const [dashProjectsOpen, setDashProjectsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [generationCost, setGenerationCost] = useState<number>(0);
   const [canAffordGeneration, setCanAffordGeneration] = useState<boolean>(true);
+  const [lowDataMode, setLowDataMode] = useState<boolean>(true);
+  const [mediaAllowed, setMediaAllowed] = useState<Set<string>>(() => new Set());
+  
+  // Generated content viewer state
+  const [viewerOpen, setViewerOpen] = useState<boolean>(false);
+  const [viewerItem, setViewerItem] = useState<any>(null);
+  const [viewerDetailsOpen, setViewerDetailsOpen] = useState<boolean>(false);
+  // Hover state for showing video controls only on hover in Generated grid
+  const [hoverVideoIds, setHoverVideoIds] = useState<Set<string>>(() => new Set());
 
-  // expose hoverPort setter for port buttons (simple shared state approach)
+  // Reset viewer details when opening a new item
   useEffect(() => {
-    (window as any).__setHoverPort = setHoverPort;
-    (window as any).__setGridMenu = setMenu;
-    (window as any).__setEditingTextId = (id: string | null) => setEditingTextId(id);
-    return () => { delete (window as any).__setHoverPort; };
+    if (viewerOpen) setViewerDetailsOpen(false);
+  }, [viewerOpen, viewerItem]);
+  
+  const { creditInfo, refresh: refreshCredits } = useCredits();
+  
+  // Utility function for API calls that may deduct credits
+  const handleCreditDeductingAPI = async <T,>(apiCall: () => Promise<T>, alwaysRefresh = false): Promise<T> => {
+    try {
+      const result = await apiCall();
+      // Always refresh credits after successful API calls from known credit-deducting endpoints
+      // This ensures UI stays in sync regardless of whether credits were actually deducted
+      if (alwaysRefresh) {
+        refreshCredits();
+      }
+      return result;
+    } catch (error) {
+      // Don't refresh on errors
+      throw error;
+    }
+  };
+  
+  const [projects, setProjects] = useState<any[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
+  // Helper: format relative time like "3h ago"
+  function formatRelativeTime(dateInput: string | number | Date | null | undefined): string {
+    try {
+      if (!dateInput) return '';
+      const ts = new Date(dateInput).getTime();
+      if (isNaN(ts)) return '';
+      const diffSec = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+      if (diffSec < 60) return `${diffSec}s ago`;
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return `${diffHr}h ago`;
+      const diffDay = Math.floor(diffHr / 24);
+      if (diffDay < 7) return `${diffDay}d ago`;
+      const diffWk = Math.floor(diffDay / 7);
+      if (diffWk < 4) return `${diffWk}w ago`;
+      const diffMo = Math.floor(diffDay / 30);
+      if (diffMo < 12) return `${diffMo}mo ago`;
+      const diffYr = Math.floor(diffDay / 365);
+      return `${diffYr}y ago`;
+    } catch {
+      return '';
+    }
+  }
+  // Reveal bottom composer only after user starts typing in center box (empty state)
+  const [composerShown, setComposerShown] = useState<boolean>(false);
+  const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
+  
+  // Linking preview state for canvas connections
+  const [linking, setLinking] = useState<{ id: string; port: 'male'|'female' } | null>(null);
+  const [linkPos, setLinkPos] = useState<{ x:number; y:number }>({ x: 0, y: 0 });
+
+  // PDF Editor state
+  const [pdfEditorOpen, setPdfEditorOpen] = useState(false);
+  const [pdfImages, setPdfImages] = useState<Array<{ id: string; url: string; x: number; y: number; w: number; h: number }>>([]);
+  const [pdfPageSize, setPdfPageSize] = useState<'A4' | 'Letter'>('A4');
+  const [pdfOrientation, setPdfOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [pdfBackgroundColor, setPdfBackgroundColor] = useState<string>('#ffffff');
+  const [pdfPages, setPdfPages] = useState<Array<{
+    id: string;
+    items: Array<{
+      id: string;
+      type: 'image' | 'text';
+      url?: string;
+      text?: string;
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      fontSize?: number;
+      fontFamily?: string;
+      fontColor?: string;
+      fontWeight?: 'normal' | 'bold';
+      textAlign?: 'left' | 'center' | 'right';
+    }>;
+  }>>([]);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [storyboardOpen, setStoryboardOpen] = useState(false);
+  
+  // Director's Desk State
+  const [directorMode, setDirectorMode] = useState<'gallery' | 'storyboard'>('gallery'); // Phase 1: Gallery, Phase 2: Storyboard
+  const [imageGallery, setImageGallery] = useState<Array<{
+    id: string;
+    url: string;
+    prompt: string;
+    createdAt: string;
+    style: string;
+  }>>([]);
+  const [batchPrompt, setBatchPrompt] = useState<string>('');
+  const [selectedStyle, setSelectedStyle] = useState<string>('cinematic');
+  const [isGeneratingBatch, setIsGeneratingBatch] = useState<boolean>(false);
+  const [storyboardLocked, setStoryboardLocked] = useState<boolean>(false);
+  
+  const [storyboardFrames, setStoryboardFrames] = useState<Array<{
+    id: string;
+    imageUrl: string;
+    title: string;
+    duration: number;
+    motionPreset: string;
+    transition: string;
+    character: string;
+    background: string;
+    action: string;
+    cameraStyle: string;
+    lookDirection: string;
+    strength: number;
+    seed: number;
+    status: 'idle' | 'rendering' | 'done' | 'error';
+    progress?: number;
+  }>>([]);
+  const [selectedFrameIndex, setSelectedFrameIndex] = useState<number>(0);
+  const [globalSettings, setGlobalSettings] = useState({
+    resolution: '1080p',
+    fps: 24,
+    aspect: '16:9',
+    lengthCap: 7,
+    stylePreset: 'Cinematic Alexa LF',
+    cfg: 6.5,
+    lora: 'Ayub-Ray 0.8',
+    transitions: 'Auto',
+    music: 'None',
+    watermark: false,
+    backend: 'ComfyUI @ localhost:8188',
+    queueMode: 'Parallel'
+  });
+  const [linkAnim, setLinkAnim] = useState<number>(0);
+
+  // Bridge context-menu and hover port setters for child items
+  useEffect(()=>{
+    (window as any).__setGridMenu = (v: any) => setMenu(v);
+    (window as any).__setHoverPort = (v: any) => setHoverPort(v);
+    return ()=>{
+      try { delete (window as any).__setGridMenu; delete (window as any).__setHoverPort; } catch {}
+    };
   }, []);
 
-  // Ensure the preview line follows the cursor even while dragging over items
-  useEffect(() => {
-    if (!linking) return;
-    const handleMove = (e: MouseEvent) => {
-      setLinkPos({ x: e.clientX, y: e.clientY });
-    };
-    const handleUp = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest && target.closest('.port')) {
-        // Let the port's onMouseUp handle finalizing the link
-        return;
+  // Animate wind lines continuously - throttled to reduce re-renders
+  const linkAnimRef = useRef<number>(0);
+  useEffect(()=>{
+    let raf: number | null = null;
+    const tick = () => { 
+      linkAnimRef.current += 1;
+      // Only update state every 10 frames to reduce re-renders
+      if (linkAnimRef.current % 10 === 0) {
+        setLinkAnim(linkAnimRef.current);
       }
-      // Otherwise, cancel the link preview
-      setLinking((cur) => (cur ? null : cur));
+      raf = requestAnimationFrame(tick); 
     };
-    window.addEventListener('mousemove', handleMove, { passive: true });
-    window.addEventListener('mouseup', handleUp);
-    let rafId: number | null = null;
-    const tick = () => { setLinkAnim((v) => (v + 1) % 10000); rafId = requestAnimationFrame(tick); };
-    rafId = requestAnimationFrame(tick);
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-      if (rafId != null) cancelAnimationFrame(rafId);
-    };
-  }, [linking]);
+    raf = requestAnimationFrame(tick);
+    return ()=>{ if (raf!=null) cancelAnimationFrame(raf); };
+  }, []);
 
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  // Load a project if provided via query param
-  useEffect(()=>{
+  const listRef = useRef<HTMLDivElement | null>(null);
+  async function saveCurrentProject(title?: string) {
     try {
-      const url = new URL(location.href);
-      const pid = url.searchParams.get('projectId');
-      if (!pid) return;
-      // Force Pro Mode when opening a project
-      setSimpleMode(false);
-      (async()=>{
-        const r = await fetch(`/api/social-twin/projects/${encodeURIComponent(pid)}`, { headers: { 'X-User-Id': userId || '' }}).catch(()=>null as any);
-        const j = r ? await r.json().catch(()=>null) : null;
-        const data = j?.project?.data;
-        if (data && typeof data === 'object') {
-          setCanvasItems(Array.isArray(data.items)? data.items : []);
-          setEdges(Array.isArray(data.edges)? data.edges : []);
-          if (data.pan) setGridPan(data.pan);
-          if (typeof data.scale === 'number') setGridScale(data.scale);
-          setGridEnabled(true);
-        }
-        if (j?.project?.id) setCurrentProjectId(j.project.id);
-        if (j?.project?.title) setCurrentProjectTitle(j.project.title);
-      })();
-    } catch {}
-  }, [userId]);
-
-  async function saveCurrentProject(optionalTitle?: string) {
-    try {
-      const signedInUserId = userId || (typeof window!=='undefined' ? (window as any)?.Clerk?.user?.id : '');
-      if (!signedInUserId) {
-        alert('Please sign in to save projects.');
+      // Validation: Make sure there's something to save
+      if (messages.length === 0 && canvasItems.length === 0) {
+        setMessages(prev => [...prev, {
+          id: generateId(),
+          role: 'assistant',
+          content: `❌ **Nothing to Save**\n\nYour project is empty. Create some content first:\n• Send a chat message\n• Generate images or videos\n• Add items to the grid\n\nThen try saving again!`,
+          createdAt: new Date().toISOString()
+        }]);
+        setProjectModalOpen(false);
         return;
       }
-      const payload = { items: canvasItems, edges, pan: gridPan, scale: gridScale };
-      const first = canvasItems.find(i=> i.type!=='text');
-      let thumbnailUrl = first?.url;
-      // If using signed URLs from storage, persist the storage path reference when possible
-      if (thumbnailUrl && thumbnailUrl.startsWith('/api/social-twin/proxy?url=')) {
-        try { thumbnailUrl = decodeURIComponent(thumbnailUrl.split('=')[1]); } catch {}
+
+      // Enhanced project saving - include both grid and chat data
+      const gridData = { items: canvasItems || [], edges: edges || [] };
+      
+      // Filter out system/success messages when saving to avoid cascade
+      const filteredMessages = messages.filter(msg => 
+        !(msg.content.includes('Project Saved Successfully') || 
+          msg.content.includes('Project') && msg.content.includes('Loaded') ||
+          msg.content.includes('Enhanced Project Saved') ||
+          msg.content.includes('Restoration Complete'))
+      );
+      
+      const chatData = { 
+        messages: filteredMessages, // Save only actual conversation messages
+        topic: currentTopic ? { id: currentTopic.id, title: currentTopic.title } : null,
+        messageCount: filteredMessages.length
+      };
+      
+      console.log('💾 SAVING PROJECT:');
+      console.log('Total messages before filter:', messages.length);
+      console.log('Filtered messages to save:', filteredMessages.length);
+      console.log('Grid data:', gridData);
+      console.log('Chat data:', chatData);
+      
+      const thumb = canvasItems.find(i=> i.type==='image' || i.type==='video') as any;
+      const thumbnailUrl = thumb?.url ? (getRawUrl(thumb.url) || thumb.url) : undefined;
+      
+      // Try enhanced projects API first
+      try {
+        console.log('About to fetch enhanced-projects API...');
+        
+        const res = await fetch('/api/social-twin/enhanced-projects', {
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+          body: JSON.stringify({ 
+            title: (title || currentProjectTitle || 'Untitled Project'), 
+            gridData,
+            chatData,
+            topicId: currentTopic?.id || null,
+            thumbnailUrl 
+          })
+        }).catch(fetchError => {
+          console.error('Fetch error:', fetchError);
+          throw new Error(`Network error: ${fetchError.message}`);
+        });
+        
+        console.log('Fetch completed, response:', res);
+        
+        if (!res.ok) {
+          console.error('Enhanced save failed with status:', res.status);
+          const errorText = await res.text();
+          console.error('Error response:', errorText);
+          throw new Error(`HTTP ${res.status}: ${errorText}`);
+        }
+        
+        const j = await res.json().catch(()=> ({} as any));
+        if (res.ok) {
+          setCurrentProjectId(j.id || j.projectId || null);
+          setCurrentProjectTitle(j.title || (title || currentProjectTitle || null));
+          setShowSaveProject(false);
+          setProjectModalOpen(false);
+          
+          // Add success message to chat
+          setMessages(prev => [...prev, {
+            id: generateId(),
+            role: 'assistant',
+            content: `✅ **Project Saved Successfully!**\n\n**"${j.title || title || 'Untitled'}"** now includes:\n• 💬 **${messages.length} chat messages** - Full conversation preserved\n• 🎨 **${canvasItems.length} grid items** - All images, videos, and layouts saved\n• 🔗 **Grid connections** - All links and relationships maintained\n\n*When you reload this project, both your chat history and grid layout will be exactly as you left them.*`,
+            createdAt: new Date().toISOString()
+          }]);
+          return;
+        }
+      } catch (enhancedError) {
+        console.warn('Enhanced save failed, falling back to legacy:', enhancedError);
       }
+      
+      // Fallback to legacy save if enhanced fails
+      const payload = { items: canvasItems, edges };
       const res = await fetch('/api/social-twin/projects', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Id': signedInUserId },
-        body: JSON.stringify({ title: optionalTitle || `Project ${new Date().toLocaleString()}`, data: payload, thumbnailUrl })
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+        body: JSON.stringify({ title: (title || currentProjectTitle || 'Untitled Project'), data: payload, thumbnailUrl })
       });
       const j = await res.json().catch(()=> ({} as any));
-      if (!res.ok || !j?.id) {
-        console.error('Failed to save project', j);
-        alert(`Failed to save project: ${j?.error || res.status}`);
-        return;
-      }
+      if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      setCurrentProjectId(j.id || j.projectId || null);
+      setCurrentProjectTitle(j.title || (title || currentProjectTitle || null));
       setShowSaveProject(false);
       setProjectModalOpen(false);
-      try { router.push('/studio?tab=projects'); } catch {}
-    } catch (e: any) {
-      console.error(e);
-      alert(`Failed to save project: ${e?.message || 'Unknown error'}`);
+    } catch (e:any) {
+      console.error('Save project failed:', e);
+      setMessages(prev => [...prev, {
+        id: generateId(),
+        role: 'error',
+        content: `❌ **Save Failed**\n\nError: ${e?.message || 'Unknown error'}\n\nPlease try again. If the problem persists, check your internet connection.`,
+        createdAt: new Date().toISOString()
+      }]);
+      setProjectModalOpen(false);
     }
   }
 
   async function updateExistingProject() {
+    if (!currentProjectId) { await saveCurrentProject(); return; }
     try {
-      const signedInUserId = userId || (typeof window!=='undefined' ? (window as any)?.Clerk?.user?.id : '');
-      if (!signedInUserId) { alert('Please sign in to save projects.'); return; }
-      if (!currentProjectId) { alert('No project is currently open.'); return; }
-      const payload = { items: canvasItems, edges, pan: gridPan, scale: gridScale };
-      const first = canvasItems.find(i=> i.type!=='text');
-      let thumbnailUrl = first?.url;
-      if (thumbnailUrl && thumbnailUrl.startsWith('/api/social-twin/proxy?url=')) {
-        try { thumbnailUrl = decodeURIComponent(thumbnailUrl.split('=')[1]); } catch {}
-      }
+      const payload = { items: canvasItems, edges };
+      const thumb = canvasItems.find(i=> i.type==='image' || i.type==='video') as any;
+      const thumbnailUrl = thumb?.url ? (getRawUrl(thumb.url) || thumb.url) : undefined;
       const res = await fetch('/api/social-twin/projects', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-User-Id': signedInUserId },
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
         body: JSON.stringify({ id: currentProjectId, data: payload, thumbnailUrl })
       });
       const j = await res.json().catch(()=> ({} as any));
-      if (!res.ok) { console.error('Failed to update project', j); alert(`Failed to update project: ${j?.error || res.status}`); return; }
+      if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
       setShowSaveProject(false);
       setProjectModalOpen(false);
-      alert('Project updated.');
     } catch (e:any) {
-      console.error(e); alert(`Failed to update project: ${e?.message || 'Unknown error'}`);
+      console.error('update project failed', e);
     }
   }
+  async function loadProjects() {
+    try {
+      setProjectsLoading(true);
+      const r = await fetch('/api/social-twin/projects', { headers: { 'X-User-Id': userId || '' } });
+      const j = await r.json().catch(() => ({} as any));
+      setProjects(Array.isArray(j.projects) ? j.projects : []);
+    } catch {
+      setProjects([]);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }
+
+  // Auto-load projects when opening the Dashboard -> Projects collapsible
+  useEffect(() => {
+    if (dashProjectsOpen && projects.length === 0) {
+      loadProjects();
+    }
+  }, [dashProjectsOpen, userId]);
+
+  useEffect(() => {
+    if (activeTab === 'generated' && binItems.length === 0) {
+      // Load generated items when switching to Generated tab
+      fetch('/api/social-twin/history?limit=24', { headers: { 'X-User-Id': userId || '' } })
+        .then(r => r.json())
+        .then(j => {
+          setBinItems(j.items || []);
+          setBinCursor(j.nextCursor || null);
+        })
+        .catch(() => {});
+    }
+  }, [activeTab, userId, binItems.length]);
+
+  // Load project from URL if projectId is provided
+  useEffect(() => {
+    const projectId = searchParams?.get('projectId');
+    if (!projectId || !userId) return;
+    
+    (async () => {
+      try {
+        // Clear existing messages and canvas first to ensure clean slate
+        setMessages([]);
+        setCanvasItems([]);
+        setEdges([]);
+        setCurrentTopic(null);
+        setCurrentTopicId(null);
+        setCurrentProjectId(null);
+        setCurrentProjectTitle(null);
+        
+        // Try enhanced projects API first
+        try {
+          const res = await fetch('/api/social-twin/enhanced-projects', {
+            method: 'PATCH',
+            headers: { 
+              'Content-Type': 'application/json', 
+              'X-User-Id': userId 
+            },
+            body: JSON.stringify({ projectId })
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            console.log('📂 LOADING PROJECT:');
+            console.log('Full API response:', data);
+            
+            // Restore grid data - check both the API response format and stored format
+            const gridData = data.gridData || data.project?.gridData;
+            console.log('Grid data found:', gridData);
+            if (gridData?.items) {
+              console.log('Restoring grid items:', gridData.items.length, 'items');
+              setCanvasItems(gridData.items);
+              if (gridData.edges) setEdges(gridData.edges);
+            }
+            
+            // Restore chat data - ONLY the messages saved with this project
+            const chatData = data.chatData || data.project?.chatData;
+            console.log('Chat data found:', chatData);
+            console.log('Messages in chat data:', chatData?.messages?.length || 0);
+            if (chatData?.messages && Array.isArray(chatData.messages)) {
+              console.log('Restoring chat messages:', chatData.messages.length, 'messages');
+              console.log('First few messages:', chatData.messages.slice(0, 3));
+              setMessages(chatData.messages);
+              // Set topic if available
+              if (chatData.topic) {
+                setCurrentTopic(chatData.topic);
+                setCurrentTopicId(chatData.topic.id);
+              }
+            } else {
+              console.log('No chat messages found or invalid format');
+            }
+            
+            // Set project info
+            if (data.project) {
+              setCurrentProjectId(data.project.id);
+              setCurrentProjectTitle(data.project.title);
+            }
+            
+            // Switch to Pro mode if loading a project
+            setSimpleMode(false);
+            setGridEnabled(true);
+            
+            // Add success message to chat AFTER restoring messages
+            const restoredMessageCount = chatData?.messages?.length || 0;
+            const successMessage = {
+              id: generateId(),
+              role: 'assistant' as const,
+              content: `${data.project?.title || 'Project'} is activated, let's create`,
+              createdAt: new Date().toISOString()
+            };
+            
+            // Use setTimeout to ensure messages are restored before adding success message
+            setTimeout(() => {
+              setMessages(prev => {
+                console.log('Adding success message to', prev.length, 'existing messages');
+                return [...prev, successMessage];
+              });
+            }, 100);
+            
+            return;
+          }
+        } catch (enhancedError) {
+          console.warn('Enhanced project loading failed, trying legacy:', enhancedError);
+        }
+        
+        // Fallback to legacy project loading
+        const res = await fetch(`/api/social-twin/projects/${encodeURIComponent(projectId)}`, {
+          headers: { 'X-User-Id': userId }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Loading legacy project:', data);
+          
+          // Restore grid items (legacy projects don't have chat data)
+          if (data.data?.items) {
+            setCanvasItems(data.data.items);
+            if (data.data.edges) setEdges(data.data.edges);
+          }
+          
+          // Set project info
+          setCurrentProjectId(data.id);
+          setCurrentProjectTitle(data.title);
+          
+          // Switch to Pro mode
+          setSimpleMode(false);
+          setGridEnabled(true);
+          
+          // Add activation message (no chat history for legacy projects)
+          setMessages([{
+            id: generateId(),
+            role: 'assistant',
+            content: `${data.title || 'Project'} is activated, let's create`,
+            createdAt: new Date().toISOString()
+          }]);
+        }
+        
+      } catch (error) {
+        console.error('Failed to load project:', error);
+        setMessages([{
+          id: generateId(),
+          role: 'error',
+          content: '❌ Failed to load project. Please try again.',
+          createdAt: new Date().toISOString()
+        }]);
+      }
+    })();
+  }, [searchParams, userId]);
+
+  // Show welcome modal on first visit (no projectId, no messages, authenticated)
+  // Only show if user is not loading a project and has empty state
+  useEffect(() => {
+    const projectId = searchParams?.get('projectId');
+    if (!projectId && userId && messages.length === 0 && canvasItems.length === 0) {
+      // Small delay to let the page settle and ensure no project is being loaded
+      const timer = setTimeout(() => {
+        // Double-check that no project loading is in progress
+        if (messages.length === 0 && canvasItems.length === 0) {
+          setShowWelcomeModal(true);
+        }
+      }, 1500); // Increased delay to ensure project loading has time to complete
+      return () => clearTimeout(timer);
+    }
+  }, [userId, messages.length, canvasItems.length, searchParams]);
 
   function getDisplayUrl(raw?: string | null): string | undefined {
     if (!raw) return undefined;
     try {
-      if (typeof window !== 'undefined' && raw.startsWith('http') && !raw.startsWith(location.origin)) {
+      if (typeof location !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(location.origin)) {
         return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
       }
     } catch {}
@@ -288,14 +736,12 @@ export default function SocialTwinPage() {
   }
 
   function getRawUrl(display?: string | null): string | undefined {
-    if (!display) return undefined;
     try {
-      const m = /^\/api\/social-twin\/proxy\?url=(.*)$/i.exec(display);
+      const m = /^\/api\/social-twin\/proxy\?url=(.*)$/i.exec(display || '');
       if (m) return decodeURIComponent(m[1]);
     } catch {}
-    return display;
+    return display || undefined;
   }
-
   // Walk upstream (male -> female) chain ending at a node and collect media in exact order
   function getUpstreamMediaChain(nodeId: string): Array<{ id:string; type:'image'|'video'; url:string }> {
     const visited = new Set<string>();
@@ -373,23 +819,162 @@ export default function SocialTwinPage() {
   }
 
   function openComposeModalFromNode(nodeId: string) {
-    const pages = buildPagesFromNode(nodeId);
-    setComposePages(pages);
-    setComposeOriginId(nodeId);
-    setComposeOpen(true);
+    // Collect all connected images and text from orange string connections
+    const connectedItems = getConnectedItemsForPDF(nodeId);
+    
+    if (connectedItems.length > 0) {
+      // Go straight to the PDF layout editor
+      const firstPage = {
+        id: generateId(),
+        items: connectedItems.map(item => ({
+          id: generateId(),
+          type: item.type as 'image' | 'text',
+          url: item.url,
+          text: item.text,
+          // Scale down canvas coordinates to fit PDF (A4 is ~595x842 pts)
+          x: Math.max(10, (item.x * 0.7) % 500),
+          y: Math.max(10, (item.y * 0.7) % 700),
+          w: Math.min(item.w * 0.7, 400),
+          h: Math.min(item.h * 0.7, 300),
+          fontSize: item.type === 'text' ? Math.max(12, (item.fontScale || 1) * 16) : undefined,
+          fontFamily: 'Arial',
+          fontColor: '#000000',
+          fontWeight: 'normal' as const,
+          textAlign: 'left' as const
+        }))
+      };
+      
+      setPdfPages([firstPage]);
+      setCurrentPage(0);
+      setPdfEditorOpen(true);
+    } else {
+      // No connected items found
+      setMessages(prev=> [...prev, { 
+        id: generateId(), 
+        role:'assistant', 
+        content:'No images or text connected. Connect items using the orange string (male port → female port) and try again.', 
+        createdAt: new Date().toISOString() 
+      }]);
+    }
+  }
+
+  async function exportPdfFromCanvas(nodeId: string) {
+    try {
+      const r = await fetch('/api/social-twin/export-pdf-from-canvas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+        body: JSON.stringify({ 
+          nodeId,
+          canvasItems,
+          edges,
+          fileName: 'canvas_export.pdf' 
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      
+      const url = j.url as string;
+      setMessages(prev=> [...prev, { 
+        id: generateId(), 
+        role:'assistant', 
+        content: j.message || `PDF exported with ${j.connectedItems || 0} connected items`, 
+        pdfUrl: url, 
+        createdAt: new Date().toISOString() 
+      }]);
+      
+      // Note: This PDF export doesn't deduct credits, so no refresh needed
+      
+    } catch (e:any) {
+      setMessages(prev=> [...prev, { 
+        id: generateId(), 
+        role:'error', 
+        content:`Canvas PDF export failed: ${e?.message || 'Unknown error'}` 
+      }]);
+    }
   }
 
   async function runExportPDF() {
     if (!composePages.length) { setComposeOpen(false); return; }
+    // Show in-chat loading bubble and close compose immediately for clearer UX
+    const tempId = generateId();
+    setMessages(prev => [
+      ...prev,
+      { id: tempId, role: 'assistant', content: 'Exporting PDF…', loading: true, createdAt: new Date().toISOString() }
+    ]);
+    setComposeOpen(false);
     try {
       const imgs = composePages.flatMap(p=> p.images.map(i=> i.url));
       const r = await fetch('/api/social-twin/export-pdf', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-User-Id': userId || '' }, body: JSON.stringify({ images: imgs, topicId: currentTopicId || null, fileName: 'export.pdf' }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'Exported PDF', imageUrl: undefined, createdAt: new Date().toISOString() }]);
-      setComposeOpen(false);
+      const url = j.url as string | undefined;
+      // Replace loading bubble with success + link/embed
+      setMessages(prev => prev.map(m => m.id === tempId 
+        ? { ...m, content: 'Exported PDF', pdfUrl: url, loading: false }
+        : m
+      ));
+      // Note: This PDF export doesn't deduct credits, so no refresh needed
     } catch (e:any) {
-      setMessages(prev=> [...prev, { id: generateId(), role:'error', content:`PDF export failed: ${e?.message || 'Unknown error'}` }]);
+      // Convert loading bubble into an error bubble
+      setMessages(prev => prev.map(m => m.id === tempId 
+        ? { id: m.id, role: 'error', content: `PDF export failed: ${e?.message || 'Unknown error'}`, createdAt: m.createdAt }
+        : m
+      ));
+    }
+  }
+
+  async function exportPdfFromEditor() {
+    // Show in-chat loading bubble and close the editor immediately for clearer UX
+    const tempId = generateId();
+    setMessages(prev => [
+      ...prev,
+      { id: tempId, role: 'assistant', content: 'Exporting PDF…', loading: true, createdAt: new Date().toISOString() }
+    ]);
+    setPdfEditorOpen(false);
+    try {
+      // Convert editor pages to export format
+      const exportData = pdfPages.map(page => ({
+        items: page.items.map(item => ({
+          type: item.type,
+          url: item.url,
+          text: item.text,
+          x: item.x,
+          y: item.y,
+          w: item.w,
+          h: item.h,
+          fontSize: item.fontSize || 16
+        }))
+      }));
+
+      const r = await fetch('/api/social-twin/export-pdf-layout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+        body: JSON.stringify({ 
+          pages: exportData, 
+          topicId: currentTopicId || null, 
+          fileName: 'layout_export.pdf' 
+        })
+      });
+      
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      
+      const url = j.url as string;
+      // Replace loading bubble with success + link/embed
+      setMessages(prev => prev.map(m => m.id === tempId 
+        ? { ...m, content: 'PDF exported with custom layout', pdfUrl: url, loading: false }
+        : m
+      ));
+      
+      // Refresh credits display after successful export
+      refreshCredits();
+    } catch (e:any) {
+      // Convert loading bubble into an error bubble
+      setMessages(prev => prev.map(m => m.id === tempId 
+        ? { id: m.id, role: 'error', content: `PDF export failed: ${e?.message || 'Unknown error'}`, createdAt: m.createdAt }
+        : m
+      ));
     }
   }
 
@@ -417,13 +1002,15 @@ export default function SocialTwinPage() {
     try {
       const r = await fetch('/api/social-twin/compile', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
-        body: JSON.stringify({ inputs: chain, fps: 24, topicId: currentTopicId || null, ar: compileAR, audioUrl: compileAudio || undefined })
+        body: JSON.stringify({ inputs: chain, fps: 24, topicId: currentTopicId || null, ar: compileAR })
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error ? `${j.error} ${j?.details?`- ${JSON.stringify(j.details)}`:''}` : `HTTP ${r.status}`);
       const url = j.url as string;
       setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'Compiled video', videoUrl: url, createdAt: new Date().toISOString() }]);
       setCanvasItems(prev=> prev.map(it=> it.id===tempId ? { ...it, url, loading:false } : it));
+      // credits have been deducted; refresh balance UI
+      refreshCredits();
     } catch (e:any) {
       setCanvasItems(prev=> prev.filter(it=> !(it as any).loading));
       setMessages(prev=> [...prev, { id: generateId(), role:'error', content:`Compile failed: ${e?.message || 'Unknown error'}` }]);
@@ -451,7 +1038,26 @@ export default function SocialTwinPage() {
     setAspectRatio(localStorage.getItem(LOCAL_KEYS.aspectRatio) || "");
     const dm = localStorage.getItem('social_twin_dark') === '1';
     setDarkMode(dm);
-  }, []);
+    const ld = localStorage.getItem('social_twin_lowData');
+    if (ld === '0') setLowDataMode(false);
+    else if (ld === '1') setLowDataMode(true);
+    // Boot into Pro mode if URL has ?pro=1|true|yes
+    try {
+      const pro = searchParams?.get('pro');
+      console.log('URL pro parameter:', pro);
+      if (pro && /^(1|true|yes)$/i.test(pro)) {
+        console.log('Auto-enabling Pro mode from URL');
+        setSimpleMode(false);
+        setGridEnabled(true);
+      }
+    } catch {}
+  }, [searchParams]);
+
+  useEffect(() => {
+    try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
+  }, [lowDataMode]);
+
+  // Credits are provided by the shared context; no local polling here
 
   useEffect(() => {
     // On initial load, jump to bottom without a long smooth scroll
@@ -460,12 +1066,30 @@ export default function SocialTwinPage() {
     }
   }, [messages.length]);
 
-  // Auto-load unified chat feed on mount so user sees their entire history without topic navigation
+  // Focus bottom textarea when composer becomes visible
+  useEffect(() => {
+    if (composerShown) {
+      setTimeout(() => bottomInputRef.current?.focus(), 10);
+    }
+  }, [composerShown]);
+
+  // Auto-load unified chat feed ONLY if no project is being loaded (projectId in URL)
+  // This ensures chat area starts empty by default until user chooses a project
   useEffect(() => {
     if (userId === undefined) return; // wait for auth to resolve
+    
+    // Don't auto-load chat if a project is being loaded from URL
+    const projectId = searchParams?.get('projectId');
+    if (projectId) return;
+    
+    // Only auto-load if user has no current project loaded and explicitly wants to continue previous chat
+    // For now, we'll keep chat empty by default to match the requirement
+    // If you want to restore auto-loading, uncomment the code below:
+    
+    /*
     (async () => {
       try {
-        const r = await fetch('/api/social-twin/feed?limit=50', { headers: { 'X-User-Id': userId || '' } });
+        const r = await fetch('/api/social-twin/feed?limit=20', { headers: { 'X-User-Id': userId || '' } });
         if (!r.ok) return;
         const j = await r.json();
         const items = (j.items || []) as Array<{ id:string; role:ChatRole; content:string; imageUrl?:string; videoUrl?:string; createdAt?:string }>;
@@ -473,10 +1097,10 @@ export default function SocialTwinPage() {
         setFeedCursor(j.nextCursor || null);
       } catch {}
     })();
-  }, [userId]);
+    */
+  }, [userId, searchParams]);
 
   // Infinite scroll: load older on scroll top
-  const listRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -484,7 +1108,7 @@ export default function SocialTwinPage() {
       if (el.scrollTop <= 0 && !isLoadingMore && feedCursor) {
         setIsLoadingMore(true);
         try {
-          const r = await fetch(`/api/social-twin/feed?limit=50&before=${encodeURIComponent(feedCursor)}`, { headers: { 'X-User-Id': userId || '' } });
+          const r = await fetch(`/api/social-twin/feed?limit=20&before=${encodeURIComponent(feedCursor)}`, { headers: { 'X-User-Id': userId || '' } });
           const j = await r.json();
           const items = (j.items || []) as Array<{ id:string; role:ChatRole; content:string; imageUrl?:string; videoUrl?:string; createdAt?:string }>;
           if (items.length) {
@@ -518,6 +1142,16 @@ export default function SocialTwinPage() {
     }
     setTargetScrollTs(null);
   }, [messages, targetScrollTs]);
+
+  // Clean up any existing operators from the canvas (migration)
+  useEffect(() => {
+    setCanvasItems(prev => prev.filter(item => item.type !== 'operator'));
+    setEdges(prev => prev.filter(edge => {
+      const fromItem = canvasItems.find(i => i.id === edge.fromId);
+      const toItem = canvasItems.find(i => i.id === edge.toId);
+      return fromItem?.type !== 'operator' && toItem?.type !== 'operator';
+    }));
+  }, []);
 
   const activeEndpoint = useMemo(() => {
     switch (mode) {
@@ -616,7 +1250,7 @@ export default function SocialTwinPage() {
       setMessages((prev)=> [...prev, placeholder]);
       
       // Use the new tracking API endpoint
-      const res = await fetch("/api/generate-with-tracking", {
+  const res = await fetch("/api/generate-with-tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
         body: JSON.stringify({
@@ -640,7 +1274,19 @@ export default function SocialTwinPage() {
       });
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        // Show a clear message when the workflow isn't available yet (501) or other errors
+        let detail = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          if (errJson?.error) {
+            detail = errJson.workflow ? `${errJson.error} (${errJson.workflow})` : errJson.error;
+          }
+        } catch {}
+        setMessages((prev) => [
+          ...prev,
+          { id: generateId(), role: "error", content: detail },
+        ]);
+        return;
       }
 
       const payload = await res.json().catch(() => ({} as any));
@@ -678,13 +1324,17 @@ export default function SocialTwinPage() {
         });
       }
       setAttached(null);
-      // Auto add generated media to canvas grid if present
-      const final = { imageUrl: aiImage, videoUrl: (aiVideo || firstVideo) };
-      if (final.imageUrl || final.videoUrl) {
-        const url = final.imageUrl || final.videoUrl!;
-        const type = final.imageUrl ? 'image' : 'video';
-        addToCanvas(url, type);
+      // Auto add generated media to canvas grid if present (when sendToCanvas is enabled)
+      if (sendToCanvas) {
+        const final = { imageUrl: aiImage, videoUrl: (aiVideo || firstVideo) };
+        if (final.imageUrl || final.videoUrl) {
+          const url = final.imageUrl || final.videoUrl!;
+          const type = final.imageUrl ? 'image' : 'video';
+          addToCanvas(url, type);
+        }
       }
+  // credits may have been deducted; refresh balance UI via shared provider
+  refreshCredits();
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -734,7 +1384,91 @@ export default function SocialTwinPage() {
     return dedup;
   }
 
-  async function executeOperator(operator: CanvasItem, manualInputs?: Array<{ url: string; type: 'image'|'video'; imageDurationSec?: number; transitionMs?: number }>) {
+  // New function to collect both images and text from orange string connections
+  function getConnectedItemsForPDF(nodeId: string): Array<{ id:string; type:'image'|'text'; url?:string; text?:string; x:number; y:number; w:number; h:number; fontScale?:number }> {
+    const visited = new Set<string>();
+    const result: Array<{ id:string; type:'image'|'text'; url?:string; text?:string; x:number; y:number; w:number; h:number; fontScale?:number }> = [];
+    
+    function collectNode(currentNodeId: string) {
+      if (visited.has(currentNodeId)) return;
+      visited.add(currentNodeId);
+      
+      const node = canvasItems.find(i => i.id === currentNodeId);
+      if (node) {
+        // Add current node if it's an image or text
+        if (node.type === 'image' && (node as any).url) {
+          result.push({ 
+            id: node.id, 
+            type: 'image', 
+            url: (node as any).url, 
+            x: node.x || 0, 
+            y: node.y || 0, 
+            w: node.w || 360, 
+            h: node.h || 240 
+          });
+        } else if (node.type === 'text' && (node as any).text) {
+          result.push({ 
+            id: node.id, 
+            type: 'text', 
+            text: (node as any).text, 
+            x: node.x || 0, 
+            y: node.y || 0, 
+            w: node.w || 300, 
+            h: node.h || 100,
+            fontScale: (node as any).fontScale || 1
+          });
+        }
+      }
+      
+      // Traverse both incoming and outgoing edges
+      const connectedEdges = edges.filter(e => e.fromId === currentNodeId || e.toId === currentNodeId);
+      
+      for (const edge of connectedEdges) {
+        const nextNodeId = edge.fromId === currentNodeId ? edge.toId : edge.fromId;
+        collectNode(nextNodeId);
+      }
+    }
+    
+    collectNode(nodeId);
+    return result;
+  }
+
+  // Function to add canvas image to storyboard
+  function addCanvasImageToStoryboard(canvasItem: CanvasItem) {
+    if (canvasItem.type !== 'image' && canvasItem.type !== 'video') return;
+    
+    const newFrame = {
+      id: `frame-${Date.now()}`,
+      imageUrl: canvasItem.url || '',
+      title: `Shot ${storyboardFrames.length + 1}`,
+      duration: 3,
+      motionPreset: 'static',
+      transition: 'fade',
+      character: '',
+      background: '',
+      action: '',
+      cameraStyle: 'medium shot',
+      lookDirection: 'center',
+      strength: 0.8,
+      seed: Math.floor(Math.random() * 1000000),
+      status: 'idle' as const
+    };
+    
+    setStoryboardFrames([...storyboardFrames, newFrame]);
+    
+    // Also add to image gallery if not already there
+    const galleryImage = {
+      id: `img-${Date.now()}`,
+      url: canvasItem.url || '',
+      prompt: 'From canvas',
+      createdAt: new Date().toISOString(),
+      style: 'canvas'
+    };
+    
+    setImageGallery([galleryImage, ...imageGallery]);
+  }
+
+  async function executeOperator(operator: CanvasItem, _manualInputs?: Array<{ url: string; type: 'image'|'video'; imageDurationSec?: number; transitionMs?: number }>) {
     if (operator.operatorKind === 'publish') {
       if (currentProjectId) {
         await updateExistingProject();
@@ -744,43 +1478,31 @@ export default function SocialTwinPage() {
       return;
     }
     if (operator.operatorKind === 'compile') {
-      const chainFromIncoming = getUpstreamMediaChain(operator.id).filter(i=> i.type==='video');
-      const chainFromForward = chainFromIncoming.length ? getForwardVideoChain(chainFromIncoming[0].id) : [];
-      const chain = chainFromForward.length ? chainFromForward : chainFromIncoming;
-      const inputs = Array.isArray(manualInputs) && manualInputs.length ? manualInputs : chain;
-      if (!inputs.length) {
-        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No videos connected to Compile. Link videos with the orange string into the Compile operator, or use the right-click Compile on the last video in the chain.', createdAt: new Date().toISOString() }]);
+      // Improved chain collection: get all connected media in proper order
+      const allMedia = getIncomingMedia(operator.id);
+      const videoInputs = allMedia.filter(i=> i.type==='video');
+      
+      if (!videoInputs.length) {
+        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No videos connected to Compile operator. Connect videos using the orange string (male port → female port) to build a compilation chain.', createdAt: new Date().toISOString() }]);
         return;
       }
-      setCompileChain(inputs.map(i=> ({ url: getRawUrl(i.url) || i.url, type:'video' as const })));
+      
+      // Convert to compilation format
+      const chainInputs = videoInputs.map(v=> ({ 
+        url: getRawUrl(v.url) || v.url, 
+        type: 'video' as const,
+        imageDurationSec: v.imageDurationSec,
+        transitionMs: v.transitionMs
+      }));
+      
+      setCompileChain(chainInputs);
+      setCompileOriginId(operator.id);
       setCompileOpen(true);
       return;
     }
-    if (operator.operatorKind === 'export-pdf') {
-      const all = Array.isArray(manualInputs) && manualInputs.length ? manualInputs : getIncomingMedia(operator.id);
-      const inputs = all.filter(i=> i.type==='image');
-      if (!inputs.length) {
-        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No images connected to Export PDF.', createdAt: new Date().toISOString() }]);
-        return;
-      }
-      try {
-        // Server-side PDF export (also logs to Supabase and returns a signed URL)
-        const r = await fetch('/api/social-twin/export-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
-          body: JSON.stringify({ images: inputs.map(i=> getRawUrl(i.url) || i.url), topicId: currentTopicId || null, fileName: 'export.pdf' })
-        });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-        const url = j.url as string;
-        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'Exported PDF', pdfUrl: url, createdAt: new Date().toISOString() }]);
-      } catch (e:any) {
-        setMessages(prev=> [...prev, { id: generateId(), role:'error', content:`Export failed: ${e?.message || 'Unknown error'}` }]);
-      }
-    }
   }
 
-  function executeOperatorKind(op: CanvasItem, kind: 'compile'|'export-pdf'|'publish', manualInputs?: Array<{ url: string; type: 'image'|'video'; imageDurationSec?: number; transitionMs?: number }>) {
+  function executeOperatorKind(op: CanvasItem, kind: 'compile'|'publish', manualInputs?: Array<{ url: string; type: 'image'|'video'; imageDurationSec?: number; transitionMs?: number }>) {
     const withKind = { ...op, operatorKind: kind } as CanvasItem;
     executeOperator(withKind, manualInputs);
   }
@@ -848,29 +1570,12 @@ export default function SocialTwinPage() {
   }
 
   return (
-    <main className={`relative h-screen w-screen overflow-hidden ${darkMode ? 'bg-black text-neutral-100' : ''}`}>
+    <main className={`relative h-screen w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}`}>
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
-      {/* Mode toggle */}
-      <button
-        className={`fixed right-4 top-4 z-[10001] rounded-full px-3 py-1 text-xs shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'}`}
-        onClick={()=> setSimpleMode(v=>!v)}
-        title={simpleMode ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
-      >
-        {simpleMode ? 'Pro Mode' : 'Normal Mode'}
-      </button>
-      {simpleMode && (
-        <button
-          className={`fixed left-4 top-4 z-[10001] rounded-full px-3 py-1 text-xs shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'}`}
-          onClick={()=> setSidebarOpen(v=>!v)}
-          title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-        >
-          {sidebarOpen ? 'Close' : 'Menu'}
-        </button>
-      )}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-50 pointer-events-auto flex flex-col ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95')}`}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95 border-neutral-300')}`}
         style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : '30vw', minWidth: chatCollapsed ? 40 : 320, maxWidth: chatCollapsed ? 40 : 520 }}
       >
         {/* Full-rail click target when collapsed */}
@@ -882,1008 +1587,1415 @@ export default function SocialTwinPage() {
             title="Expand chat"
           />
         ) : null}
-        {/* Collapse handle (only in Pro mode) */}
-        {!simpleMode && (
-          <button
-            className="absolute left-[-34px] top-1/2 z-50 -translate-y-1/2 rounded-full p-2 shadow bg-black hover:opacity-90"
-            onClick={()=> setChatCollapsed(v=>!v)}
-            title={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
-            aria-label={chatCollapsed ? 'Expand chat' : 'Collapse chat'}
-          >
-            {chatCollapsed ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            )}
-          </button>
-        )}
-        <header className={`flex items-center justify-between gap-2 border-b p-3 ${darkMode ? 'border-neutral-800' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <h1 className="text-2xl font-bold">The Social Twin</h1>
-          <div className="flex items-center gap-2">
-            <button
-              className={`cursor-pointer rounded border px-3 py-1 text-sm ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
-              onClick={() => setShowSettings((s) => !s)}
-            >
-              Settings
-            </button>
-            <button
-              className={`cursor-pointer rounded border px-3 py-1 text-sm ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
-              onClick={() => { const v = !darkMode; setDarkMode(v); localStorage.setItem('social_twin_dark', v ? '1' : '0'); }}
-            >
-              {darkMode ? 'Light' : 'Dark'}
-            </button>
+        {/* Collapse handle - Always visible for better UX */}
+        <button
+          className="absolute left-[-40px] top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          onClick={()=> setChatCollapsed(v=>!v)}
+          title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
+          aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
+        >
+          {chatCollapsed ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          )}
+        </button>
+  <header className={`flex items-center justify-between gap-4 px-6 py-4 ${darkMode ? '' : 'bg-white/90 backdrop-blur-sm'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+          <h1 className="text-xl font-semibold tracking-tight">
+            {creditInfo?.subscription_active && creditInfo?.subscription_plan
+              ? (()=>{
+                  const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim();
+                  // Map new plan names: one t -> ONE T, one z -> ONE Z, one pro -> ONE PRO
+                  if (plan === 'one t') return 'ONE T';
+                  if (plan === 'one z') return 'ONE Z';
+                  if (plan === 'one pro') return 'ONE PRO';
+                  return 'ONE';
+                })()
+              : 'ONE'}
+          </h1>
+          
+            <div className="flex items-center gap-3">
+            {/* Credits */}
+            <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
+              <div className={`h-1.5 w-1.5 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
+              {creditInfo?.credits ?? '—'}
+            </div>
+            
+            {/* Dark mode text toggle removed (use icon-based Theme toggle below) */}
+            
+            {/* Pro toggle moved to Navbar */}
+            
+            {/* Settings and Theme toggles moved to Dashboard tab */}
           </div>
         </header>
 
-        {/* Tab Navigation */}
-        <div className={`flex border-b ${darkMode ? 'border-neutral-800' : 'border-gray-200'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          {[
-            { id: 'chat', label: 'Chat', icon: '💬' },
-            { id: 'generations', label: 'Generations', icon: '🎨' },
-            { id: 'analytics', label: 'Analytics', icon: '📊' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                activeTab === tab.id
-                  ? darkMode
-                    ? 'border-b-2 border-blue-500 bg-blue-900/20 text-blue-300'
-                    : 'border-b-2 border-blue-500 bg-blue-50 text-blue-700'
-                  : darkMode
-                    ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
+  {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {!chatCollapsed && showSettings && (
-          <div className={`grid gap-2 border-b p-3 ${darkMode ? 'border-neutral-800' : ''}`}>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Text RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={textUrl}
-              onChange={(e) => setTextUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Ratio</label>
-              <select
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-              value={aspectRatio}
-              onChange={(e) => setAspectRatio(e.target.value)}
-            >
-              <option value="">Select</option>
-              {AR_CHOICES.map((ar) => (
-                <option key={ar} value={ar}>{ar}</option>
+        {/* Top Navigation - always visible; scrollable on mobile */}
+          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+            <div className="flex gap-1">
+        {[
+          { id: 'chat', label: 'Chat', icon: '💬' },
+          { id: 'generated', label: 'Generated', icon: '🎨' },
+          { id: 'dashboard', label: 'Dashboard', icon: '📊' }
+        ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? (darkMode
+                          ? 'border-b-2 border-neutral-300 text-neutral-100'
+                          : 'border-b-2 border-neutral-800 text-neutral-900')
+                      : (darkMode
+                          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
+                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                </button>
               ))}
-            </select>
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Image RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Image Modify RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={imageModifyUrl}
-              onChange={(e) => setImageModifyUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Video RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">WAN Video RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={videoWanUrl}
-              onChange={(e) => setVideoWanUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Kling Video RunPod URL</label>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="https://..."
-              value={videoKlingUrl}
-              onChange={(e) => setVideoKlingUrl(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Character (LoRA)</label>
-              <select
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-              value={LORA_CHOICES.includes(loraName) ? loraName : "Custom..."}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "None") setLoraName("");
-                else if (v === "Custom...") setLoraName(loraName || "");
-                else setLoraName(v);
-              }}
-            >
-              {LORA_CHOICES.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-              <input
-                className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              placeholder="custom lora filename (optional)"
-              value={loraName}
-              onChange={(e) => setLoraName(e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">LoRA Scale</label>
-                <input
-                  className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-                placeholder="0.0 - 1.0"
-                type="number"
-                step="0.01"
-                value={loraScale}
-                onChange={(e) => setLoraScale(e.target.value === "" ? "" : Number(e.target.value))}
-              />
             </div>
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">Batch Size</label>
-                <select
-                  className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                value={batchSize === "" ? "" : String(batchSize)}
-                onChange={(e) => setBatchSize(e.target.value === "" ? "" : Number(e.target.value))}
-              >
-                <option value="">Select</option>
-                {BATCH_CHOICES.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
+            
+            {/* Save Project moved to bottom next to More */}
           </div>
-          <div className="flex gap-2">
-            <button
-                className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`}
-              onClick={saveSettings}
-            >
-              Save
-            </button>
-            <button
-                className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
-              onClick={() => {
-                setTextUrl("");
-                setImageUrl("");
-                setImageModifyUrl("");
-                setVideoUrl("");
-                saveSettings();
-              }}
-            >
-              Clear
-            </button>
-          </div>
-          </div>
-        )}
 
-        <div className={`flex min-h-0 flex-1 flex-col ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-              <div ref={listRef} className={`flex-1 space-y-3 overflow-y-auto p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
+              <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}>
                 {messages.length === 0 ? (
-                <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
-                  {simpleMode ? (
-                    <div className="w-full max-w-2xl">
-                      {/* Center prompt when empty in Normal Mode */}
-                      <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
-                      <div className="rounded-lg border p-2">
-                        <textarea
-                          value={input}
-                          onChange={(e)=> setInput(e.target.value)}
-                          placeholder="Ask anything"
-                          className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                        />
-                      </div>
-                    </div>
-                  ) : 'Start by entering a prompt below.'}
-                </div>
-              ) : (
-                messages.map((m) => {
-                  const isUser = m.role === 'user';
-                  return (
-                    <div key={m.id}>
-                      <div id={`msg-${m.id}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] rounded-2xl border px-3 py-2 ${isUser ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600') : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-200')}`}
-                             style={{ borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}>
-                          <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                            <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
-                          </div>
-                          <div className="whitespace-pre-wrap text-sm">{m.content}</div>
-                          {m.loading && m.pendingType==='image' ? (
-                            <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
-                          ) : null}
-                          {m.loading && m.pendingType==='video' ? (
-                            <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
-                          ) : null}
-                          <div className={`mt-1 text-[10px] opacity-60 ${isUser ? 'text-white' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                            {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </div>
-                          {/* Only render image preview when it is not a video URL */}
-                          {m.imageUrl && !/\.(mp4|webm)(\?|$)/i.test(m.imageUrl) ? (
-                            <div className="mt-2 group">
-                              <img
-                                alt="generated"
-                                src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
-                                className="max-h-80 w-full rounded-lg border"
-                                draggable
-                                onDragStart={(e)=>{
-                                  try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.imageUrl, type: 'image' })); } catch {}
-                                  e.dataTransfer.setData('text/uri-list', m.imageUrl!);
-                                  e.dataTransfer.setData('text/plain', m.imageUrl!);
-                                  e.dataTransfer.effectAllowed = 'copyMove';
-                                }}
-                              />
-                              <div className="mt-2 flex items-center gap-2">
-                                <button
-                                  className="rounded border px-2 py-0.5 text-xs"
-                                  onClick={()=>{ folderModalPayload.current = { url: m.imageUrl!, type: 'image', prompt: m.content }; setFolderModalOpen(true); }}
-                                >Add to project</button>
-                                {m.sourceImageUrl ? (
-                                  <button
-                                    className="rounded border px-2 py-0.5 text-xs"
-                                    onClick={()=>{ setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] }); }}
-                                  >Compare</button>
-                                ) : null}
-                              </div>
-                            </div>
-                          ) : null}
-                          {(m as any).images && (m as any).images.length > 1 ? (
-                            <div className="mt-2 flex gap-2 overflow-x-auto">
-                              {(m as any).images.map((u: string, i: number) => (
-                                <a key={i} href={u} target="_blank" rel="noreferrer">
-                                  <img
-                                    src={u.startsWith('http') && !u.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
-                                    className="h-20 w-auto rounded border object-cover"
-                                    alt="thumb"
-                                    draggable
-                                    onDragStart={(e)=>{
-                                      try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: u, type: 'image' })); } catch {}
-                                      e.dataTransfer.setData('text/uri-list', u);
-                                      e.dataTransfer.setData('text/plain', u);
-                                      e.dataTransfer.effectAllowed = 'copyMove';
-                                    }}
-                                  />
-                                </a>
-                              ))}
-                            </div>
-                          ) : null}
-                          {m.videoUrl ? (
-                            <video
-                              src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
-                              className="mt-2 max-h-80 w-full rounded-lg border"
-                              controls
-                              draggable
-                              onDragStart={(e)=>{
-                                try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.videoUrl, type: 'video' })); } catch {}
-                                e.dataTransfer.setData('text/uri-list', m.videoUrl!);
-                                e.dataTransfer.setData('text/plain', m.videoUrl!);
-                                e.dataTransfer.effectAllowed = 'copyMove';
-                              }}
-                            />
-                          ) : null}
+                  <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
+                    {simpleMode ? (
+                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
+                        <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
+                        <div className="rounded-lg border p-2">
+                          <textarea
+                            value={input}
+                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
+                            placeholder="Ask anything"
+                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
+                          />
                         </div>
                       </div>
-                      {simpleMode ? (
-                        <div className={`my-2 border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-200'}`} />
-                      ) : null}
-                    </div>
-                  );
-                })
-              )}
+                    ) : 'Start by entering a prompt below.'}
+                  </div>
+                ) : (
+                  messages.map((m, _index) => {
+                    const isUser = m.role === 'user';
+                    const isAssistantPlain = !isUser && simpleMode; // Normal mode: render assistant without bubble
+
+                    return (
+                      <div key={m.id} className="mb-1">
+                        <div id={`msg-${m.id}`} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={
+                              isAssistantPlain
+                                ? 'max-w-[75%] text-sm'
+                                : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
+                                    isUser
+                                      ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600')
+                                      : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
+                                  }`
+                            }
+                            style={isAssistantPlain ? undefined : { borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}
+                          >
+                            {!isAssistantPlain && (
+                              <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
+                                <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
+                              </div>
+                            )}
+                            <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>{m.content}</div>
+                            {m.loading && m.pendingType==='image' ? (
+                              <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
+                            ) : null}
+                            {m.loading && m.pendingType==='video' ? (
+                              <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
+                            ) : null}
+                            {!isAssistantPlain && (
+                              <div className={`mt-1 text-[10px] opacity-60 ${isUser ? 'text-white' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
+                                {m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </div>
+                            )}
+                            {m.imageUrl && !/\.(mp4|webm)(\?|$)/i.test(m.imageUrl) ? (
+                              <div className="mt-2 group">
+                                {!lowDataMode || mediaAllowed.has(m.id) ? (
+                                  <img
+                                  alt="generated"
+                                  src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
+                                  className="max-h-80 w-full rounded-lg border"
+                                  loading="lazy"
+                                  draggable
+                                  onDragStart={(e)=>{
+                                    try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.imageUrl, type: 'image' })); } catch {}
+                                    e.dataTransfer.setData('text/uri-list', m.imageUrl!);
+                                    e.dataTransfer.setData('text/plain', m.imageUrl!);
+                                    e.dataTransfer.effectAllowed = 'copyMove';
+                                  }}
+                                  />
+                                ) : (
+                                  <button className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700' : ''}`} onClick={(e)=>{
+                                    e.preventDefault();
+                                    setMediaAllowed(prev=>{ const n = new Set(prev); n.add(m.id); return n; });
+                                  }}>Load image</button>
+                                )}
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    className="rounded border px-2 py-0.5 text-xs"
+                                    onClick={()=>{ folderModalPayload.current = { url: m.imageUrl!, type: 'image', prompt: m.content }; setFolderModalOpen(true); }}
+                                  >Add to project</button>
+                                  {m.sourceImageUrl ? (
+                                    <button
+                                      className="rounded border px-2 py-0.5 text-xs"
+                                      onClick={()=>{ setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] }); }}
+                                    >Compare</button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+                            {(m as any).images && (m as any).images.length > 1 ? (
+                              <div className="mt-2 flex gap-2 overflow-x-auto">
+                                {!lowDataMode || mediaAllowed.has(m.id) ? (
+                                  (m as any).images.map((u: string, i: number) => (
+                                    <a key={i} href={u} target="_blank" rel="noreferrer">
+                                      <img
+                                        src={u.startsWith('http') && !u.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
+                                        className="h-20 w-auto rounded border object-cover"
+                                        loading="lazy"
+                                        alt="thumb"
+                                        draggable
+                                        onDragStart={(e)=>{
+                                          try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: u, type: 'image' })); } catch {}
+                                          e.dataTransfer.setData('text/uri-list', u);
+                                          e.dataTransfer.setData('text/plain', u);
+                                          e.dataTransfer.effectAllowed = 'copyMove';
+                                        }}
+                                      />
+                                    </a>
+                                  ))
+                                ) : (
+                                  <button className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700' : ''}`} onClick={()=> setMediaAllowed(prev=>{ const n = new Set(prev); n.add(m.id); return n; })}>
+                                    Load {String((m as any).images.length)} images
+                                  </button>
+                                )}
+                              </div>
+                            ) : null}
+                            {m.videoUrl ? (
+                              (!lowDataMode || mediaAllowed.has(m.id)) ? (
+                                <video
+                                  src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(location.origin) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
+                                  className="mt-2 max-h-80 w-full rounded-lg border"
+                                  controls
+                                  preload="metadata"
+                                  draggable
+                                  onDragStart={(e)=>{
+                                    try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.videoUrl, type: 'video' })); } catch {}
+                                    e.dataTransfer.setData('text/uri-list', m.videoUrl!);
+                                    e.dataTransfer.setData('text/plain', m.videoUrl!);
+                                    e.dataTransfer.effectAllowed = 'copyMove';
+                                  }}
+                                />
+                              ) : (
+                                <button className={`mt-2 rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700' : ''}`} onClick={(e)=>{
+                                  e.preventDefault();
+                                  setMediaAllowed(prev=>{ const n = new Set(prev); n.add(m.id); return n; });
+                                }}>Load video</button>
+                              )
+                            ) : null}
+                            {m.pdfUrl ? (
+                              <div className="mt-2 group">
+                                <div className={`p-3 rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-gray-300'}`}>
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-medium text-sm">PDF Document</span>
+                                  </div>
+                                  
+                                  {/* Embedded PDF Viewer */}
+                                  <div className="mb-3">
+                                    <iframe
+                                      src={m.pdfUrl}
+                                      className={`w-full h-96 rounded border ${darkMode ? 'border-neutral-600' : 'border-gray-300'}`}
+                                      title="PDF Viewer"
+                                    />
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <a
+                                      href={m.pdfUrl}
+                                      download="exported-layout.pdf"
+                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-blue-400' : 'border-gray-400 hover:bg-gray-100 text-blue-600'} transition-colors`}
+                                    >
+                                      📄 Download PDF
+                                    </a>
+                                    <a
+                                      href={m.pdfUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-green-400' : 'border-gray-400 hover:bg-gray-100 text-green-600'} transition-colors`}
+                                    >
+                                      � Open in New Tab
+                                    </a>
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <button
+                                    className="rounded border px-2 py-0.5 text-xs"
+                                    onClick={()=>{ folderModalPayload.current = { url: m.pdfUrl!, type: 'pdf', prompt: m.content }; setFolderModalOpen(true); }}
+                                  >Add to project</button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                        {simpleMode ? (
+                          <div className={`my-2 border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-400'}`} />
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Generation Cost Display */}
-              <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-                <GenerationCostDisplay
-                  mode={mode}
-                  batchSize={typeof batchSize === 'number' ? batchSize : 1}
-                  darkMode={darkMode}
-                  onCostCalculated={(cost, canAfford) => {
-                    setGenerationCost(cost);
-                    setCanAffordGeneration(canAfford);
-                  }}
-                />
-              </div>
-            </>
-          )}
+              {/* Silent cost compute (no visible bar) */}
+              <GenerationCostDisplay
+                mode={mode}
+                batchSize={typeof batchSize === 'number' ? batchSize : 1}
+                darkMode={darkMode}
+                hideUI
+                onCostCalculated={(cost, canAfford) => {
+                  setGenerationCost(cost);
+                  setCanAffordGeneration(canAfford);
+                }}
+              />
 
-          {activeTab === 'generations' && (
-            <GenerationsTab
-              darkMode={darkMode}
-              onAddToCanvas={addToCanvas}
-            />
-          )}
-
-          {activeTab === 'analytics' && (
-            <UserAnalyticsDashboard darkMode={darkMode} />
-          )}
-
-          {/* Chat Controls - only show for chat tab */}
-          {activeTab === 'chat' && (
-            <>
-            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-            {/* Controls header: mode selector above the prompt box */}
-              <div className="mb-2 flex flex-wrap items-end gap-3">
-              {!(mode==='image' || mode==='image-modify') && (
-                <div className="grid gap-1">
-                  <label className="text-xs opacity-70">Mode</label>
-                  <select
-                    value={mode}
-                    onChange={(e) => setMode(e.target.value as Mode)}
-                    className={`w-[170px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                    title="Mode"
-                  >
-                    <option value="text">Text</option>
-                    <option value="image">Image</option>
-                    <option value="image-modify">Image Modify</option>
-                    <option value="video">Video</option>
-                  </select>
-                </div>
-              )}
-              {mode === 'text' ? (
-                <div className="grid gap-1">
-                  <label className="text-xs opacity-70">Provider</label>
-                  <select
-                    value={textProvider}
-                    onChange={(e)=> setTextProvider(e.target.value as any)}
-                    className={`w-[200px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                    title="Text provider"
-                  >
-                    <option value="social">Social Twin AI</option>
-                    <option value="openai">ChatGPT (OpenAI)</option>
-                    <option value="deepseek">DeepSeek</option>
-                  </select>
-                </div>
-              ) : null}
-              {(mode === 'image' || mode === 'image-modify') ? (
-                <>
-                  {/* Primary row: Mode, Effects, Character, Aspect Ratio */}
-                  <div className="relative">
-                    {/* Advanced button in top-right above the row */}
-                    <button
-                      className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
-                      onClick={()=> setAdvancedOpen(v=>!v)}
-                    >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
-                    <div className="mb-2 overflow-x-auto pr-1">
-                      <div className="inline-flex items-end gap-2 whitespace-nowrap">
-                        <div className="grid gap-1">
-                          <label className="text-xs opacity-70">Effects</label>
+        <div className={`border-t p-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
+          style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined }}>
+                {/* Core controls - clean and tighter */}
+                <div className="mb-2 space-y-2">
+                  {/* Primary row - mode-specific essentials */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-1">
+                      {mode === 'text' && (
+                        <select
+                          value={textProvider}
+                          onChange={(e)=> setTextProvider(e.target.value as any)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Provider"
+                        >
+                          <option value="social">Social</option>
+                          <option value="openai">OpenAI</option>
+                          <option value="deepseek">DeepSeek</option>
+                        </select>
+                      )}
+                      
+                      {mode === 'image' && (
+                        <>
                           <select
-                            className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
-                            onChange={(e)=> setLoraName(e.target.value)}
-                            title="Effects (LoRA)"
+                            value={effectsPreset}
+                            onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Effects"
                           >
-                            {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                            <option value="off">Effects: Off</option>
+                            <option value="subtle">Effects: Subtle</option>
+                            <option value="cinematic">Effects: Cinematic</option>
+                            <option value="stylized">Effects: Stylized</option>
                           </select>
-                        </div>
-                        <div className="grid gap-1">
-                          <label className="text-xs opacity-70">Character</label>
                           <select
-                            className={`w-[110px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={characterOn ? 'On' : 'Off'}
-                            onChange={(e)=> setCharacterOn(e.target.value === 'On')}
+                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === 'None') { setLoraName(''); setCharacterOn(false); }
+                              else if (v === 'Custom...') { setCharacterOn(true); }
+                              else { setLoraName(v); setCharacterOn(true); }
+                            }}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                             title="Character"
                           >
-                            <option value="Off">Off</option>
-                            <option value="On">On</option>
+                            {LORA_CHOICES.map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
                           </select>
-                        </div>
-                        <div className="grid gap-1">
-                          <label className="text-xs opacity-70">Ratio</label>
-                          <select
-                            className={`w-[88px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={aspectRatio}
-                            onChange={(e)=> setAspectRatio(e.target.value)}
-                          >
-                            <option value="">Select</option>
-                            {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Advanced row: Qty, Steps, CFG, Guidance, optional LoRA custom + scale */}
-                  {advancedOpen && (
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Qty</label>
-                        <select
-                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e)=> setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Steps</label>
-                        <select
-                          className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={steps === '' ? '' : String(steps)}
-                          onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">CFG</label>
-                        <select
-                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={cfgScale === '' ? '' : String(cfgScale)}
-                          onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Guidance</label>
-                        <select
-                          className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={guidance === '' ? '' : String(guidance)}
-                          onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      {loraName==='Custom...' && (
-                        <>
-                          <input
-                            className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            placeholder="lora file or hf path"
-                            value={loraName==='Custom...' ? '' : loraName}
-                            onChange={(e)=> setLoraName(e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            step="0.1"
-                            className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={loraScale === '' ? '' : String(loraScale)}
-                            onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
-                            title="LoRA Scale"
-                          />
                         </>
                       )}
-                    </div>
-                  )}
-                </>
-              ) : null}
-
-              {mode === 'video' ? (
-                <>
-                  {/* Primary row for Video: Mode, Model, Effects */}
-                  <div className="relative">
-                    <button
-                      className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
-                      onClick={()=> setAdvancedOpen(v=>!v)}
-                    >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
-                    <div className="mb-2 overflow-x-auto pr-1">
-                      <div className="inline-flex items-end gap-2 whitespace-nowrap">
-                        <div className="grid gap-1">
-                          <label className="text-xs opacity-70">Model</label>
+                      
+                      {mode === 'image-modify' && (
+                        <>
+                          <select
+                            value={effectsPreset}
+                            onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Effects"
+                          >
+                            <option value="off">Effects: Off</option>
+                            <option value="subtle">Effects: Subtle</option>
+                            <option value="cinematic">Effects: Cinematic</option>
+                            <option value="stylized">Effects: Stylized</option>
+                          </select>
+                          <select
+                            value={batchSize === '' ? '' : String(batchSize)}
+                            onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Quantity"
+                          >
+                            <option value="">Qty: 1</option>
+                            {BATCH_CHOICES.map((n) => (
+                              <option key={n} value={n}>Qty: {n}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={aspectRatio}
+                            onChange={(e) => setAspectRatio(e.target.value)}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Aspect Ratio"
+                          >
+                            <option value="">1:1</option>
+                            {AR_CHOICES.map((ar) => (
+                              <option key={ar} value={ar}>{ar}</option>
+                            ))}
+                          </select>
+                        </>
+                      )}
+                      
+                      {mode === 'video' && (
+                        <>
                           <select
                             value={videoModel}
                             onChange={(e)=> setVideoModel(e.target.value as any)}
-                            className={`w-[120px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                            title="Video Model"
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Model"
                           >
                             <option value="ltxv">LTXV</option>
-                            <option value="kling">Kling</option>
                             <option value="wan">WAN</option>
                           </select>
-                        </div>
-                        <div className="grid gap-1">
-                          <label className="text-xs opacity-70">Effects</label>
                           <select
-                            className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
-                            onChange={(e)=> setLoraName(e.target.value)}
-                            title="Effects (LoRA)"
+                            value={batchSize === '' ? '' : String(batchSize)}
+                            onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Quantity"
                           >
-                            {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                            <option value="">Qty: 1</option>
+                            {BATCH_CHOICES.map((n) => (
+                              <option key={n} value={n}>Qty: {n}</option>
+                            ))}
                           </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Advanced row for Video: Steps, CFG, Guidance, optional LoRA custom+scale */}
-                  {advancedOpen && (
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Steps</label>
-                        <select
-                          className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={steps === '' ? '' : String(steps)}
-                          onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">CFG</label>
-                        <select
-                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={cfgScale === '' ? '' : String(cfgScale)}
-                          onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Guidance</label>
-                        <select
-                          className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={guidance === '' ? '' : String(guidance)}
-                          onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
-                        >
-                          <option value="">Default</option>
-                          {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      {loraName==='Custom...' && (
-                        <>
-                          <input
-                            className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            placeholder="lora file or hf path"
-                            value={loraName==='Custom...' ? '' : loraName}
-                            onChange={(e)=> setLoraName(e.target.value)}
-                          />
-                          <input
-                            type="number"
-                            step="0.1"
-                            className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            value={loraScale === '' ? '' : String(loraScale)}
-                            onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
-                            title="LoRA Scale"
-                          />
+                          <select
+                            value={aspectRatio}
+                            onChange={(e) => setAspectRatio(e.target.value)}
+                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Aspect Ratio"
+                          >
+                            <option value="">16:9</option>
+                            {AR_CHOICES.map((ar) => (
+                              <option key={ar} value={ar}>{ar}</option>
+                            ))}
+                          </select>
                         </>
                       )}
                     </div>
+                  </div>
+                  
+                  {/* Secondary row - character input for image modes */}
+                  {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder="character.safetensors"
+                        value={loraName}
+                        onChange={(e) => setLoraName(e.target.value)}
+                        className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
+                      />
+                    </div>
                   )}
-                </>
-              ) : null}
-            </div>
+                </div>
 
-            <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your prompt..."
-                className={`min-h-[44px] flex-1 resize-y rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-              />
-              {/* Right-side vertical controls: Send above Upload */}
-              <div className="flex flex-col gap-2">
+                {/* Advanced Options - Comprehensive Creator Studio Integration */}
+                {advancedOpen && (
+                  <div className={`mb-0 rounded-xl border p-4 space-y-4 ${darkMode ? 'border-neutral-700 bg-neutral-900/50 backdrop-blur-sm' : 'border-neutral-400 bg-white/80 backdrop-blur-sm'} max-h-[60vh] overflow-y-auto`}>
+                    
+                    {/* Workflow & Model Selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-semibold opacity-90">Workflow</label>
+                        <div className={`px-2 py-1 rounded text-[10px] font-mono ${darkMode ? 'bg-neutral-800 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {mode === 'text' ? 'LLM Provider' : 
+                           mode === 'image' ? 'Socialtwin-Image.json' : 
+                           mode === 'image-modify' ? 'SocialTwin-Modify.json' : 
+                           attached?.type.startsWith('image') 
+                             ? (videoModel === 'wan' ? 'Wan-Image-video.json' : 'LTXIMAGETOVIDEO.json')
+                             : (videoModel === 'wan' ? 'Wan-text-video.json' : 'LTXV-TEXT_VIDEO.json')}
+                        </div>
+                      </div>
+
+                      {/* Text Providers */}
+                      {mode === 'text' && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'social', name: 'Social AI', desc: 'Fast & creative', cost: '1' },
+                            { id: 'openai', name: 'OpenAI', desc: 'Advanced reasoning', cost: '3' },
+                            { id: 'deepseek', name: 'DeepSeek', desc: 'Code & analysis', cost: '2' },
+                          ].map((provider) => (
+                            <button
+                              key={provider.id}
+                              onClick={() => setTextProvider(provider.id as any)}
+                              className={`rounded-lg p-3 text-xs transition-all relative ${
+                                textProvider === provider.id
+                                  ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                                  : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
+                              }`}
+                            >
+                              <div className="font-medium">{provider.name}</div>
+                              <div className="opacity-75 text-[10px]">{provider.desc}</div>
+                              <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] flex items-center justify-center ${darkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>
+                                {provider.cost}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Image Generation Models */}
+                      {mode === 'image' && (
+                        <div className="space-y-2">
+                          <div className="rounded-lg border p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 border-neutral-300">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-xs font-medium mb-1">Flux Dev (Primary)</div>
+                                <div className="text-xs opacity-75">SD3 • High-res • Creative compositions</div>
+                              </div>
+                              <div className="text-xs font-mono bg-black/10 px-2 py-1 rounded">flux1-dev</div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">CLIP L+T5</div>
+                              <div className="opacity-60">Text encoding</div>
+                            </div>
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">Euler</div>
+                              <div className="opacity-60">Sampler</div>
+                            </div>
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">BF16 VAE</div>
+                              <div className="opacity-60">Decoder</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Image Modification Models */}
+                      {mode === 'image-modify' && (
+                        <div className="space-y-2">
+                          <div className="rounded-lg border p-3 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/30 dark:to-yellow-900/30 border-neutral-300">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-xs font-medium mb-1">Flux Kontext (Image2Image)</div>
+                                <div className="text-xs opacity-75">Reference-guided • Style transfer • Image transformation</div>
+                              </div>
+                              <div className="text-xs font-mono bg-black/10 px-2 py-1 rounded">kontext-dev</div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 gap-2 text-xs">
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">Reference</div>
+                              <div className="opacity-60">Latent guide</div>
+                            </div>
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">ImageStitch</div>
+                              <div className="opacity-60">Preprocessing</div>
+                            </div>
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">KSampler</div>
+                              <div className="opacity-60">Denoising</div>
+                            </div>
+                            <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded">
+                              <div className="font-medium">VAE</div>
+                              <div className="opacity-60">Encoding</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Video Generation Models */}
+                      {mode === 'video' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { 
+                                id: 'ltxv', 
+                                name: 'LTXV', 
+                                desc: 'Lightning fast', 
+                                workflows: 'LTXV-TEXT/IMAGE',
+                                model: 'ltxv-13b-0.9.7-dev',
+                                features: ['25fps', '97 frames', 'T5XXL', 'Custom sampler']
+                              },
+                              { 
+                                id: 'wan', 
+                                name: 'WAN', 
+                                desc: 'Smooth motion', 
+                                workflows: 'Wan-text/image',
+                                model: 'wan-video-model',
+                                features: ['24fps', 'Motion aware', 'Stable output', 'High quality']
+                              },
+                            ].map((model) => (
+                              <button
+                                key={model.id}
+                                onClick={() => setVideoModel(model.id as any)}
+                                className={`rounded-lg p-3 text-xs transition-all text-left ${
+                                  videoModel === model.id
+                                    ? (darkMode ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white')
+                                    : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
+                                }`}
+                              >
+                                <div className="font-medium">{model.name}</div>
+                                <div className="opacity-75 text-[10px] mb-1">{model.desc}</div>
+                                <div className="font-mono text-[9px] opacity-60">{model.model}</div>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {model.features.map((feature, i) => (
+                                    <span key={i} className="bg-black/20 dark:bg-white/20 px-1 py-0.5 rounded text-[8px]">
+                                      {feature}
+                                    </span>
+                                  ))}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          <div className={`text-xs p-2 rounded border ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="opacity-60">Active workflow:</span>
+                              <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                                {attached?.type.startsWith('image')
+                                  ? (videoModel === 'wan' ? 'Wan-Image-video.json' : 'LTXIMAGETOVIDEO.json')
+                                  : (videoModel === 'wan' ? 'Wan-text-video.json' : 'LTXV-TEXT_VIDEO.json')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Core Parameters */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold opacity-90">Core Parameters</label>
+                      
+                      {/* Essential Controls - Batch and Aspect moved to main view for image-modify/video */}
+                      {mode === 'image' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium opacity-80">Batch Size</label>
+                            <select
+                              value={batchSize === '' ? '' : String(batchSize)}
+                              onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            >
+                              <option value="">Auto (1)</option>
+                              {BATCH_CHOICES.map((n) => (
+                                <option key={n} value={n}>{n} {n > 1 ? 'items' : 'item'} ({n * 5} credits)</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium opacity-80">Aspect Ratio</label>
+                            <select
+                              value={aspectRatio}
+                              onChange={(e) => setAspectRatio(e.target.value)}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            >
+                              <option value="">Auto (1:1)</option>
+                              {AR_CHOICES.map((ar) => (
+                                <option key={ar} value={ar}>{ar}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Advanced Generation Parameters */}
+                      {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium opacity-80 flex items-center gap-1">
+                                CFG Scale
+                                <div className="group relative">
+                                  <svg className="w-3 h-3 opacity-60 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                  </svg>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    Prompt adherence (1-20)
+                                  </div>
+                                </div>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="1"
+                                max="20"
+                                placeholder={mode === 'video' ? '3.0' : '1.0'}
+                                value={cfgScale}
+                                onChange={(e) => setCfgScale(e.target.value === '' ? '' : Number(e.target.value))}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium opacity-80 flex items-center gap-1">
+                                Guidance
+                                <div className="group relative">
+                                  <svg className="w-3 h-3 opacity-60 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                  </svg>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    Flux guidance (2-5)
+                                  </div>
+                                </div>
+                              </label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="1"
+                                max="10"
+                                placeholder={mode === 'image-modify' ? '2.5' : '3.5'}
+                                value={guidance}
+                                onChange={(e) => setGuidance(e.target.value === '' ? '' : Number(e.target.value))}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium opacity-80 flex items-center gap-1">
+                                Steps
+                                <div className="group relative">
+                                  <svg className="w-3 h-3 opacity-60 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                  </svg>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    Denoising steps (10-50)
+                                  </div>
+                                </div>
+                              </label>
+                              <input
+                                type="number"
+                                min="10"
+                                max="50"
+                                placeholder={mode === 'image' ? '23' : mode === 'video' ? '30' : '20'}
+                                value={steps}
+                                onChange={(e) => setSteps(e.target.value === '' ? '' : Number(e.target.value))}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Video-specific parameters */}
+                          {mode === 'video' && (
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium opacity-80">Frame Rate</label>
+                                <select
+                                  value="25"
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                >
+                                  <option value="24">24 FPS (Cinema)</option>
+                                  <option value="25">25 FPS (PAL)</option>
+                                  <option value="30">30 FPS (NTSC)</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium opacity-80">Length</label>
+                                <select
+                                  value="97"
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                >
+                                  <option value="49">2s (49 frames)</option>
+                                  <option value="73">3s (73 frames)</option>
+                                  <option value="97">4s (97 frames)</option>
+                                  <option value="121">5s (121 frames)</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium opacity-80">Resolution</label>
+                                <select
+                                  value="768x512"
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                >
+                                  <option value="768x512">768×512 (HD)</option>
+                                  <option value="1024x576">1024×576 (FHD)</option>
+                                  <option value="512x768">512×768 (Portrait)</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Image-specific advanced options */}
+                          {(mode === 'image' || mode === 'image-modify') && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium opacity-80">Sampler</label>
+                                <select
+                                  value="euler"
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                >
+                                  <option value="euler">Euler (Default)</option>
+                                  <option value="euler_ancestral">Euler Ancestral</option>
+                                  <option value="heun">Heun</option>
+                                  <option value="dpm_2">DPM++ 2M</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium opacity-80">Scheduler</label>
+                                <select
+                                  value="simple"
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                >
+                                  <option value="simple">Simple</option>
+                                  <option value="normal">Normal</option>
+                                  <option value="karras">Karras</option>
+                                  <option value="exponential">Exponential</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Character & Style Control */}
+                    {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                      <div className="space-y-3">
+                        <label className="text-xs font-semibold opacity-90">Character & Style</label>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Character LoRA</label>
+                            <select
+                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setLoraName('');
+                                else if (v === 'Custom...') setLoraName(loraName || '');
+                                else setLoraName(v);
+                              }}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            >
+                              {LORA_CHOICES.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                            
+                            {loraName && !isPresetLoRa(loraName) && (
+                              <input
+                                type="text"
+                                placeholder="custom-character.safetensors"
+                                value={loraName}
+                                onChange={(e) => setLoraName(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">LoRA Strength</label>
+                            <div className="space-y-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={loraScale || 0.8}
+                                onChange={(e) => setLoraScale(Number(e.target.value))}
+                                className="w-full"
+                              />
+                              <div className="flex justify-between text-xs opacity-60">
+                                <span>0.0</span>
+                                <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
+                                <span>1.0</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Style Presets */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium opacity-80">Style Enhance</label>
+                          <div className="grid grid-cols-4 gap-1">
+                            {[
+                              { id: 'off', name: 'None', desc: '' },
+                              { id: 'subtle', name: 'Subtle', desc: 'Light enhancement' },
+                              { id: 'cinematic', name: 'Cinema', desc: 'Film look' },
+                              { id: 'stylized', name: 'Artistic', desc: 'Creative style' }
+                            ].map((preset) => (
+                              <button
+                                key={preset.id}
+                                onClick={() => {
+                                  setEffectsPreset(preset.id as any);
+                                  setEffectsOn(preset.id !== 'off');
+                                }}
+                                className={`rounded p-2 text-xs transition-all ${
+                                  effectsPreset === preset.id
+                                    ? (darkMode ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white')
+                                    : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
+                                }`}
+                              >
+                                <div className="font-medium">{preset.name}</div>
+                                {preset.desc && <div className="opacity-75 text-[10px]">{preset.desc}</div>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Seed & Advanced */}
+                    <div className="space-y-3">
+                      <label className="text-xs font-semibold opacity-90">Advanced Control</label>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium opacity-80">Seed</label>
+                          <div className="flex gap-1">
+                            <input
+                              type="number"
+                              placeholder="Random"
+                              className={`flex-1 rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            />
+                            <button
+                              onClick={() => {
+                                // Generate random seed
+                                const randomSeed = Math.floor(Math.random() * 1000000000000);
+                                // You'd need to add a seed state variable
+                              }}
+                              className={`px-2 rounded border text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-400 hover:bg-gray-50'}`}
+                            >
+                              🎲
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium opacity-80">Denoise</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="1"
+                            placeholder={mode === 'image-modify' ? '1.0' : '0.8'}
+                            className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Negative Prompt */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium opacity-80">Negative Prompt</label>
+                        <textarea
+                          placeholder={mode === 'video' ? "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly" : "low quality, bad anatomy, worst quality, low resolution"}
+                          rows={2}
+                          className={`w-full rounded-md border px-2 py-1 text-xs resize-none ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cost Summary */}
+                    <div className={`rounded-lg border p-3 ${darkMode ? 'border-emerald-700 bg-emerald-900/20' : 'border-emerald-300 bg-emerald-50'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-medium">Generation Cost</div>
+                        <div className="text-xs font-mono">
+                          ~{generationCost} credits
+                          {batchSize && batchSize > 1 && ` × ${batchSize} = ${generationCost * batchSize}`}
+                        </div>
+                      </div>
+                      <div className="text-xs opacity-70 mt-1">
+                        {mode === 'text' ? 'Text generation' : 
+                         mode === 'image' ? 'Image generation' : 
+                         mode === 'image-modify' ? 'Image modification' : 
+                         'Video generation'} • 
+                        {mode === 'text' ? textProvider.toUpperCase() : 
+                         mode === 'video' ? videoModel.toUpperCase() : 'FLUX'} model
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* More toggle is inline with controls above; no extra row here for flush spacing */}
+        <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your prompt..."
+          className={`min-h-[44px] flex-1 resize-y rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
+          ref={bottomInputRef}
+                  />
+                   <div className="flex flex-col gap-2">
+                    <button
+                      onClick={handleSend}
+                      disabled={!canAffordGeneration}
+                      className={`relative h-10 w-10 cursor-pointer rounded-full flex items-center justify-center transition-all ${canAffordGeneration ? 'bg-black text-white hover:opacity-90' : 'bg-gray-400 text-white cursor-not-allowed opacity-70'}`}
+                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
+                      aria-label="Send"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
+                        <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      {/* Cost badge */}
+                      <span className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-white text-black'} border border-black/10`}>~{generationCost}</span>
+                    </button>
+                    <label className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
+                        <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <input
+                        type="file"
+                        accept="image/*,video/*,application/pdf"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const dataUrl = String(reader.result || '');
+                            setAttached({ name: f.name, type: f.type, dataUrl });
+                          };
+                          reader.readAsDataURL(f);
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                {/* Mode buttons row (below prompt) */}
+                <div className="mt-1 flex items-center gap-2">
+                  <IconButton title="Text mode" onClick={() => setMode('text')}> 
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6h12M6 12h10M6 18h8" stroke={darkMode? '#fff':'#111'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </IconButton>
+                  <IconButton title="Image mode" onClick={() => setMode('image')}> 
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4"/><path d="M7 13l3-3 5 5" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </IconButton>
+                  <IconButton title="Modify image" onClick={() => setMode('image-modify')}> 
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 10-10a2.5 2.5 0 013.5 0l1.5 1.5a2.5 2.5 0 010 3.5L17.5 21 3 21z" stroke={darkMode? '#fff':'#111'} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </IconButton>
+                  <IconButton title="Video mode" onClick={() => setMode('video')}> 
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </IconButton>
+                  <div className="ml-1 flex items-center gap-2">
+                    <button
+                      onClick={() => setAdvancedOpen(!advancedOpen)}
+                      className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
+                      title="More options"
+                    >
+                      {advancedOpen ? 'Less' : 'More'}
+                    </button>
+                    {(messages.length > 0 || canvasItems.length > 0) && (
+                      <button
+                        onClick={() => setProjectModalOpen(true)}
+                        className={`rounded border px-2.5 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900'}`}
+                        title="Save chat conversation and grid layout together"
+                      >
+                        Save Project
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {attached ? (
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded border p-2">
+                      {attached && attached.type.startsWith('image') ? (
+                        <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
+                      ) : attached && attached.type.startsWith('video') ? (
+                        <div className="h-12 w-12 overflow-hidden rounded border">
+                          <video src={attached.dataUrl} className="h-full w-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                          PDF
+                        </div>
+                      )}
+                      <div className="text-xs">
+                        <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
+                        <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
+                      </div>
+                    </div>
+                    <button
+                      className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
+                      onClick={() => setAttached(null)}
+                    >Remove</button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          )}
+
+          {/* Projects tab removed - now accessible via Dashboard */}
+
+          {activeTab === 'generated' && (
+            <div className="flex-1 overflow-hidden bg-black">
+              {/* Full screen infinite gallery - within tab content area */}
+              <div className="h-full w-full relative">
+                {/* Floating controls overlay */}
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
+                  <div className={`text-sm px-3 py-2 rounded-full backdrop-blur-md ${darkMode ? 'bg-black/50 text-white' : 'bg-white/80 text-black'}`}>
+                    {binItems.length} generations
+                  </div>
+                  <button
+                    className={`rounded-full px-4 py-2 text-sm backdrop-blur-md transition-colors ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
+                    onClick={async () => {
+                      const r = await fetch('/api/social-twin/history?limit=48', { headers: { 'X-User-Id': userId || '' } });
+                      const j = await r.json();
+                      setBinItems(j.items || []);
+                      setBinCursor(j.nextCursor || null);
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
+                
+                {/* Vertical scroll grid with even small thumbnails */}
+                <div className="h-full w-full overflow-y-auto p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
+                    {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
+                      const url = it.display_url || it.result_url;
+                      const isVideo = it.type === 'video';
+                      
+                      return (
+                        <div 
+                          key={it.id} 
+                          className={`aspect-square relative group cursor-pointer rounded-lg overflow-hidden ${darkMode ? 'bg-neutral-900' : 'bg-white'} transition-all duration-300 hover:scale-105 hover:shadow-xl hover:z-10`}
+                          onClick={() => {
+                            setViewerItem(it);
+                            setViewerOpen(true);
+                          }}
+                          onMouseEnter={() => {
+                            if (isVideo) setHoverVideoIds(prev => { const n = new Set(prev); n.add(it.id); return n; });
+                          }}
+                          onMouseLeave={() => {
+                            if (isVideo) setHoverVideoIds(prev => { const n = new Set(prev); n.delete(it.id); return n; });
+                          }}
+                        >
+                          {/* Content - even square size */}
+                          <div className="w-full h-full">
+                            {isVideo ? (
+                              (url ? (
+                                (!lowDataMode || mediaAllowed.has(it.id)) ? (
+                                  <video 
+                                    src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                    className="h-full w-full object-cover" 
+                                    preload="metadata" 
+                                    muted
+                                    playsInline
+                                    controls={hoverVideoIds.has(it.id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                ) : (
+                                  <div 
+                                    className={`w-full h-full flex items-center justify-center text-2xl ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`} 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMediaAllowed(prev=>{ const n = new Set(prev); n.add(it.id); return n; });
+                                    }}
+                                  >
+                                    📹
+                                  </div>
+                                )
+                              ) : (
+                                <div className={`h-full w-full ${darkMode?'bg-neutral-800':'bg-gray-100'} flex items-center justify-center text-2xl opacity-70`}>
+                                  ⏳
+                                </div>
+                              ))
+                            ) : (
+                              <img 
+                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                className="h-full w-full object-cover" 
+                                loading="lazy" 
+                                alt="Generated content" 
+                              />
+                            )}
+                          </div>
+                          
+                          {/* Hover overlay with info */}
+                          <div className={`absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-end`}>
+                            <div className={`p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs`}>
+                              {isVideo ? '🎥' : '🖼️'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Load more button */}
+                  {binCursor && binItems.length > 0 && (
+                    <div className="flex justify-center mt-6">
+                      <button
+                        className={`rounded-full px-6 py-3 text-sm font-medium backdrop-blur-md transition-all hover:scale-105 ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
+                        onClick={async () => {
+                          const r = await fetch(`/api/social-twin/history?limit=24&cursor=${encodeURIComponent(binCursor)}`, { headers: { 'X-User-Id': userId || '' } });
+                          const j = await r.json();
+                          setBinItems(prev => [...prev, ...(j.items || [])]);
+                          setBinCursor(j.nextCursor || null);
+                        }}
+                      >
+                        Load More
+                      </button>
+                    </div>
+                  )}
+                  
+                  {binItems.length === 0 && (
+                    <div className="h-full w-full flex flex-col items-center justify-center text-center">
+                      <div className="text-6xl mb-4 opacity-50">🎨</div>
+                      <div className={`text-xl mb-3 ${darkMode ? 'text-white' : 'text-black'}`}>No generations yet</div>
+                      <div className={`text-sm opacity-60 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Create images or videos in chat to see them here</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <div className={`flex-1 overflow-y-auto p-4 ${simpleMode ? 'max-w-3xl mx-auto w-full' : ''}`}>
+              <div className="mb-3 flex items-center justify-end gap-2">
                 <button
-                  onClick={handleSend}
-                  disabled={!canAffordGeneration}
-                  className={`cursor-pointer rounded-full p-2 flex items-center justify-center transition-all ${
-                    canAffordGeneration 
-                      ? 'bg-black hover:opacity-90' 
-                      : 'bg-gray-400 cursor-not-allowed opacity-50'
-                  }`}
-                  title={canAffordGeneration ? "Send" : `Need ${generationCost} credits to generate`}
-                  aria-label="Send"
+                  className={`rounded-full px-3 py-1 text-xs border ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-gray-50'}`}
+                  onClick={() => { const v = !darkMode; setDarkMode(v); localStorage.setItem('social_twin_dark', v ? '1' : '0'); }}
+                  title={darkMode ? 'Light mode' : 'Dark mode'}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
-                    <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  {darkMode ? 'Light' : 'Dark'}
+                </button>
+                <button
+                  className={`rounded-full p-2 border ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-gray-50'} ${!darkMode ? 'bg-black' : ''}`}
+                  onClick={() => setSettingsOpen(true)}
+                  title="Settings"
+                >
+                  {/* simple white gear svg */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#fff" strokeWidth="1.6"/>
+                    <path d="M19.4 13.5a7.43 7.43 0 0 0 .06-1.5c0-.5-.02-1-.06-1.5l2.03-1.59a.7.7 0 0 0 .16-.9l-1.93-3.34a.7.7 0 0 0-.86-.31l-2.39.96A7.69 7.69 0 0 0 14.4 3l-.36-2.5a.7.7 0 0 0-.69-.58h-3.7a.7.7 0 0 0-.69.58L8.6 3a7.69 7.69 0 0 0-1.99.82l-2.39-.96a.7.7 0 0 0-.86.31L1.43 6.5a.7.7 0 0 0 .16.9L3.62 9c-.04.5-.06 1-.06 1.5s.02 1 .06 1.5l-2.03 1.59a.7.7 0 0 0-.16.9l1.93 3.34c.18.32.57.45.9.31l2.39-.96c.62.36 1.29.64 1.99.82l.36 2.5c.06.34.35.58.69.58h3.7c.34 0 .63-.24.69-.58l.36-2.5c.7-.18 1.37-.46 1.99-.82l2.39.96c.33.14.72.01.9-.31l1.93-3.34a.7.7 0 0 0-.16-.9L19.4 13.5Z" stroke="#fff" strokeWidth="1.6"/>
                   </svg>
                 </button>
-                <label className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`} title="Attach image/video/pdf">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
-                    <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <input
-                    type="file"
-                    accept="image/*,video/*,application/pdf"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        const dataUrl = String(reader.result || "");
-                        setAttached({ name: f.name, type: f.type, dataUrl });
-                      };
-                      reader.readAsDataURL(f);
-                    }}
-                  />
-                </label>
               </div>
-              </div>
-              {attached ? (
-                <div className="mt-2 flex items-center gap-3">
-                  <div className="flex items-center gap-2 rounded border p-2">
-                    {attached && attached.type.startsWith('image') ? (
-                      <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
-                    ) : attached && attached.type.startsWith('video') ? (
-                      <div className="h-12 w-12 overflow-hidden rounded border">
-                        <video src={attached.dataUrl} className="h-full w-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
-                        PDF
-                      </div>
-                    )}
-                    <div className="text-xs">
-                      <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
-                      <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
-                    </div>
-                  </div>
-                  <button
-                    className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
-                    onClick={() => setAttached(null)}
-                  >Remove</button>
-                </div>
-              ) : null}
-            </div>
-            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-          {/* Controls header: mode selector above the prompt box */}
-            <div className="mb-2 flex flex-wrap items-end gap-3">
-            {!(mode==='image' || mode==='image-modify') && (
-              <div className="grid gap-1">
-                <label className="text-xs opacity-70">Mode</label>
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as Mode)}
-                  className={`w-[170px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                  title="Mode"
-                >
-                  <option value="text">Text</option>
-                  <option value="image">Image</option>
-                  <option value="image-modify">Image Modify</option>
-                  <option value="video">Video</option>
-                </select>
-              </div>
-            )}
-            {mode === 'text' ? (
-              <div className="grid gap-1">
-                <label className="text-xs opacity-70">Provider</label>
-                <select
-                  value={textProvider}
-                  onChange={(e)=> setTextProvider(e.target.value as any)}
-                  className={`w-[200px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                  title="Text provider"
-                >
-                  <option value="social">Social Twin AI</option>
-                  <option value="openai">ChatGPT (OpenAI)</option>
-                  <option value="deepseek">DeepSeek</option>
-                </select>
-              </div>
-            ) : null}
-            {(mode === 'image' || mode === 'image-modify') ? (
-              <>
-                {/* Primary row: Mode, Effects, Character, Aspect Ratio */}
-                <div className="relative">
-                  {/* Advanced button in top-right above the row */}
-                  <button
-                    className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
-                    onClick={()=> setAdvancedOpen(v=>!v)}
-                  >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
-                  <div className="mb-2 overflow-x-auto pr-1">
-                    <div className="inline-flex items-end gap-2 whitespace-nowrap">
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Effects</label>
-                        <select
-                          className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
-                          onChange={(e)=> setLoraName(e.target.value)}
-                          title="Effects (LoRA)"
-                        >
-                          {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Character</label>
-                        <select
-                          className={`w-[110px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={characterOn ? 'On' : 'Off'}
-                          onChange={(e)=> setCharacterOn(e.target.value === 'On')}
-                          title="Character"
-                        >
-                          <option value="Off">Off</option>
-                          <option value="On">On</option>
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Ratio</label>
-                        <select
-                          className={`w-[88px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={aspectRatio}
-                          onChange={(e)=> setAspectRatio(e.target.value)}
-                        >
-                          <option value="">Select</option>
-                          {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Advanced row: Qty, Steps, CFG, Guidance, optional LoRA custom + scale */}
-                {advancedOpen && (
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">Qty</label>
-                      <select
-                        className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={batchSize === '' ? '' : String(batchSize)}
-                        onChange={(e)=> setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">Steps</label>
-                      <select
-                        className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={steps === '' ? '' : String(steps)}
-                        onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">CFG</label>
-                      <select
-                        className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={cfgScale === '' ? '' : String(cfgScale)}
-                        onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">Guidance</label>
-                      <select
-                        className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={guidance === '' ? '' : String(guidance)}
-                        onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    {loraName==='Custom...' && (
-                      <>
-                        <input
-                          className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          placeholder="lora file or hf path"
-                          value={loraName==='Custom...' ? '' : loraName}
-                          onChange={(e)=> setLoraName(e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          step="0.1"
-                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={loraScale === '' ? '' : String(loraScale)}
-                          onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
-                          title="LoRA Scale"
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : null}
 
-            {mode === 'video' ? (
-              <>
-                {/* Primary row for Video: Mode, Model, Effects */}
-                <div className="relative">
-                  <button
-                    className={`absolute right-0 -top-6 rounded px-2 py-1 text-xs border ${darkMode? 'border-neutral-700' : 'border-neutral-300'}`}
-                    onClick={()=> setAdvancedOpen(v=>!v)}
-                  >{advancedOpen ? 'Hide Advanced' : 'Advanced'}</button>
-                  <div className="mb-2 overflow-x-auto pr-1">
-                    <div className="inline-flex items-end gap-2 whitespace-nowrap">
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Model</label>
-                        <select
-                          value={videoModel}
-                          onChange={(e)=> setVideoModel(e.target.value as any)}
-                          className={`w-[120px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                          title="Video Model"
-                        >
-                          <option value="ltxv">LTXV</option>
-                          <option value="kling">Kling</option>
-                          <option value="wan">WAN</option>
-                        </select>
-                      </div>
-                      <div className="grid gap-1">
-                        <label className="text-xs opacity-70">Effects</label>
-                        <select
-                          className={`w-[120px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={LORA_CHOICES.includes(loraName) ? loraName : 'Custom...'}
-                          onChange={(e)=> setLoraName(e.target.value)}
-                          title="Effects (LoRA)"
-                        >
-                          {LORA_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Advanced row for Video: Steps, CFG, Guidance, optional LoRA custom+scale */}
-                {advancedOpen && (
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">Steps</label>
-                      <select
-                        className={`w-[90px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={steps === '' ? '' : String(steps)}
-                        onChange={(e)=> setSteps(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[10,15,20,24,30,40,50].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">CFG</label>
-                      <select
-                        className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={cfgScale === '' ? '' : String(cfgScale)}
-                        onChange={(e)=> setCfgScale(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[1,2,3,4,5,6].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    <div className="grid gap-1">
-                      <label className="text-xs opacity-70">Guidance</label>
-                      <select
-                        className={`w-[100px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                        value={guidance === '' ? '' : String(guidance)}
-                        onChange={(e)=> setGuidance(e.target.value===''?'':Number(e.target.value))}
-                      >
-                        <option value="">Default</option>
-                        {[1.0,2.0,2.5,3.0,3.5,4.0,5.0].map(n=> (<option key={n} value={n}>{n}</option>))}
-                      </select>
-                    </div>
-                    {loraName==='Custom...' && (
-                      <>
-                        <input
-                          className={`w-[160px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          placeholder="lora file or hf path"
-                          value={loraName==='Custom...' ? '' : loraName}
-                          onChange={(e)=> setLoraName(e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          step="0.1"
-                          className={`w-[80px] rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                          value={loraScale === '' ? '' : String(loraScale)}
-                          onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
-                          title="LoRA Scale"
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your prompt..."
-              className={`min-h-[44px] flex-1 resize-y rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-            />
-            {/* Right-side vertical controls: Send above Upload */}
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleSend}
-                className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`}
-                title="Send"
-                aria-label="Send"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
-                  <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <label className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`} title="Attach image/video/pdf">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
-                  <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <input
-                  type="file"
-                  accept="image/*,video/*,application/pdf"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const dataUrl = String(reader.result || "");
-                      setAttached({ name: f.name, type: f.type, dataUrl });
-                    };
-                    reader.readAsDataURL(f);
-                  }}
-                />
-              </label>
-            </div>
-            </div>
-            {attached ? (
-              <div className="mt-2 flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded border p-2">
-                  {attached && attached.type.startsWith('image') ? (
-                    <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
-                  ) : attached && attached.type.startsWith('video') ? (
-                    <div className="h-12 w-12 overflow-hidden rounded border">
-                      <video src={attached.dataUrl} className="h-full w-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
-                      PDF
-                    </div>
-                  )}
-                  <div className="text-xs">
-                    <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
-                    <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
-                  </div>
-                </div>
+              {/* Overview (collapsible) */}
+              <div className={`rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
                 <button
-                  className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
-                  onClick={() => setAttached(null)}
-                >Remove</button>
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
+                  onClick={() => setDashOverviewOpen(v => !v)}
+                >
+                  <span className="font-medium">Overview</span>
+                  <span className={`text-xs ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>{dashOverviewOpen ? 'Hide' : 'Show'}</span>
+                </button>
+                {dashOverviewOpen && (
+                  <div className="px-4 pb-4">
+                    <div className="flex items-center gap-3">
+                      <img src={user?.imageUrl || '/readme/hero.png'} alt="avatar" className={`h-12 w-12 rounded-full object-cover ${darkMode ? 'border border-neutral-800' : 'border border-neutral-200'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate text-base font-semibold">{user?.fullName || 'Your Profile'}</div>
+                        <div className={`truncate text-xs ${darkMode ? 'text-neutral-400' : 'text-gray-600'}`}>{(user as any)?.primaryEmailAddress?.emailAddress || (user as any)?.username || ''}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-neutral-100 text-neutral-800'}`}>
+                          {creditInfo?.subscription_active && creditInfo?.subscription_plan ? (()=>{ const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim(); if (plan === 'one t') return 'ONE T'; if (plan === 'one z') return 'ONE Z'; if (plan === 'one pro') return 'ONE PRO'; return creditInfo?.subscription_plan; })() : 'Free'}
+                        </span>
+                        <Link href="/user" className={`text-xs rounded-full px-3 py-1 border transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-gray-50'}`}>Manage</Link>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div>
+                        <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Credits</div>
+                        <div className="text-base font-semibold">{creditInfo?.credits ?? '—'}</div>
+                      </div>
+                      <div>
+                        <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Plan</div>
+                        <div className="text-base font-semibold">{creditInfo?.subscription_active && creditInfo?.subscription_plan ? (()=>{ const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim(); if (plan === 'one t') return 'ONE T'; if (plan === 'one z') return 'ONE Z'; if (plan === 'one pro') return 'ONE PRO'; return creditInfo?.subscription_plan; })() : 'Free'}</div>
+                      </div>
+                      <div>
+                        <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Status</div>
+                        <div className="text-base font-semibold">{creditInfo?.subscription_active ? 'Active' : 'Free'}</div>
+                      </div>
+                      <div>
+                        <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Last Active</div>
+                        <div className="text-base font-semibold">{formatRelativeTime((user as any)?.lastSignInAt || (user as any)?.updatedAt || null)}</div>
+                      </div>
+                    </div>
+                    {/* Inline details (merged) */}
+                    <div className="mt-4 grid gap-2 text-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className={`${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Name</div>
+                        <div className="font-medium truncate">{user?.fullName || '—'}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className={`${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Email</div>
+                        <div className="font-medium truncate">{(user as any)?.primaryEmailAddress?.emailAddress || '—'}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className={`${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Username</div>
+                        <div className="font-medium truncate">{(user as any)?.username || '—'}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className={`${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>User ID</div>
+                        <div className="font-medium truncate">{(user as any)?.id || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : null}
-          </div>
-            </>
+
+              {/* Settings moved to modal opened by top-right icon */}
+
+              {/* Projects (collapsible) */}
+              <div className={`mt-4 rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
+                <button
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
+                  onClick={() => setDashProjectsOpen(v => !v)}
+                >
+                  <span className="font-medium">Projects</span>
+                  <span className={`text-xs ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>{dashProjectsOpen ? 'Hide' : 'Show'}</span>
+                </button>
+                {dashProjectsOpen && (
+                  <div className="px-4 pb-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-sm opacity-70">Your projects</div>
+                      <button
+                        className={`rounded border px-3 py-1 text-sm ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-black/5'}`}
+                        onClick={async () => {
+                          const title = prompt('New Project name');
+                          if (!title) return;
+                          try {
+                            const r = await fetch('/api/social-twin/projects', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' }, body: JSON.stringify({ title, data: {} }) });
+                            await r.json().catch(() => null);
+                            loadProjects();
+                          } catch {}
+                        }}
+                      >New Project</button>
+                    </div>
+                    {projectsLoading ? (
+                      <div className="text-sm opacity-70">Loading…</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {projects.map((p) => (
+                          <a
+                            key={p.id}
+                            href={`/social-twin?projectId=${encodeURIComponent(p.id)}`}
+                            className={`group flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 hover:bg-neutral-900' : 'bg-white/70 backdrop-blur-sm border-neutral-200 hover:bg-black/5'}`}
+                          >
+                            <div className={`relative w-40 sm:w-56 aspect-video overflow-hidden rounded-lg border ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-neutral-50'}`}>
+                              <img
+                                src={(p.thumbnail_url && p.thumbnail_url.startsWith('http')) ? p.thumbnail_url : (p.thumbnail_url || '/placeholder.png')}
+                                alt={p.title}
+                                className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                              />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="truncate text-sm font-medium" title={p.title}>{p.title || 'Untitled Project'}</div>
+                                <div className={`text-[11px] whitespace-nowrap ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                                  {new Date(p.updated_at || p.created_at).toLocaleString()} · {formatRelativeTime(p.updated_at || p.created_at)}
+                                </div>
+                              </div>
+                              <div className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                                <span className={`rounded border px-1.5 py-0.5 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'}`}>ID: {(p.id || '').slice(0, 8)}</span>
+                                {p.thumbnail_url ? (
+                                  <span className={`rounded border px-1.5 py-0.5 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'}`}>Preview</span>
+                                ) : (
+                                  <span className={`rounded border px-1.5 py-0.5 opacity-70 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'}`}>No preview</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className={`ml-1 opacity-60 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>›</div>
+                          </a>
+                        ))}
+                        {projects.length === 0 ? (
+                          <div className={`opacity-60 text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>No projects yet. After arranging items on the grid, click Save Project (or type "save project" in chat), then refresh this panel.</div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Details merged into Overview below */}
+            </div>
           )}
         </div>
       </section>
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'}`} onClick={() => setSettingsOpen(false)}>
+          <div className={`w-[92vw] max-w-xl rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+            <div className={`flex items-center justify-between px-4 py-3 ${darkMode ? 'border-b border-neutral-800' : 'border-b border-neutral-200'}`}>
+              <div className="text-sm font-medium">Settings</div>
+              <button className={`rounded p-1 ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'}`} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <div className="p-4 grid gap-3">
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Text RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={textUrl} onChange={(e) => setTextUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Ratio</label>
+                <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+                  <option value="">Select</option>
+                  {AR_CHOICES.map((ar) => (<option key={ar} value={ar}>{ar}</option>))}
+                </select>
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Image RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Image Modify RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={imageModifyUrl} onChange={(e) => setImageModifyUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Video RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">WAN Video RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoWanUrl} onChange={(e) => setVideoWanUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Kling Video RunPod URL</label>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoKlingUrl} onChange={(e) => setVideoKlingUrl(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <label className="text-sm font-medium">Character (LoRA)</label>
+                <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={isPresetLoRa(loraName) ? loraName : 'Custom...'} onChange={(e) => { const v = e.target.value; if (v === 'None') setLoraName(''); else if (v === 'Custom...') setLoraName(loraName || ''); else setLoraName(v); }}>
+                  {LORA_CHOICES.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
+                </select>
+                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="custom lora filename (optional)" value={loraName} onChange={(e) => setLoraName(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
+                  <label className="text-sm font-medium">LoRA Scale</label>
+                  <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="0.0 - 1.0" type="number" step="0.01" value={loraScale} onChange={(e) => setLoraScale(e.target.value === '' ? '' : Number(e.target.value))} />
+                </div>
+                <div className="grid gap-1">
+                  <label className="text-sm font-medium">Batch Size</label>
+                  <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={batchSize === '' ? '' : String(batchSize)} onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}>
+                    <option value="">Select</option>
+                    {BATCH_CHOICES.map((n) => (<option key={n} value={n}>{n}</option>))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
+                <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Canvas grid background */}
       {!simpleMode && (
-      <section
-        ref={gridSectionRef as any}
-        className="absolute inset-0 z-0 grid-canvas"
+  <section
+    ref={gridSectionRef as any}
+  className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-white'}`}
         style={{ cursor: gridEnabled ? 'grab' : undefined, overflow: 'hidden' }}
         onDragOver={(e)=>{ e.preventDefault(); }}
         onDrop={(e)=>{
@@ -1954,7 +3066,7 @@ export default function SocialTwinPage() {
               backgroundImage:
                 darkMode
                   ? 'linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)'
-                  : 'linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px)',
+                  : 'linear-gradient(to right, rgba(0,0,0,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.10) 1px, transparent 1px)',
               backgroundSize: '24px 24px, 24px 24px',
               backgroundPosition: `${(gridPan.x % 24)}px ${(gridPan.y % 24)}px`,
             } : {} }
@@ -1966,7 +3078,7 @@ export default function SocialTwinPage() {
             style={{ transform: `translate(${gridPan.x}px, ${gridPan.y}px) scale(${gridScale})`, transformOrigin: '0 0' }}
           >
           {/* Draggable/resizable items */}
-          {canvasItems.map((it, idx) => (
+          {canvasItems.filter(item => item.type !== 'operator').map((it, _idx) => (
             <DraggableResizableItem key={it.id} item={it} dark={darkMode} scale={gridScale} hoverPort={hoverPort}
               onChange={(ni)=>{
                 setCanvasItems((prev)=> prev.map(p=> p.id===ni.id ? ni : p));
@@ -1983,31 +3095,16 @@ export default function SocialTwinPage() {
               }}
             />
           ))}
-          {/* Operator nodes simple UI overlay */}
-          {canvasItems.filter(i=> i.type==='operator').map(op=> (
-            <div key={`op-ui-${op.id}`} style={{ position:'absolute', left: op.x, top: op.y - 28 }}>
-              <select className={`rounded border px-2 py-1 text-xs ${darkMode? 'bg-neutral-900 border-neutral-700 text-neutral-100':''}`}
-                value={op.operatorKind || 'compile'}
-                onChange={(e)=> setCanvasItems(prev=> prev.map(p=> p.id===op.id ? { ...p, operatorKind: (e.target.value as any) } : p))}
-              >
-                <option value="compile">Compile Video</option>
-                <option value="export-pdf">Export PDF</option>
-                <option value="publish">Publish/Save</option>
-              </select>
-              <button className={`ml-2 rounded border px-2 py-1 text-xs ${darkMode? 'border-neutral-700':''}`}
-                onClick={()=> executeOperator(op)}
-              >Execute</button>
-            </div>
-          ))}
           {/* Edges layer (overlayed above items) */}
           <svg className="absolute inset-0 pointer-events-none" width="100%" height="100%">
             {edges.map((edge)=>{
               const from = canvasItems.find(i=>i.id===edge.fromId);
               const to = canvasItems.find(i=>i.id===edge.toId);
               if (!from || !to) return null;
-              const fromX = edge.fromPort==='male' ? from.x+from.w : from.x;
+              // Fixed port positioning: male on right, female on left
+              const fromX = edge.fromPort==='male' ? from.x + from.w : from.x;
               const fromY = from.y + from.h/2;
-              const toX = edge.toPort==='female' ? to.x : to.x+to.w;
+              const toX = edge.toPort==='female' ? to.x : to.x + to.w;
               const toY = to.y + to.h/2;
               const t = linkAnim / 10;
               const d = buildWindPathLocal(fromX, fromY, toX, toY, t, 10, 14);
@@ -2024,10 +3121,10 @@ export default function SocialTwinPage() {
               setCanvasItems(prev=> [...prev, { id, type:'text', text:'Double-click to edit', fontIdx: 0, fontScale: 3.2, x: 80, y: 80, w: 320, h: 160 }]);
             }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M4 7h16M9 7v10m6-10v10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M4 7h16M9 7v10m6-10v10" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round"/></svg>
           </button>
           <label className="rounded-full p-3 shadow cursor-pointer" title="Upload">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round"/></svg>
             <input type="file" className="hidden" accept="image/*,video/*" onChange={(e)=>{
               const f = e.target.files?.[0]; if (!f) return;
               const reader = new FileReader();
@@ -2038,14 +3135,28 @@ export default function SocialTwinPage() {
           {/* Generate via current mini-prompt/input */}
           <button className="rounded-full p-3 shadow" title="Generate" onClick={()=>{ handleSend(); if (quickCreateOpen) setQuickCreateOpen(false); }}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <path d="M4 12h10M9 7l5 5-5 5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              <rect x="16" y="6" width="4" height="12" rx="1.2" stroke="#fff" strokeWidth="1.4"/>
+              <path d="M4 12h10M9 7l5 5-5 5" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="16" y="6" width="4" height="12" rx="1.2" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
             </svg>
           </button>
           <button className="rounded-full p-3 shadow" title="Create"
             onClick={()=> setQuickCreateOpen(true)}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 5v14m-7-7h14" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 5v14m-7-7h14" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          </button>
+          
+          {/* Storyboard to Video */}
+          <button 
+            className="rounded-full p-3 shadow bg-gradient-to-r from-purple-500 to-pink-500 text-white" 
+            title="Storyboard to Video"
+            onClick={() => setStoryboardOpen(true)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.8"/>
+              <path d="M8 21h8M12 17v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              <path d="M7 7h10M7 10h7M7 13h4" stroke="currentColor" strokeWidth="1.4"/>
+              <circle cx="17" cy="9" r="2" fill="currentColor"/>
+            </svg>
           </button>
         </div>
         )}
@@ -2055,19 +3166,17 @@ export default function SocialTwinPage() {
           <div className="fixed z-[10000]" style={{ left: menu.x, top: menu.y }}
                onClick={()=> setMenu({ open:false, x:0, y:0, targetId:null })}
           >
-            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white'}`} onClick={(e)=> e.stopPropagation()}>
-              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{ setMenu({ open:false, x:0, y:0, targetId:null }); }}>Close</button>
-                <div className="px-3 py-2 text-xs opacity-70">Clip settings</div>
-                <div className="px-3 pb-2 text-xs">
-                  <label className="mr-1">Transition (ms)</label>
-                  <input type="number" className={`w-24 rounded border px-1 py-0.5 ${darkMode? 'bg-neutral-800 border-neutral-700 text-neutral-100':''}`}
-                    onChange={(e)=>{ const v = Number(e.target.value)||0; if (menu.targetId) setEdges(prev=> prev.map(ed=> ed.fromId===menu.targetId ? { ...ed, transitionMs: v } : ed)); }} />
-                </div>
-                <div className="px-3 pb-2 text-xs">
-                  <label className="mr-1">Image duration (s)</label>
-                  <input type="number" step="0.1" className={`w-24 rounded border px-1 py-0.5 ${darkMode? 'bg-neutral-800 border-neutral-700 text-neutral-100':''}`}
-                    onChange={(e)=>{ const v = Number(e.target.value)||0; if (menu.targetId) setEdges(prev=> prev.map(ed=> ed.fromId===menu.targetId ? { ...ed, imageDurationSec: v } : ed)); }} />
-                </div>
+            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow relative ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white'}`} onClick={(e)=> e.stopPropagation()}>
+              {/* Minimal red close button */}
+              <button 
+                className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center hover:bg-red-500/20 rounded-full transition-colors"
+                onClick={()=> setMenu({ open:false, x:0, y:0, targetId:null })}
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" className="text-red-500">
+                  <path d="M1 1l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+              
               <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
                 if (menu.targetId) setCanvasItems(prev=> prev.filter(i=> i.id!==menu.targetId));
                 setMenu({ open:false, x:0, y:0, targetId:null });
@@ -2080,9 +3189,14 @@ export default function SocialTwinPage() {
                 setMenu({ open:false, x:0, y:0, targetId:null });
               }}>Duplicate</button>
               <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
-                if (menu.targetId) setCanvasItems(prev=> prev.map(i=> i.id===menu.targetId ? { ...i, type:'text', text: i.url || i.text || '' } : i));
+                if (menu.targetId) {
+                  const canvasItem = canvasItems.find(i=> i.id===menu.targetId);
+                  if (canvasItem && (canvasItem.type === 'image' || canvasItem.type === 'video')) {
+                    addCanvasImageToStoryboard(canvasItem);
+                  }
+                }
                 setMenu({ open:false, x:0, y:0, targetId:null });
-              }}>Convert to Text</button>
+              }}>Send to Storyboard</button>
                 {/* Export submenu */}
                 <div className="border-t my-1" />
                 <div className="px-3 py-1 text-xs opacity-70">Export</div>
@@ -2090,12 +3204,26 @@ export default function SocialTwinPage() {
                   if (!menu.targetId) return;
                   openCompileModalFromNode(menu.targetId);
                   setMenu({ open:false, x:0, y:0, targetId:null });
-                }}>Compiled Video</button>
+                }}>Create Video</button>
                 <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
                   if (!menu.targetId) return;
                   openComposeModalFromNode(menu.targetId);
                   setMenu({ open:false, x:0, y:0, targetId:null });
-                }}>Compose (PDF/PPT)</button>
+                }}>Compose PDF/PPT</button>
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                  if (!menu.targetId) return;
+                  {
+                    const target = canvasItems.find(i => i.id === menu.targetId);
+                    const t = target && (target.type === 'image' || target.type === 'video') ? (target.type as 'image'|'video') : 'image';
+                    folderModalPayload.current = {
+                      url: target?.url || '',
+                      type: t,
+                      prompt: target?.text || 'Saved from canvas'
+                    };
+                  }
+                  setFolderModalOpen(true);
+                  setMenu({ open:false, x:0, y:0, targetId:null });
+                }}>Save to Project</button>
             </div>
           </div>
         ) : null}
@@ -2114,13 +3242,13 @@ export default function SocialTwinPage() {
               {viewer.ref ? (
                 <div>
                   <div className="mb-1 text-xs opacity-70">Original</div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  
                   <img src={getDisplayUrl(viewer.ref)} alt="original" className="max-h-[70vh] w-full rounded border object-contain" />
                 </div>
               ) : null}
               <div>
                 <div className="mb-1 text-xs opacity-70">Result</div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                
                 <img src={getDisplayUrl(viewer.src)} alt="result" className="max-h-[70vh] w-full rounded border object-contain" />
                 {viewer.gallery && viewer.gallery.length>1 ? (
                   <div className="mt-2 flex gap-2 overflow-x-auto">
@@ -2156,21 +3284,6 @@ export default function SocialTwinPage() {
                 <option value="1:1">1:1</option>
                 <option value="9:16">9:16</option>
               </select>
-            </div>
-            <div className="mb-4">
-              <label className="mb-1 block text-sm">Background music</label>
-              <div className="flex gap-2">
-                <input className={`flex-1 rounded border px-2 py-1 text-sm ${darkMode?'bg-neutral-900 border-neutral-700':''}`} placeholder="https://.../track.mp3" value={compileAudio} onChange={(e)=> setCompileAudio(e.target.value)} />
-                <label className={`cursor-pointer rounded border px-2 py-1 text-sm ${darkMode?'border-neutral-700':''}`}>
-                  Upload
-                  <input type="file" accept="audio/*" className="hidden" onChange={async (e)=>{
-                    const f = e.target.files?.[0]; if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = ()=> setCompileAudio(String(reader.result||''));
-                    reader.readAsDataURL(f);
-                  }} />
-                </label>
-              </div>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700':''}`} onClick={(e)=> { e.preventDefault(); e.stopPropagation(); setCompileOpen(false); }}>Cancel</button>
@@ -2217,7 +3330,7 @@ export default function SocialTwinPage() {
                     {/* Simple preview: first image + texts */}
                     <div className="relative h-full w-full bg-white">
                       {pg.images[0] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
+                        
                         <img src={getDisplayUrl(pg.images[0].url)} alt="page" className="h-full w-full object-contain" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs opacity-60">No image</div>
@@ -2232,14 +3345,165 @@ export default function SocialTwinPage() {
                 <div className="col-span-2 text-sm opacity-70">No pages detected from chain. Connect images and text with the orange string and try again.</div>
               )}
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700':''}`} onClick={()=> setComposeOpen(false)}>Cancel</button>
-              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700':''}`} onClick={()=> runExportPDF()}>Export PDF</button>
-              <button type="button" className={`rounded bg-black px-3 py-1 text-sm text-white`} onClick={()=> runExportPPT()}>Export PPTX</button>
+            <div className="mt-4 flex justify-between gap-2">
+              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700 hover:bg-neutral-800 text-blue-400':'border-gray-400 hover:bg-gray-100 text-blue-600'}`} onClick={()=> {
+                // Switch to layout editor mode
+                const allMedia = getIncomingMedia(composeOriginId || '');
+                const imageInputs = allMedia.filter(i=> i.type==='image');
+                
+                if (imageInputs.length > 0) {
+                  const firstPage = {
+                    id: generateId(),
+                    items: imageInputs.map((img, idx) => ({
+                      id: generateId(),
+                      type: 'image' as const,
+                      url: img.url,
+                      x: 50 + (idx % 2) * 300,
+                      y: 50 + Math.floor(idx / 2) * 200,
+                      w: 250,
+                      h: 180
+                    }))
+                  };
+                  
+                  setPdfPages([firstPage]);
+                  setCurrentPage(0);
+                  setComposeOpen(false);
+                  setPdfEditorOpen(true);
+                } else {
+                  setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No images connected. Connect images using the orange string to use the layout editor.', createdAt: new Date().toISOString() }]);
+                }
+              }}>Layout editor</button>
+              <div className="flex gap-2">
+                <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700':''}`} onClick={()=> setComposeOpen(false)}>Cancel</button>
+                <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700':''}`} onClick={()=> runExportPDF()}>Export PDF</button>
+                <button type="button" className={`rounded bg-black px-3 py-1 text-sm text-white`} onClick={()=> runExportPPT()}>Export PPTX</button>
+              </div>
             </div>
           </div>
         </div>
       ) : null}
+      
+      {/* Generated Content Lightbox Viewer */}
+      {viewerOpen && viewerItem && (
+  <div className="fixed inset-0 z-[10050] bg-black/70 backdrop-blur-sm" onClick={() => setViewerOpen(false)}>
+          <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <button
+              onClick={() => setViewerOpen(false)}
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-colors flex items-center justify-center"
+            >
+              ✕
+            </button>
+            
+            {/* Main content area */}
+            <div className="max-w-[90vw] max-h-[90vh] flex flex-col items-center">
+              {/* Content display */}
+              <div className="relative mb-4">
+                {viewerItem.type === 'video' ? (
+                  <video
+                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(location.origin)) 
+                      ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
+                      : (viewerItem.display_url || viewerItem.result_url)}
+                    className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
+                    controls
+                    autoPlay
+                    loop
+                  />
+                ) : (
+                  <img
+                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(location.origin)) 
+                      ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
+                      : (viewerItem.display_url || viewerItem.result_url)}
+        className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
+                    alt="Generated content"
+                  />
+                )}
+              </div>
+      {/* Bottom action bar */}
+      <div className="flex flex-wrap gap-2 justify-center border-t border-white/10 pt-3">
+                <button
+                  onClick={() => {
+                    if (viewerItem.topic_id) {
+                      fetch(`/api/social-twin/topics/${viewerItem.topic_id}/feed`, { headers: { 'X-User-Id': userId || '' } })
+                        .then(r => r.json())
+                        .then(j => {
+                          const items = (j.items || []) as any[];
+                          const msgs = items.map((x: any) => ({ id: x.id, role: x.role, content: x.content, imageUrl: x.imageUrl, videoUrl: x.videoUrl, createdAt: x.createdAt }));
+                          setMessages(msgs);
+                          const ts = viewerItem.created_at || viewerItem.createdAt || null;
+                          if (ts) setTargetScrollTs(ts);
+                          setActiveTab('chat');
+                          setViewerOpen(false);
+                        });
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                >
+                  💬 Show in chat
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const url = viewerItem.display_url || viewerItem.result_url;
+                    folderModalPayload.current = { url: String(url), type: viewerItem.type, prompt: viewerItem.prompt } as any;
+                    setFolderModalOpen(true);
+                    setViewerOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                >
+                  📁 Add to project
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const url = viewerItem.display_url || viewerItem.result_url;
+                    if (typeof url === 'string') {
+                      setAttached({ name: 'generated-item', type: viewerItem.type === 'video' ? 'video/mp4' : 'image/png', dataUrl: url });
+                      setActiveTab('chat');
+                      setViewerOpen(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                >
+                  💭 Send to chat
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const url = viewerItem.display_url || viewerItem.result_url;
+                    if (typeof url === 'string') {
+                      addToCanvas(url, viewerItem.type === 'video' ? 'video' : 'image');
+                      setViewerOpen(false);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                >
+                  🎨 Send to canvas
+                </button>
+              </div>
+              
+              {/* Details toggle and metadata */}
+              {viewerItem.prompt ? (
+                <div className="mt-3 max-w-[60vw] text-center">
+                  <button
+                    onClick={() => setViewerDetailsOpen(v => !v)}
+                    className="mx-auto mb-2 inline-flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                  >
+                    {viewerDetailsOpen ? 'Hide details' : 'Show details'}
+                  </button>
+                  {viewerDetailsOpen && (
+                    <div className="text-neutral-400 text-xs bg-black/30 rounded-lg p-3 border border-neutral-800 text-left">
+                      <div className="opacity-70 mb-1">Prompt</div>
+                      <div className="whitespace-pre-wrap break-words">{viewerItem.prompt}</div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <FolderModal
         isOpen={folderModalOpen}
         onClose={()=> setFolderModalOpen(false)}
@@ -2255,12 +3519,22 @@ export default function SocialTwinPage() {
           });
         }}
       />
-      {/* Save Project floating button (appears when grid has new content) */}
-      {!simpleMode && showSaveProject ? (
+      {/* Save Project floating button (always visible when chat has content or grid has items) */}
+      {!simpleMode && (messages.length > 0 || canvasItems.length > 0) ? (
         <button
-          className={`fixed bottom-20 left-6 z-[10001] rounded-full px-4 py-2 text-sm shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'}`}
+          className={`fixed bottom-20 left-6 z-[10001] rounded-full px-4 py-2 text-sm shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'}`}
           onClick={()=> setProjectModalOpen(true)}
-        >Save Project</button>
+          title="Save both chat conversation and grid layout"
+        >
+          <span className="inline-flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="shrink-0">
+              <path d="M4 7a2 2 0 012-2h8l4 4v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.6" fill="none"/>
+              <path d="M8 7h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              <rect x="8" y="12" width="8" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6"/>
+            </svg>
+            <span className="truncate max-w-[24ch]" title={currentProjectTitle || 'Save Project'}>{currentProjectTitle || 'Save Project'}</span>
+          </span>
+        </button>
       ) : null}
       <ProjectModal
         isOpen={projectModalOpen}
@@ -2271,6 +3545,56 @@ export default function SocialTwinPage() {
         existingTitle={currentProjectTitle || undefined}
         dark={darkMode}
       />
+      
+      {/* Welcome Modal */}
+      {showWelcomeModal && (
+        <div className="fixed inset-0 z-[10100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowWelcomeModal(false)} />
+          <div className={`relative rounded-2xl border p-8 max-w-md w-full mx-4 ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-200'}`}>
+            <h2 className="text-2xl font-bold mb-4">Welcome to Social Twin! 🎨</h2>
+            <p className={`mb-6 text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+              Start creating with AI-powered content generation and visual project organization. 
+              Would you like to begin a new project or continue with an existing one?
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                className={`w-full rounded-lg border-2 border-dashed p-4 text-left transition-colors ${darkMode ? 'border-neutral-600 hover:border-neutral-500 hover:bg-neutral-800' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50'}`}
+                onClick={() => {
+                  setShowWelcomeModal(false);
+                  // Stay on current page - user can start chatting immediately
+                }}
+              >
+                <div className="font-semibold">✨ Start New Project</div>
+                <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                  Begin fresh with AI chat and visual canvas
+                </div>
+              </button>
+              
+              <button
+                className={`w-full rounded-lg border p-4 text-left transition-colors ${darkMode ? 'border-neutral-600 hover:border-neutral-500 hover:bg-neutral-800' : 'border-neutral-300 hover:border-neutral-400 hover:bg-neutral-50'}`}
+                onClick={() => {
+                  setShowWelcomeModal(false);
+                  setActiveTab('dashboard');
+                  setDashProjectsOpen(true);
+                }}
+              >
+                <div className="font-semibold">📁 Open Existing Project</div>
+                <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                  Continue with saved chat history and layouts
+                </div>
+              </button>
+            </div>
+            
+            <button
+              className={`mt-6 text-xs ${darkMode ? 'text-neutral-500 hover:text-neutral-400' : 'text-neutral-400 hover:text-neutral-600'}`}
+              onClick={() => setShowWelcomeModal(false)}
+            >
+              Skip - I'll decide later
+            </button>
+          </div>
+        </div>
+      )}
       {simpleMode && sidebarOpen && (
         <aside className={`fixed left-0 top-0 z-[10000] h-screen w-60 border-r ${darkMode ? 'bg-neutral-950 border-neutral-800 text-neutral-100' : 'bg-white'}`}>
           <div className="p-3 border-b flex items-center justify-between">
@@ -2317,10 +3641,10 @@ export default function SocialTwinPage() {
         const n1 = amp * Math.sin(t + 0.3);                    // normal offsets
         const n2 = amp * Math.sin(t + 2.1);
         // base control points at 1/3 and 2/3 along the segment
-        let c1x = sx + dx * 0.33 + nx * n1 + ux * j1;
-        let c1y = sy + dy * 0.33 + ny * n1 + uy * j1;
-        let c2x = sx + dx * 0.66 + nx * n2 + ux * j2;
-        let c2y = sy + dy * 0.66 + ny * n2 + uy * j2;
+        const c1x = sx + dx * 0.33 + nx * n1 + ux * j1;
+        const c1y = sy + dy * 0.33 + ny * n1 + uy * j1;
+        const c2x = sx + dx * 0.66 + nx * n2 + ux * j2;
+        const c2y = sy + dy * 0.66 + ny * n2 + uy * j2;
         const d = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
         return (
           <svg className="pointer-events-none fixed inset-0 z-[9999]" width="100%" height="100%">
@@ -2334,12 +3658,12 @@ export default function SocialTwinPage() {
       {quickCreateOpen ? (
         <div className="fixed inset-0 z-[10000]" onClick={()=> setQuickCreateOpen(false)}>
           <div
-            className="absolute w-[360px] rounded-xl border bg-white p-3 shadow-xl text-black"
+            className={`absolute w-[520px] rounded-2xl border p-4 shadow-2xl max-h-[80vh] overflow-y-auto bg-white border-neutral-200 text-black`}
             style={{ left: quickCreatePos.x, top: quickCreatePos.y }}
             onClick={(e)=> e.stopPropagation()}
           >
             <div
-              className="mb-2 flex cursor-move items-center justify-between"
+              className="mb-3 flex cursor-move items-center justify-between"
               onMouseDown={(e)=>{
                 e.preventDefault();
                 const startX = e.clientX; const startY = e.clientY;
@@ -2347,7 +3671,13 @@ export default function SocialTwinPage() {
                 quickCreateDragRef.current = { dragging: true, offX, offY };
                 const move = (ev: MouseEvent)=>{
                   if (!quickCreateDragRef.current?.dragging) return;
-                  setQuickCreatePos({ x: ev.clientX - offX, y: ev.clientY - offY });
+                  const panelW = 520; // matches w-[520px]
+                  const panelH = 520; // approximate height
+                  const vw = window.innerWidth;
+                  const vh = window.innerHeight;
+                  const nextX = Math.min(Math.max(8, ev.clientX - offX), Math.max(8, vw - panelW - 8));
+                  const nextY = Math.min(Math.max(8, ev.clientY - offY), Math.max(8, vh - panelH - 8));
+                  setQuickCreatePos({ x: nextX, y: nextY });
                 };
                 const up = ()=>{
                   if (quickCreateDragRef.current) quickCreateDragRef.current.dragging = false;
@@ -2358,36 +3688,640 @@ export default function SocialTwinPage() {
                 window.addEventListener('mouseup', up);
               }}
             >
-              <div className="px-1 text-sm font-medium">Quick Create</div>
-              <button className="rounded px-2 py-1 text-xs" onClick={()=> setQuickCreateOpen(false)}>✕</button>
+              <div className="flex items-center gap-3">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-black/90">
+                  <rect x="3" y="3" width="18" height="18" rx="6" fill="#ffffff" stroke="#e6e6e6" strokeWidth="1" />
+                  <path d="M7 12h10M7 8h10M7 16h6" stroke="#111827" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div>
+                  <div className="text-sm font-semibold text-black">Creator Studio</div>
+                  <div className="text-xs text-neutral-500">Create images, video & documents — fast</div>
+                </div>
+              </div>
+              <button className="rounded-md p-1 hover:bg-neutral-100" onClick={()=> setQuickCreateOpen(false)} aria-label="Close Creator Studio">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 6l12 12M6 18L18 6" stroke="#374151" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
-            <div className="mb-2 flex items-end gap-2">
-              {/* Mode selection removed here to avoid duplicate dropdowns; use main header Mode */}
-              {mode==='image' || mode==='image-modify' ? (
+
+            {/* Mode Selection (segmented icons) */}
+            <div className="mb-3">
+              <div className="text-xs font-medium mb-1 opacity-80">Mode</div>
+              <div className="inline-flex items-center gap-1 rounded-lg border p-1 border-neutral-200">
+                <button
+                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='text' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
+                  onClick={()=> setMode('text')}
+                  title="Text"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6h12M6 12h10M6 18h8" stroke="#111" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Text</span>
+                </button>
+                <button
+                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='image' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
+                  onClick={()=> setMode('image')}
+                  title="Image"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="#111" strokeWidth="1.4"/><path d="M7 13l3-3 5 5" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Image</span>
+                </button>
+                <button
+                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='image-modify' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
+                  onClick={()=> setMode('image-modify')}
+                  title="Modify"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 10-10a2.5 2.5 0 013.5 0l1.5 1.5a2.5 2.5 0 010 3.5L17.5 21 3 21z" stroke="#111" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Modify</span>
+                </button>
+                <button
+                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='video' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
+                  onClick={()=> setMode('video')}
+                  title="Video"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke="#111" strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span>Video</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Saved Templates (dropdown) */}
+            {(() => {
+              if (typeof window === 'undefined') return null;
+              const templates = JSON.parse(localStorage.getItem('creatorTemplates') || '{}');
+              const templateNames = Object.keys(templates);
+              if (templateNames.length === 0) return null;
+              return (
+                <div className="mb-3 space-y-1">
+                  <label className="text-xs font-semibold">Content templates</label>
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={quickTemplateSel}
+                      onChange={(e)=>{
+                        const name = e.target.value; setQuickTemplateSel(name);
+                        if (name && templates[name]) {
+                          const t = templates[name];
+                          setInput(t.prompt || '');
+                          if (t.mode) setMode(t.mode);
+                          if (t.aspectRatio) setAspectRatio(t.aspectRatio);
+                          if (t.batchSize!=null) setBatchSize(t.batchSize);
+                        }
+                      }}
+                      className={`flex-1 rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-200'}`}
+                    >
+                      <option value="">Select template…</option>
+                      {templateNames.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                    </select>
+                    {quickTemplateSel && (
+                      <button
+                        onClick={()=>{
+                          const t = JSON.parse(localStorage.getItem('creatorTemplates') || '{}');
+                          delete t[quickTemplateSel];
+                          localStorage.setItem('creatorTemplates', JSON.stringify(t));
+                          setQuickTemplateSel('');
+                          // quick refresh by toggling
+                          setQuickCreateOpen(false); setTimeout(()=> setQuickCreateOpen(true), 80);
+                        }}
+                        className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
+                        title="Delete template"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Basic Controls */}
+            <div className="mb-3 grid gap-2" style={{ gridTemplateColumns: (mode === 'image' || mode === 'image-modify') ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+              {(mode === 'image' || mode === 'image-modify') ? (
                 <>
-                  <select value={aspectRatio} onChange={(e)=> setAspectRatio(e.target.value)} className="rounded border px-2 py-1 text-sm">
-                    <option value="">AR</option>
-                    {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
-                  </select>
-                  <select value={batchSize===''?'':String(batchSize)} onChange={(e)=> setBatchSize(e.target.value===''?'':Number(e.target.value))} className="rounded border px-2 py-1 text-sm">
-                    <option value="">Qty</option>
-                    {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
-                  </select>
+                  <div>
+                    <label className="text-xs font-medium opacity-80">Aspect Ratio</label>
+                    <select value={aspectRatio} onChange={(e)=> setAspectRatio(e.target.value)} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}>
+                      <option value="">Auto</option>
+                      {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium opacity-80">Quantity</label>
+                    <select value={batchSize===''?'':String(batchSize)} onChange={(e)=> setBatchSize(e.target.value===''?'':Number(e.target.value))} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}>
+                      <option value="">1</option>
+                      {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium opacity-80">Character</label>
+                    <select
+                      value={isPresetLoRa(loraName) ? loraName : 'Custom...'}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === 'None') setLoraName('');
+                        else if (v === 'Custom...') setLoraName(loraName || '');
+                        else setLoraName(v);
+                      }}
+                      className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}
+                    >
+                      {LORA_CHOICES.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
                 </>
               ) : null}
-              {mode==='text' ? (
-                <select value={textProvider} onChange={(e)=> setTextProvider(e.target.value as any)} className="rounded border px-2 py-1 text-sm">
-                  <option value="social">Social</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="deepseek">DeepSeek</option>
-                </select>
+              {mode === 'text' ? (
+                <div className="col-span-2">
+                  <label className="text-xs font-medium opacity-80">Content type</label>
+                  <select
+                    value={quickTextCategory}
+                    onChange={(e)=> setQuickTextCategory(e.target.value as any)}
+                    className="w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black"
+                  >
+                    <option value="instagram">Instagram</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="twitter">Twitter/X</option>
+                    <option value="email">Email</option>
+                    <option value="youtube">YouTube</option>
+                  </select>
+                </div>
+              ) : null}
+              {(mode === 'image') && (
+                <div className="col-span-2">
+                  <div className="text-xs font-medium opacity-80 mb-1">Style</div>
+                  <div className="inline-flex rounded-md overflow-hidden border">
+                    {([
+                      {id:'cinematic', label:'Cinematic'},
+                      {id:'ultra', label:'Ultra realistic'},
+                      {id:'cool', label:'Cool'},
+                    ] as const).map((t)=> (
+                      <button
+                        key={t.id}
+                        onClick={()=> setQuickImageStyle(t.id)}
+                        className={`px-2 py-1 text-xs ${quickImageStyle===t.id ? (darkMode?'bg-neutral-800 text-white':'bg-neutral-100') : (darkMode?'bg-neutral-900 text-neutral-200':'bg-white text-neutral-700')} border-r last:border-r-0 ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Per-style quick presets: 6 equal-size buttons */}
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {(quickImageStyle === 'cinematic' ? [
+                      'cinematic portrait, dramatic lighting',
+                      'cinematic landscape, golden hour',
+                      'cinematic product shot, studio grade',
+                      'cinematic street scene, moody tones',
+                      'cinematic wide shot, shallow depth of field',
+                      'cinematic close-up, film grain',
+                    ] : quickImageStyle === 'ultra' ? [
+                      'ultra realistic portrait, detailed skin texture',
+                      'ultra realistic product photo, crisp reflections',
+                      'ultra realistic food photo, natural lighting',
+                      'ultra realistic architectural exterior, sharp lines',
+                      'ultra realistic macro detail, complex textures',
+                      'ultra realistic fashion editorial, natural fabric',
+                    ] : quickImageStyle === 'cool' ? [
+                      'cool neon cyberpunk scene, teal/purple',
+                      'cool minimal poster, bold geometry',
+                      'cool editorial portrait, high key',
+                      'cool abstract gradients, soft glow',
+                      'cool tech product hero, blue accents',
+                      'cool street fashion, crisp tones',
+                    ] : []).map((txt, idx) => (
+                      <button
+                        key={idx}
+                        onClick={()=> setInput(txt)}
+                        className={`h-9 rounded border text-xs px-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-900' : 'border-neutral-200 hover:bg-neutral-50'}`}
+                        title={txt}
+                      >
+                        <div className="truncate">{txt}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {mode === 'text' ? (
+                <div className="col-span-2">
+                  <label className="text-xs font-medium opacity-80">Provider</label>
+                  <select value={textProvider} onChange={(e)=> setTextProvider(e.target.value as any)} className="w-full rounded border px-2 py-1 text-sm">
+                    <option value="social">Social</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="deepseek">DeepSeek</option>
+                  </select>
+                </div>
               ) : null}
             </div>
-            <textarea value={input} onChange={(e)=> setInput(e.target.value)} placeholder="Quick prompt..." className="mb-2 h-24 w-full resize-none rounded border p-2 text-sm text-black" />
-            <div className="flex justify-end gap-2">
-              <button className="rounded border px-3 py-1 text-sm" onClick={()=> setQuickCreateOpen(false)}>Cancel</button>
-              <button className="rounded bg-black px-3 py-1 text-sm text-white" onClick={()=>{ handleSend(); setQuickCreateOpen(false); }}>Generate</button>
+
+            {/* Advanced toggles moved to bottom (after input/buttons) */}
+            {/* Advanced Controls placeholder - moved below */}
+            {/* (content removed here) */}
+            
+
+            {/* Attachment Preview */}
+            {attached && (
+              <div className="mb-3 rounded border p-2 bg-blue-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-blue-700">{attached.name}</span>
+                  <button onClick={() => setAttached(null)} className="text-xs text-red-600 hover:underline">Remove</button>
+                </div>
+              </div>
+            )}
+
+            {/* Built-in text templates removed in favor of dropdowns */}
+
+            {/* Quick presets (dropdown by mode) - hidden for image (uses style presets). Text mode presets are category-driven. */}
+            {mode !== 'image' && (
+            <div className="mb-3 space-y-1">
+              <label className="text-xs font-semibold">Quick presets</label>
+              <select
+                value={quickPresetSel}
+                onChange={(e)=>{
+                  const v = e.target.value; setQuickPresetSel(v);
+                  if (!v) return;
+                  const byText: Record<string, Record<string,string>> = {
+                    instagram: {
+                      caption_short: 'Write a short Instagram caption about [topic]. Include 3-5 relevant hashtags and a subtle CTA.',
+                      caption_story: 'Write an engaging Instagram Story caption for [topic], with a hook and a clear swipe-up CTA.',
+                      carousel_outline: 'Create a 5-slide Instagram carousel outline for [topic], each slide title and 1-2 bullets.',
+                      reel_script: 'Write a 20-second Instagram Reel script about [topic] with 3 beats and a final CTA.',
+                      hooks_list: 'List 10 strong hooks for an Instagram post about [topic].',
+                      hashtags: 'Suggest 20 niche and relevant hashtags for [topic].',
+                    },
+                    linkedin: {
+                      post: 'Write a LinkedIn post about [topic] that is professional, insightful, and actionable.',
+                      thought_leadership: 'Write a thought-leadership LinkedIn post on [topic] with data points and a question to drive comments.',
+                      carousel_outline: 'Create a 6-slide LinkedIn carousel outline about [topic], slide titles + bullets.',
+                      headline_variations: 'Generate 10 LinkedIn post headlines for [topic] with different angles.',
+                      poll: 'Draft a LinkedIn poll for [topic] with 4 answer options and a short intro.',
+                      dm_template: 'Write a short LinkedIn DM template to reach out about [topic].',
+                    },
+                    twitter: {
+                      thread5: 'Write a 5-tweet Twitter/X thread on [topic]. Start with a strong hook and end with a CTA.',
+                      hooks: 'List 10 tweet hooks for [topic].',
+                      summary: 'Summarize [topic] into 7 concise tweets with emojis removed.',
+                      reply: 'Draft a thoughtful reply to a tweet about [topic] adding value and a question.',
+                      announcement: 'Write a product announcement tweet about [topic] with benefits and a short CTA.',
+                      call_to_action: 'Write 10 short CTAs suitable for Twitter/X to promote [topic].',
+                    },
+                    email: {
+                      subject_lines: 'Write 20 email subject lines for [topic] optimized for opens.',
+                      preview_texts: 'Write 10 email preheader/preview texts for [topic].',
+                      short_email: 'Write a short announcement email about [topic], 120-160 words.',
+                      nurture_email: 'Write a nurture email about [topic] with 3 sections and a soft CTA.',
+                      promo_email: 'Write a promotional email for [topic] with clear benefits and urgency.',
+                      cta_variations: 'Write 15 concise email CTA variations for [topic].',
+                    },
+                    youtube: {
+                      description: 'Write a YouTube description for [topic], include timestamps, keywords, and subscribe CTA.',
+                      title_ideas: 'Generate 15 YouTube title ideas for [topic], clickable and clear.',
+                      tags: 'Provide 25 SEO-friendly tags for a YouTube video about [topic].',
+                      outline: 'Create a YouTube video outline for [topic] with segments and key talking points.',
+                      shorts_script: 'Write a 30-second YouTube Shorts script for [topic] with a hook and punchy ending.',
+                      thumbnail_text: 'Suggest 10 short thumbnail text options for [topic] (max 4 words each).',
+                    },
+                  };
+                  const byMode: Record<string, Record<string, string>> = {
+                    text: byText[quickTextCategory] || {},
+                    'image-modify': {
+                      restore: 'Restore and enhance this image: improve clarity, remove noise, fix colors',
+                      stylize: 'Apply a cinematic color grade and modern art style to this image',
+                    },
+                    video: {
+                      close: 'Close shot, subject centered, rich details, smooth motion',
+                      wide: 'Wide shot, expansive scene, balanced composition, smooth motion',
+                      side: 'Side profile shot, clean background, subtle parallax',
+                      profile: 'Profile shot, neutral background, cinematic lighting',
+                      cinematic: 'Cinematic composition, shallow depth of field, filmic look',
+                      ultra: 'Ultra realistic, detailed textures, natural motion and lighting',
+                    }
+                  };
+                  const table = (byMode as any)[mode] || {};
+                  const text = table[v] || '';
+                  if (text) setInput(text);
+                }}
+                className={`w-full rounded border px-2 py-1 text-xs bg-white border-neutral-200 text-black`}
+              >
+                <option value="">Select preset…</option>
+                {(() => {
+                  if (mode === 'text') {
+                    const labels: Record<string, Record<string,string>> = {
+                      instagram: { caption_short:'caption (short)', caption_story:'caption (story)', carousel_outline:'carousel outline', reel_script:'reel script', hooks_list:'hooks list', hashtags:'hashtags' },
+                      linkedin: { post:'post', thought_leadership:'thought leadership', carousel_outline:'carousel outline', headline_variations:'headline ideas', poll:'poll', dm_template:'DM template' },
+                      twitter: { thread5:'thread (5)', hooks:'hooks list', summary:'summary', reply:'reply', announcement:'announcement', call_to_action:'CTAs' },
+                      email: { subject_lines:'subject lines', preview_texts:'preview texts', short_email:'short email', nurture_email:'nurture email', promo_email:'promo email', cta_variations:'CTA variations' },
+                      youtube: { description:'description', title_ideas:'title ideas', tags:'tags', outline:'outline', shorts_script:'shorts script', thumbnail_text:'thumbnail text' },
+                    };
+                    return Object.entries(labels[quickTextCategory] || {}).map(([k,v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ));
+                  }
+                  const labelsOther: Record<string, Record<string,string>> = {
+                    'image-modify': { restore: 'restore', stylize: 'stylize' },
+                    video: { close: 'close shot', wide: 'wide shot', side: 'side profile', profile: 'profile', cinematic: 'cinematic', ultra: 'ultra realistic' },
+                  };
+                  return Object.entries(labelsOther[mode as 'image-modify'|'video'] || {}).map(([k,v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ));
+                })()}
+              </select>
             </div>
+            )}
+
+            {/* Main Input */}
+            <textarea 
+              value={input} 
+              onChange={(e)=> setInput(e.target.value)} 
+              placeholder="Describe what you want to create..." 
+              className="mb-3 h-32 w-full resize-none rounded border p-3 text-sm" 
+            />
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {/* File Attachment */}
+                <label className="cursor-pointer rounded-md px-3 py-1 text-sm border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center gap-2" title="Attach file">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#111827" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M17 3l4 4M21 3l-4 4" stroke="#111827" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-xs text-neutral-700">Attach</span>
+                  <input
+                    type="file"
+                    accept="image/*,video/*,application/pdf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const dataUrl = String(reader.result || '');
+                        setAttached({ name: f.name, type: f.type, dataUrl });
+                      };
+                      reader.readAsDataURL(f);
+                    }}
+                  />
+                </label>
+
+                {/* Send to Canvas Toggle */}
+                <button 
+                  onClick={() => setSendToCanvas(!sendToCanvas)}
+                  className={`rounded-md px-3 py-1 text-sm border ${sendToCanvas ? 'bg-neutral-100 border-neutral-300 text-black' : 'border-neutral-200 hover:bg-neutral-50'}`}
+                  title="Send result to canvas"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="inline mr-1">
+                    <path d="M12 5v14M5 12h14" stroke={sendToCanvas ? '#2563EB' : '#374151'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-xs">Canvas</span>
+                </button>
+
+                {/* Batch Generate for Creators */}
+                <button 
+                  onClick={async () => {
+                    if (!canAffordGeneration) return;
+                    // Generate 3 variations with slight prompt modifications
+                    const basePrompt = input.trim();
+                    if (!basePrompt) return;
+                    
+                    const variations = [
+                      basePrompt,
+                      basePrompt + ", style variation 1",
+                      basePrompt + ", style variation 2"
+                    ];
+                    
+                    for (const prompt of variations) {
+                      setInput(prompt);
+                      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+                      handleSend();
+                      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait between generations
+                    }
+                    setInput(basePrompt); // Reset to original
+                  }}
+                  className={`rounded border px-3 py-1 text-xs ${canAffordGeneration ? 'hover:bg-neutral-50 border-neutral-300' : 'opacity-50 cursor-not-allowed'}`}
+                  title="Generate 3 variations"
+                  disabled={!canAffordGeneration}
+                >
+                  3x batch
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <button className="rounded border px-3 py-1 text-xs hover:bg-neutral-50" onClick={()=> setQuickCreateOpen(false)}>Cancel</button>
+                
+                {/* Template Save */}
+                <button 
+                  onClick={() => {
+                    if (typeof window === 'undefined') return;
+                    const templateName = prompt('Save as template:');
+                    if (templateName && input.trim()) {
+                      const templates = JSON.parse(localStorage.getItem('creatorTemplates') || '{}');
+                      templates[templateName] = {
+                        prompt: input,
+                        mode,
+                        aspectRatio,
+                        batchSize,
+                        timestamp: Date.now()
+                      };
+                      localStorage.setItem('creatorTemplates', JSON.stringify(templates));
+                    }
+                  }}
+                  className="rounded border px-3 py-1 text-xs hover:bg-neutral-50 border-neutral-300"
+                  title="Save current settings as template"
+                >
+                  Save template
+                </button>
+
+                <button 
+                  className={`rounded px-4 py-1 text-xs text-white ${canAffordGeneration ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`} 
+                  onClick={()=>{ 
+                    if (!canAffordGeneration) return; 
+                    // Apply quick image style if any
+                    if ((mode==='image') && quickImageStyle && input.trim()) {
+                      const styleMap: Record<string,string> = {
+                        cinematic: 'cinematic, shallow depth of field, dramatic lighting',
+                        ultra: 'ultra realistic, detailed textures, photorealistic',
+                        cool: 'cool tone, modern aesthetic, crisp lighting',
+                      } as const;
+                      const s = (styleMap as any)[quickImageStyle];
+                      if (s) setInput(prev => prev.includes(s) ? prev : `${prev}, ${s}`);
+                    }
+                    handleSend(); setQuickCreateOpen(false); 
+                  }}
+                  disabled={!canAffordGeneration}
+                  title={canAffordGeneration ? 'Generate' : `Need ${generationCost} credits`}
+                >
+                  Generate (~{generationCost})
+                </button>
+              </div>
+            </div>
+
+            {/* Advanced Settings Toggle (now last) */}
+            <button
+              onClick={() => setShowQuickAdvanced(!showQuickAdvanced)}
+              className={`mt-3 mb-2 flex w-full items-center justify-between rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-900' : 'hover:bg-gray-50'}`}
+            >
+              <span>Advanced settings</span>
+              <span>{showQuickAdvanced ? '▼' : '▶'}</span>
+            </button>
+
+            {/* Advanced Controls */}
+            {showQuickAdvanced && (
+              <div className={`mb-1 space-y-3 rounded border p-3 ${darkMode ? 'bg-neutral-900/60 border-neutral-700' : 'bg-gray-50 border-neutral-200'}`}>
+                {/* Advanced Parameters for Image/Video */}
+                {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-xs font-medium opacity-80">CFG Scale</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="Auto"
+                        value={cfgScale}
+                        onChange={(e) => setCfgScale(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-full rounded border px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium opacity-80">Guidance</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="Auto"
+                        value={guidance}
+                        onChange={(e) => setGuidance(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-full rounded border px-2 py-1 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium opacity-80">Steps</label>
+                      <input
+                        type="number"
+                        placeholder="Auto"
+                        value={steps}
+                        onChange={(e) => setSteps(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-full rounded border px-2 py-1 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* LoRA Character Controls */}
+                {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold">Character (LoRA)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium opacity-80">Character</label>
+                        <select
+                          value={isPresetLoRa(loraName) ? loraName : 'Custom...'}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === 'None') setLoraName('');
+                            else if (v === 'Custom...') setLoraName(loraName || '');
+                            else setLoraName(v);
+                          }}
+                          className="w-full rounded border px-2 py-1 text-xs"
+                        >
+                          {LORA_CHOICES.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium opacity-80">Strength</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="1"
+                          placeholder="0.0-1.0"
+                          value={loraScale}
+                          onChange={(e) => setLoraScale(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full rounded border px-2 py-1 text-xs"
+                        />
+                      </div>
+                    </div>
+                    {loraName && !isPresetLoRa(loraName) && (
+                      <div>
+                        <label className="text-xs font-medium opacity-80">Custom LoRA File</label>
+                        <input
+                          type="text"
+                          placeholder="character.safetensors"
+                          value={loraName}
+                          onChange={(e) => setLoraName(e.target.value)}
+                          className="w-full rounded border px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Workflow summary like the main prompt box */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold opacity-90">Workflow</label>
+                  {mode === 'text' && (
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'social', name: 'Social AI', desc: 'Fast & creative' },
+                        { id: 'openai', name: 'OpenAI', desc: 'Advanced reasoning' },
+                        { id: 'deepseek', name: 'DeepSeek', desc: 'Code & analysis' },
+                      ].map((provider) => (
+                        <button
+                          key={provider.id}
+                          onClick={() => setTextProvider(provider.id as any)}
+                          className={`rounded-lg px-3 py-2 text-xs transition-all ${
+                            textProvider === provider.id
+                              ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                              : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
+                          }`}
+                        >
+                          <div className="font-medium">{provider.name}</div>
+                          <div className="opacity-75">{provider.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {mode === 'image' && (
+                    <div className="rounded-lg border p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 border-neutral-300">
+                      <div className="text-xs font-medium mb-1">Socialtwin-Image.json</div>
+                      <div className="text-xs opacity-75">SD3 • High-res • Creative compositions</div>
+                    </div>
+                  )}
+                  {mode === 'image-modify' && (
+                    <div className="rounded-lg border p-3 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/30 dark:to-yellow-900/30 border-neutral-300">
+                      <div className="text-xs font-medium mb-1">SocialTwin-Modify.json</div>
+                      <div className="text-xs opacity-75">SD3 • Image transformation • Style transfer</div>
+                    </div>
+                  )}
+                  {mode === 'video' && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'ltxv', name: 'LTXV', desc: 'Lightning fast', workflows: 'LTXV-TEXT/IMAGE' },
+                          { id: 'wan', name: 'WAN', desc: 'Smooth motion', workflows: 'Wan-text/image' },
+                        ].map((model) => (
+                          <button
+                            key={model.id}
+                            onClick={() => setVideoModel(model.id as any)}
+                            className={`rounded-lg p-2 text-xs transition-all ${
+                              videoModel === model.id
+                                ? (darkMode ? 'bg-emerald-600 text-white' : 'bg-emerald-500 text-white')
+                                : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
+                            }`}
+                          >
+                            <div className="font-medium">{model.name}</div>
+                            <div className="opacity-75">{model.desc}</div>
+                            <div className="text-[10px] opacity-60 mt-1">{model.workflows}</div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className={`text-xs p-2 rounded ${darkMode ? 'bg-neutral-800' : 'bg-gray-100 border border-neutral-300'}`}>
+                        <span className="opacity-60">Active: </span>
+                        <span className="font-mono">{attached?.type?.startsWith('image') ? (videoModel === 'wan' ? 'Wan-Image-video.json' : 'LTXIMAGETOVIDEO.json') : (videoModel === 'wan' ? 'Wan-text-video.json' : 'LTXV-TEXT_VIDEO.json')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : null}
@@ -2396,37 +4330,9 @@ export default function SocialTwinPage() {
       <div className="fixed bottom-4 left-6 z-40 flex items-center gap-2">
         <button className="rounded-full p-2 shadow" title={gridEnabled ? 'Hide Grid' : 'Show Grid'} onClick={()=>setGridEnabled(v=>!v)}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-            <path d="M4 4h16v16H4z M8 4v16 M16 4v16 M4 8h16 M4 16h16" stroke="#fff" strokeWidth="1.4"/>
+            <path d="M4 4h16v16H4z M8 4v16 M16 4v16 M4 8h16 M4 16h16" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
           </svg>
         </button>
-        {gridEnabled ? (
-          <>
-            <button className="rounded-full p-2 shadow" title={gridLinesOn ? 'Hide Lines' : 'Show Lines'} onClick={()=>setGridLinesOn(v=>!v)}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <path d="M4 12h16" stroke="#fff" strokeWidth="1.4"/>
-              </svg>
-            </button>
-            <button className="rounded-full p-2 shadow" title="Zoom In" onClick={()=>setGridScale(s=> Math.min(3, +(s+0.1).toFixed(2)))}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <circle cx="10" cy="10" r="6" stroke="#fff" strokeWidth="1.4"/>
-                <path d="M10 7v6M7 10h6" stroke="#fff" strokeWidth="1.4"/>
-                <path d="M14.5 14.5L20 20" stroke="#fff" strokeWidth="1.4"/>
-              </svg>
-            </button>
-            <button className="rounded-full p-2 shadow" title="Zoom Out" onClick={()=>setGridScale(s=> Math.max(0.2, +(s-0.1).toFixed(2)))}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <circle cx="10" cy="10" r="6" stroke="#fff" strokeWidth="1.4"/>
-                <path d="M7 10h6" stroke="#fff" strokeWidth="1.4"/>
-                <path d="M14.5 14.5L20 20" stroke="#fff" strokeWidth="1.4"/>
-              </svg>
-            </button>
-            <button className="rounded-full p-2 shadow" title="Reset" onClick={()=>{ setGridScale(1); setGridPan({x:0,y:0}); }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <path d="M20 12a8 8 0 10-2.34 5.66M20 12h-5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            </button>
-          </>
-        ) : null}
       </div>
       )}
       {/* Sidebar */}
@@ -2446,149 +4352,989 @@ export default function SocialTwinPage() {
           </div>
         </aside>
       ) : null}
-      {/* Generated Bin button */}
-      <button
-        className={`fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full px-4 py-2 shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'} `}
-        onClick={async () => {
-          setShowBin((v) => !v);
-          if (!showBin) {
-            const r = await fetch('/api/social-twin/history?limit=24', { headers: { 'X-User-Id': userId || '' } });
-            const j = await r.json();
-            setBinItems(j.items || []);
-            setBinCursor(j.nextCursor || null);
-          }
-        }}
-      >
-        Generated Bin
-      </button>
-
-      {/* Generated Bin panel */}
-      {showBin ? (
-        <div className={"fixed inset-0 z-40 backdrop-blur-sm"} onClick={()=>setShowBin(false)} />
-      ) : null}
-      {showBin ? (
-        <div className={`fixed bottom-6 left-1/2 z-50 h-[70vh] w-[70vw] max-w-4xl -translate-x-1/2 rounded-2xl border ${darkMode ? 'border-neutral-700' : 'border-white/30'} p-4 backdrop-blur-md bg-black/30`}
-             onClick={(e)=> e.stopPropagation()}
+      {/* Quick access to Generated tab - only show if not already on generated tab */}
+      {activeTab !== 'generated' && binItems.length > 0 && (
+        <button
+          className={`fixed bottom-4 left-4 rounded-full p-3 shadow-lg transition-all hover:scale-105 ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white border border-neutral-200'}`}
+          onClick={() => setActiveTab('generated')}
+          title="View your generated content"
         >
-          <div className="flex items-center justify-between pb-3">
-            <h3 className="text-sm font-semibold">Your Generations</h3>
-            <button className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700' : ''}`} onClick={()=>setShowBin(false)}>Close</button>
-          </div>
-          <div className="overflow-y-auto max-h-[60vh] pr-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it) => {
-                const url = it.display_url || it.result_url;
-                return (
-                <div key={it.id} className="relative group rounded border p-2">
-                  <div className="absolute right-2 top-2 z-20 hidden group-hover:block">
-                    <div className={`rounded border text-xs shadow ${darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-700' : 'bg-white text-black'}`}>
-                      <button className={`block w-full text-left px-3 py-1 ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
-                        if (it.topic_id) {
-                          fetch(`/api/social-twin/topics/${it.topic_id}/feed`, { headers: { 'X-User-Id': userId || '' } })
-                            .then(r=>r.json())
-                            .then(j=>{
-                              const items = (j.items||[]) as any[];
-                              const msgs = items.map((x:any)=>({ id:x.id, role:x.role, content:x.content, imageUrl:x.imageUrl, videoUrl:x.videoUrl, createdAt:x.createdAt }));
-                              setMessages(msgs);
-                              const ts = it.created_at || it.createdAt || null;
-                              if (ts) setTargetScrollTs(ts);
-                            });
-                        }
-                        setShowBin(false);
-                      }}>Show in chat</button>
-                      <button className={`block w-full text-left px-3 py-1 ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
-                        folderModalPayload.current = { url: String(url), type: it.type, prompt: it.prompt } as any;
-                        setFolderModalOpen(true);
-                      }}>Add to project…</button>
-                      <button className={`block w-full text-left px-3 py-1 ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
-                        if (typeof url === 'string') setAttached({ name: 'bin-item', type: it.type==='video'?'video/mp4':'image/png', dataUrl: url });
-                        setShowBin(false);
-                      }}>Send to chat</button>
-                      <button className={`block w-full text-left px-3 py-1 ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
-                        if (typeof url === 'string') {
-                          addToCanvas(url, it.type === 'video' ? 'video' : 'image');
-                        }
-                        setShowBin(false);
-                      }}>Send to canvas</button>
+          <span className="text-lg">🎨</span>
+          {binItems.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {binItems.length > 9 ? '9+' : binItems.length}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Legacy panel removed - now using tab interface */}
+      {/* Legacy pinned grid removed */}
+
+      {/* PDF Layout Editor */}
+      {pdfEditorOpen && (
+        <div className="fixed inset-0 z-[10060] bg-black/50 backdrop-blur-sm">
+          <div className={`absolute left-1/2 top-4 -translate-x-1/2 w-[92vw] max-w-6xl h-[88vh] rounded-xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+            {/* Enhanced Header */}
+            <div className={`flex flex-col border-b ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}>
+              {/* Top Row - Main Header */}
+      <div className={`flex items-center justify-between p-4 ${darkMode ? 'bg-neutral-800' : 'bg-neutral-50'}`}>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 9h10M7 13h10M7 17h6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-neutral-900'}`}>PDF Layout Editor</div>
+                      <div className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Design your PDF layout with precision</div>
                     </div>
                   </div>
-                  <div className="group w-full aspect-video overflow-hidden rounded border">
-                    {it.type === 'video' ? (
-                      (url ? (
-                        <video src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} className="h-full w-full origin-center object-cover transition-transform duration-200 group-hover:scale-[1.12]" />
-                      ) : (
-                        <div className={`h-full w-full ${darkMode?'bg-neutral-900':'bg-neutral-100'} flex items-center justify-center text-xs opacity-70`}>Compiling…</div>
-                      ))
-                    ) : (
-                      <img src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} className="h-full w-full origin-center object-cover transition-transform duration-200 group-hover:scale-[1.12]" alt="gen" />
-                    )}
-                  </div>
-                  <div className="mt-2">
-                    <div className="text-xs opacity-70">{new Date(it.created_at || it.createdAt || Date.now()).toLocaleString()}</div>
-                    <div className="text-xs truncate" title={it.prompt || ''}>{it.prompt || ''}</div>
+
+                  
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={exportPdfFromEditor}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${darkMode ? 'bg-neutral-900 text-white hover:bg-neutral-800 border-neutral-700' : 'bg-neutral-900 text-white hover:bg-black border-neutral-900'}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7,10 12,15 17,10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export PDF
+                  </button>
+                  
+                  <button 
+                    onClick={() => setPdfEditorOpen(false)}
+                    className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-neutral-100 text-neutral-500'}`}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Controls Row */}
+              <div className={`flex items-center gap-4 px-4 pb-3 border-t ${darkMode ? 'border-neutral-800' : 'border-neutral-100'}`}>
+                {/* Orientation Toggle */}
+                <div className="flex items-center gap-2">
+                  <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Orientation:</label>
+                  <div className="flex rounded border overflow-hidden">
+                    <button
+                      onClick={() => setPdfOrientation('portrait')}
+                      className={`px-3 py-1 text-sm ${pdfOrientation === 'portrait' 
+                        ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
+                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')}`}
+                    >
+                      Portrait
+                    </button>
+                    <button
+                      onClick={() => setPdfOrientation('landscape')}
+                      className={`px-3 py-1 text-sm ${pdfOrientation === 'landscape' 
+                        ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
+                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')}`}
+                    >
+                      Landscape
+                    </button>
                   </div>
                 </div>
-              );})}
+
+                {/* Background Color */}
+                <div className="flex items-center gap-2">
+                  <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Background:</label>
+                  <input
+                    type="color"
+                    value={pdfBackgroundColor}
+                    onChange={(e) => setPdfBackgroundColor(e.target.value)}
+                    className="w-8 h-8 rounded border cursor-pointer"
+                  />
+                </div>
+
+                {/* Text Controls - only show when text is selected */}
+                {selectedItem && pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.type === 'text' && (
+                  <>
+                    <div className="w-px h-6 bg-neutral-300"></div>
+                    
+                    {/* Font Family */}
+                    <div className="flex items-center gap-2">
+                      <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Font:</label>
+                      <select
+                        value={pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.fontFamily || 'Arial'}
+                        onChange={(e) => {
+                          setPdfPages(prev => prev.map((page, idx) => 
+                            idx === currentPage 
+                              ? {
+                                  ...page,
+                                  items: page.items.map(i => 
+                                    i.id === selectedItem ? { ...i, fontFamily: e.target.value } : i
+                                  )
+                                }
+                              : page
+                          ));
+                        }}
+                        className={`rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}
+                      >
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                      </select>
+                    </div>
+
+                    {/* Font Size */}
+                    <div className="flex items-center gap-2">
+                      <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Size:</label>
+                      <input
+                        type="number"
+                        min="8"
+                        max="72"
+                        value={pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.fontSize || 16}
+                        onChange={(e) => {
+                          setPdfPages(prev => prev.map((page, idx) => 
+                            idx === currentPage 
+                              ? {
+                                  ...page,
+                                  items: page.items.map(i => 
+                                    i.id === selectedItem ? { ...i, fontSize: Number(e.target.value) } : i
+                                  )
+                                }
+                              : page
+                          ));
+                        }}
+                        className={`w-16 rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}
+                      />
+                    </div>
+
+                    {/* Font Color */}
+                    <div className="flex items-center gap-2">
+                      <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Color:</label>
+                      <input
+                        type="color"
+                        value={pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.fontColor || '#000000'}
+                        onChange={(e) => {
+                          setPdfPages(prev => prev.map((page, idx) => 
+                            idx === currentPage 
+                              ? {
+                                  ...page,
+                                  items: page.items.map(i => 
+                                    i.id === selectedItem ? { ...i, fontColor: e.target.value } : i
+                                  )
+                                }
+                              : page
+                          ));
+                        }}
+                        className="w-8 h-8 rounded border cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Text Alignment */}
+                    <div className="flex items-center gap-2">
+                      <label className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Align:</label>
+                      <div className="flex rounded border overflow-hidden">
+                        {(['left', 'center', 'right'] as const).map(align => (
+                          <button
+                            key={align}
+                            onClick={() => {
+                              setPdfPages(prev => prev.map((page, idx) => 
+                                idx === currentPage 
+                                  ? {
+                                      ...page,
+                                      items: page.items.map(i => 
+                                        i.id === selectedItem ? { ...i, textAlign: align } : i
+                                      )
+                                    }
+                                  : page
+                              ));
+                            }}
+                            className={`px-2 py-1 text-sm ${
+                              pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.textAlign === align
+                                ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
+                                : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')
+                            }`}
+                          >
+                            {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bold Toggle */}
+                    <button
+                      onClick={() => {
+                        const currentWeight = pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.fontWeight || 'normal';
+                        setPdfPages(prev => prev.map((page, idx) => 
+                          idx === currentPage 
+                            ? {
+                                ...page,
+                                items: page.items.map(i => 
+                                  i.id === selectedItem ? { ...i, fontWeight: currentWeight === 'bold' ? 'normal' : 'bold' } : i
+                                )
+                              }
+                            : page
+                        ));
+                      }}
+                      className={`px-3 py-1 text-sm font-bold rounded border ${
+                        pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.fontWeight === 'bold'
+                          ? (darkMode ? 'bg-neutral-700 text-white border-neutral-600' : 'bg-neutral-200 text-neutral-900 border-neutral-300') 
+                          : (darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300' : 'border-neutral-200 hover:bg-neutral-50 text-neutral-700')
+                      }`}
+                    >
+                      B
+                    </button>
+                  </>
+                )}
+                {/* Push Add Text to the far right of the controls row */}
+                <div className="ml-auto">
+                  <button 
+                    onClick={() => {
+                      const newText = {
+                        id: generateId(),
+                        type: 'text' as const,
+                        text: 'Edit me',
+                        x: 100,
+                        y: 100,
+                        w: 200,
+                        h: 40,
+                        fontSize: 16,
+                        fontFamily: 'Arial',
+                        fontColor: '#000000',
+                        fontWeight: 'normal' as const,
+                        textAlign: 'left' as const
+                      };
+                      setPdfPages(prev => prev.map((page, idx) => 
+                        idx === currentPage 
+                          ? { ...page, items: [...page.items, newText] }
+                          : page
+                      ));
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-white' : 'border-neutral-200 hover:bg-neutral-50 text-neutral-900'}`}
+                    title="Add a text box"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14,2 14,8 20,8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10,9 9,9 8,9"></polyline>
+                    </svg>
+                    Add Text
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Enhanced Page Canvas */}
+            <div className={`flex-1 overflow-hidden p-4 ${darkMode ? 'bg-neutral-900/50' : 'bg-neutral-50/30'}`}>
+              <div className="flex h-full gap-4">
+                {/* Pages Sidebar */}
+                <div className={`w-44 shrink-0 flex flex-col ${darkMode ? 'border-r border-neutral-800' : 'border-r border-neutral-200'}`}>
+                  <div className={`px-2 py-2 sticky top-0 z-10 ${darkMode ? 'bg-neutral-900' : 'bg-white'} ${darkMode ? 'border-b border-neutral-800' : 'border-b border-neutral-200'} flex items-center justify-between`}>
+                    <span className={`text-xs uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Pages</span>
+                    <button
+                      onClick={() => {
+                        const newPage = { id: generateId(), items: [] };
+                        setPdfPages(prev => [...prev, newPage]);
+                        setCurrentPage(pdfPages.length);
+                      }}
+                      className={`text-xs px-2 py-1 rounded border ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-200' : 'border-neutral-200 hover:bg-neutral-50 text-neutral-800'}`}
+                      title="Add Page"
+                    >
+                      + Add
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-2">
+                    {pdfPages.map((page, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentPage(idx)}
+                        className={`w-full rounded-md border text-left transition-colors ${idx === currentPage ? (darkMode ? 'border-neutral-500 bg-neutral-800' : 'border-neutral-400 bg-neutral-100') : (darkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-neutral-200 hover:bg-neutral-50')}`}
+                      >
+                        <div className="p-2">
+                          <div
+                            className={`w-full h-24 rounded ${darkMode ? 'bg-neutral-800' : 'bg-neutral-200'}`}
+                            style={{ backgroundColor: pdfBackgroundColor }}
+                          ></div>
+                          <div className="mt-2 flex items-center justify-between text-[10px]">
+                            <span className={darkMode ? 'text-neutral-300' : 'text-neutral-700'}>Page {idx + 1}</span>
+                            <span className={darkMode ? 'text-neutral-500' : 'text-neutral-500'}>{page.items?.length || 0} items</span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Canvas Container */}
+  <div className={`relative flex-1 flex flex-col items-center ${pdfOrientation === 'portrait' ? 'justify-start pt-0' : 'justify-center'} w-full overflow-auto`}>
+                  <div 
+          className={`relative mx-auto border-2 shadow-2xl rounded-lg ${darkMode ? 'border-neutral-600' : 'border-neutral-300'}`}
+                    style={{ 
+                      width: pdfOrientation === 'portrait' ? '595px' : '842px', 
+                      height: pdfOrientation === 'portrait' ? '842px' : '595px',
+                      backgroundColor: pdfBackgroundColor,
+                      transform: 'scale(0.65)',
+                      transformOrigin: 'center center',
+                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                      marginTop: pdfOrientation === 'portrait' ? -80 : 0
+                    }}
+                    onClick={(e) => {
+                      // Deselect item when clicking on empty canvas area
+                      if (e.target === e.currentTarget) {
+                        setSelectedItem(null);
+                      }
+                    }}
+                  >
+                    {/* Grid Overlay */}
+                    <div 
+                      className="absolute inset-0 opacity-30 pointer-events-none"
+                      style={{
+                        backgroundImage: `
+                          linear-gradient(rgba(156, 163, 175, 0.2) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(156, 163, 175, 0.2) 1px, transparent 1px)
+                        `,
+                        backgroundSize: '20px 20px'
+                      }}
+                    ></div>
+
+                    {/* Page Items */}
+                    {pdfPages[currentPage]?.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`absolute border-2 cursor-move group ${
+                          selectedItem === item.id 
+                            ? (darkMode ? 'border-neutral-500 shadow-lg ring-4 ring-neutral-500/20' : 'border-neutral-500 shadow-lg ring-4 ring-neutral-500/20') 
+                            : (darkMode ? 'border-dashed border-neutral-600 hover:border-neutral-500 hover:shadow-md' : 'border-dashed border-neutral-300 hover:border-neutral-400 hover:shadow-md')
+                        } ${item.type === 'text' ? 'bg-white/80 backdrop-blur-sm' : ''}`}
+                        style={{
+                          left: item.x,
+                          top: item.y,
+                          width: item.w,
+                          height: item.h,
+                          borderRadius: item.type === 'text' ? '6px' : '4px',
+                          willChange: 'left, top, width, height'
+                        }}
+                        onClick={() => setSelectedItem(item.id)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSelectedItem(item.id);
+                          const startX = e.clientX;
+                          const startY = e.clientY;
+                          const startItemX = item.x;
+                          const startItemY = item.y;
+                          
+                          const pageWidth = pdfOrientation === 'portrait' ? 595 : 842;
+                          const pageHeight = pdfOrientation === 'portrait' ? 842 : 595;
+
+                          // Improve drag UX
+                          const prevUserSelect = document.body.style.userSelect;
+                          const prevCursor = document.body.style.cursor;
+                          document.body.style.userSelect = 'none';
+                          document.body.style.cursor = 'grabbing';
+
+                          const handleMouseMove = (e: MouseEvent) => {
+                            const deltaX = (e.clientX - startX) / 0.65; // Account for scale
+                            const deltaY = (e.clientY - startY) / 0.65;
+                            const newX = Math.max(0, Math.min(pageWidth - item.w, startItemX + deltaX));
+                            const newY = Math.max(0, Math.min(pageHeight - item.h, startItemY + deltaY));
+
+                            setPdfPages(prev => prev.map((page, idx) => 
+                              idx === currentPage 
+                                ? {
+                                    ...page,
+                                    items: page.items.map(i => 
+                                      i.id === item.id ? { ...i, x: newX, y: newY } : i
+                                    )
+                                  }
+                                : page
+                            ));
+                          };
+
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                            document.body.style.userSelect = prevUserSelect;
+                            document.body.style.cursor = prevCursor;
+                          };
+
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      >
+                        {item.type === 'image' ? (
+                          <img 
+                            src={item.url} 
+                            alt="PDF item" 
+                            className="w-full h-full object-contain rounded"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div 
+                            className="w-full h-full p-3 bg-transparent resize-none outline-none overflow-hidden"
+                            style={{ 
+                              fontSize: `${item.fontSize || 16}px`,
+                              fontFamily: item.fontFamily || 'Arial',
+                              color: item.fontColor || '#000000',
+                              fontWeight: item.fontWeight || 'normal',
+                              textAlign: item.textAlign || 'left',
+                              lineHeight: '1.4'
+                            }}
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const newText = e.currentTarget.textContent || '';
+                              setPdfPages(prev => prev.map((page, idx) => 
+                                idx === currentPage 
+                                  ? {
+                                      ...page,
+                                      items: page.items.map(i => 
+                                        i.id === item.id ? { ...i, text: newText } : i
+                                      )
+                                    }
+                                  : page
+                              ));
+                            }}
+                            onFocus={() => setSelectedItem(item.id)}
+                          >
+                            {item.text}
+                          </div>
+                        )}
+                        
+                        {/* Enhanced Delete button */}
+                        <button
+                          className={`absolute -top-3 -right-3 w-7 h-7 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg flex items-center justify-center ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100' : 'bg-neutral-900 hover:bg-neutral-800 text-white'}`}
+                          onClick={() => {
+                            setPdfPages(prev => prev.map((page, idx) => 
+                              idx === currentPage 
+                                ? {
+                                    ...page,
+                                    items: page.items.filter(i => i.id !== item.id)
+                                  }
+                                : page
+                            ));
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+
+                        {/* Enhanced Resize handle */}
+                        <div
+                          className={`absolute -bottom-1 -right-1 w-4 h-4 cursor-se-resize opacity-0 group-hover:opacity-100 rounded-full shadow-md ${darkMode ? 'bg-neutral-500 hover:bg-neutral-400' : 'bg-neutral-400 hover:bg-neutral-500'}`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const startX = e.clientX;
+                            const startY = e.clientY;
+                            const startW = item.w;
+                            const startH = item.h;
+                            
+                            const pageWidth = pdfOrientation === 'portrait' ? 595 : 842;
+                            const pageHeight = pdfOrientation === 'portrait' ? 842 : 595;
+
+                            const prevUserSelect = document.body.style.userSelect;
+                            const prevCursor = document.body.style.cursor;
+                            document.body.style.userSelect = 'none';
+                            document.body.style.cursor = 'nwse-resize';
+
+                            const handleMouseMove = (e: MouseEvent) => {
+                              const deltaX = (e.clientX - startX) / 0.65;
+                              const deltaY = (e.clientY - startY) / 0.65;
+                              const newW = Math.max(50, Math.min(pageWidth - item.x, startW + deltaX));
+                              const newH = Math.max(20, Math.min(pageHeight - item.y, startH + deltaY));
+
+                              setPdfPages(prev => prev.map((page, idx) => 
+                                idx === currentPage 
+                                  ? {
+                                      ...page,
+                                      items: page.items.map(i => 
+                                        i.id === item.id ? { ...i, w: newW, h: newH } : i
+                                      )
+                                    }
+                                  : page
+                              ));
+                            };
+
+                            const handleMouseUp = () => {
+                              document.removeEventListener('mousemove', handleMouseMove);
+                              document.removeEventListener('mouseup', handleMouseUp);
+                              document.body.style.userSelect = prevUserSelect;
+                              document.body.style.cursor = prevCursor;
+                            };
+
+                            document.addEventListener('mousemove', handleMouseMove);
+                            document.addEventListener('mouseup', handleMouseUp);
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-white rounded-full scale-50"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Status Bar */}
+                  <div className={`mt-4 flex items-center justify-between px-4 py-2 rounded-lg ${darkMode ? 'bg-neutral-800 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {pdfPages[currentPage]?.items.length || 0} items on page
+                      </div>
+                      <div className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
+                        {pdfOrientation === 'portrait' ? '595×842' : '842×595'} pts
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {selectedItem && (
+                        <div className={`text-sm px-2 py-1 rounded ${darkMode ? 'bg-neutral-700 text-neutral-200' : 'bg-neutral-100 text-neutral-700'}`}>
+                          {pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.type} selected
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      ) : null}
-      {/* Legacy pinned grid removed */}
+      )}
+
+      {/* Director's Desk Modal */}
+      {storyboardOpen && (
+        <div className="fixed inset-0 z-[9999] bg-black bg-opacity-95 flex items-center justify-center p-4 overflow-hidden">
+          <div className="w-full h-full max-w-7xl bg-neutral-900 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-700">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20 4v12H8V4h12m0-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7.53 12L9 10.5l1.4-1.41 2.07 2.08L17.6 6 19 7.41 12.47 14z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Director's Desk</h2>
+                  <p className="text-sm text-neutral-400">Visual storytelling workspace</p>
+                </div>
+                
+                {/* Mode Toggle */}
+                <div className="flex bg-neutral-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setDirectorMode('gallery')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      directorMode === 'gallery'
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    📸 Gallery ({imageGallery.length})
+                  </button>
+                  <button
+                    onClick={() => setDirectorMode('storyboard')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      directorMode === 'storyboard'
+                        ? 'bg-purple-500 text-white shadow-md'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    🎬 Storyboard ({storyboardFrames.length})
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {storyboardLocked && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-500/20 text-green-400 rounded-lg">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10A2,2 0 0,1 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/>
+                    </svg>
+                    <span className="text-sm font-medium">Locked</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setStoryboardOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Phase 1: Image Gallery (Inspiration Mode) */}
+            {directorMode === 'gallery' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Generation Controls */}
+                <div className="p-6 border-b border-neutral-700 bg-neutral-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={batchPrompt}
+                        onChange={(e) => setBatchPrompt(e.target.value)}
+                        placeholder="Describe the shots you want to generate..."
+                        className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                    <select
+                      value={selectedStyle}
+                      onChange={(e) => setSelectedStyle(e.target.value)}
+                      className="bg-neutral-700 text-white border border-neutral-600 rounded-lg px-3 py-3 text-sm"
+                    >
+                      <option value="cinematic">Cinematic</option>
+                      <option value="documentary">Documentary</option>
+                      <option value="commercial">Commercial</option>
+                      <option value="artistic">Artistic</option>
+                      <option value="vintage">Vintage Film</option>
+                    </select>
+                    <select
+                      value={batchSize}
+                      onChange={(e) => setBatchSize(parseInt(e.target.value))}
+                      className="bg-neutral-700 text-white border border-neutral-600 rounded-lg px-3 py-3 text-sm"
+                    >
+                      <option value="5">Batch x5</option>
+                      <option value="10">Batch x10</option>
+                      <option value="15">Batch x15</option>
+                      <option value="20">Batch x20</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (batchPrompt.trim()) {
+                          setIsGeneratingBatch(true);
+                          // Simulate batch generation
+                          setTimeout(() => {
+                            const count = typeof batchSize === 'number' ? batchSize : Number(batchSize) || 1;
+                            const newImages = Array.from({ length: count }, (_, i) => ({
+                              id: `img-${Date.now()}-${i}`,
+                              url: `https://picsum.photos/400/300?random=${Date.now() + i}`, // Placeholder
+                              prompt: batchPrompt,
+                              createdAt: new Date().toISOString(),
+                              style: selectedStyle
+                            }));
+                            setImageGallery([...newImages, ...imageGallery]);
+                            setIsGeneratingBatch(false);
+                          }, 3000);
+                        }
+                      }}
+                      disabled={!batchPrompt.trim() || isGeneratingBatch}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-3 rounded-lg font-medium transition-all"
+                    >
+                      {isGeneratingBatch ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Generating...
+                        </div>
+                      ) : (
+                        'Generate Images'
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm text-neutral-400">
+                    <span>Gallery: {imageGallery.length} images • Storyboard: {storyboardFrames.length} frames</span>
+                    <span>Click [+] on any image to add to storyboard</span>
+                  </div>
+                </div>
+
+                {/* Image Gallery */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  {imageGallery.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-4">
+                      {imageGallery.map((image) => (
+                        <div
+                          key={image.id}
+                          className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+                        >
+                          <div className="aspect-video bg-neutral-700 flex items-center justify-center">
+                            <img 
+                              src={image.url} 
+                              alt="Generated shot" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          
+                          {/* Overlay Controls */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all flex items-center justify-center">
+                            <button
+                              onClick={() => {
+                                const newFrame = {
+                                  id: `frame-${Date.now()}`,
+                                  imageUrl: image.url,
+                                  title: `Shot ${storyboardFrames.length + 1}`,
+                                  duration: 3,
+                                  motionPreset: 'static',
+                                  transition: 'fade',
+                                  character: '',
+                                  background: '',
+                                  action: '',
+                                  cameraStyle: 'medium shot',
+                                  lookDirection: 'center',
+                                  strength: 0.8,
+                                  seed: Math.floor(Math.random() * 1000000),
+                                  status: 'idle' as const
+                                };
+                                setStoryboardFrames([...storyboardFrames, newFrame]);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 w-12 h-12 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white text-xl font-bold transition-all transform scale-0 group-hover:scale-100"
+                            >
+                              +
+                            </button>
+                          </div>
+                          
+                          {/* Image Info */}
+                          <div className="p-3">
+                            <div className="text-xs text-neutral-400 truncate">{image.prompt}</div>
+                            <div className="text-xs text-neutral-500 mt-1">{image.style}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-24 h-24 bg-neutral-800 rounded-lg mx-auto mb-6 flex items-center justify-center">
+                          <svg className="w-12 h-12 text-neutral-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21,17H7V3H21M21,1H7A2,2 0 0,0 5,3V17A2,2 0 0,0 7,19H21A2,2 0 0,0 23,17V3A2,2 0 0,0 21,1M3,5H1V21A2,2 0 0,0 3,23H19V21H3M15.96,10.29L13.21,13.83L11.25,11.47L8.5,15H19.5L15.96,10.29Z"/>
+                          </svg>
+                        </div>
+                        <h3 className="text-xl text-white mb-2">Image Gallery</h3>
+                        <p className="text-neutral-400 mb-4">Generate visual concepts for your story</p>
+                        <p className="text-sm text-neutral-500">Enter a prompt above and click "Generate Images" to start</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Phase 2: Storyboard (Production Mode) */}
+            {directorMode === 'storyboard' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Storyboard Strip */}
+                <div className="p-6 border-b border-neutral-700 bg-neutral-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Storyboard Timeline</h3>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setStoryboardLocked(!storyboardLocked)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          storyboardLocked
+                            ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                            : 'bg-neutral-700 text-neutral-400 hover:bg-neutral-600 hover:text-white'
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d={storyboardLocked 
+                            ? "M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10A2,2 0 0,1 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"
+                            : "M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3M6,20H18V10H6V20Z"
+                          }/>
+                        </svg>
+                        {storyboardLocked ? 'Unlock Storyboard' : 'Lock Storyboard'}
+                      </button>
+                      <button
+                        disabled={storyboardFrames.length === 0 || !storyboardLocked}
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        Generate Video
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Timeline */}
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {storyboardFrames.length > 0 ? storyboardFrames.map((frame, index) => (
+                      <div
+                        key={frame.id}
+                        onClick={() => setSelectedFrameIndex(index)}
+                        className={`flex-shrink-0 w-32 h-20 rounded-lg border-2 cursor-pointer transition-all ${
+                          selectedFrameIndex === index
+                            ? 'border-purple-500 ring-2 ring-purple-500/30'
+                            : 'border-neutral-600 hover:border-neutral-500'
+                        }`}
+                      >
+                        {frame.imageUrl ? (
+                          <img src={frame.imageUrl} alt={frame.title} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <div className="w-full h-full bg-neutral-700 rounded-lg flex items-center justify-center text-neutral-500">
+                            {index + 1}
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="flex items-center justify-center h-20 text-neutral-500 text-sm">
+                        No frames yet. Add images from the Gallery phase.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Frame Preview & Controls */}
+                {storyboardFrames.length > 0 && selectedFrameIndex < storyboardFrames.length ? (
+                  <div className="flex-1 flex">
+                    {/* Preview */}
+                    <div className="flex-1 flex flex-col">
+                      <div className="flex-1 bg-black flex items-center justify-center p-6">
+                        <div className="relative max-w-2xl max-h-full">
+                          <img 
+                            src={storyboardFrames[selectedFrameIndex].imageUrl} 
+                            alt="Frame preview"
+                            className="max-w-full max-h-full object-contain rounded-lg"
+                          />
+                          {/* Motion Preview Overlay */}
+                          <div className="absolute inset-0 border-2 border-blue-500/50 rounded-lg flex items-center justify-center pointer-events-none">
+                            <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                              🎥 {storyboardFrames[selectedFrameIndex].motionPreset}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Frame Controls */}
+                      <div className="p-6 bg-neutral-800 border-t border-neutral-700">
+                        <div className="grid grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">🎥 Camera Move</label>
+                            <select
+                              value={storyboardFrames[selectedFrameIndex].motionPreset}
+                              onChange={(e) => {
+                                const newFrames = [...storyboardFrames];
+                                newFrames[selectedFrameIndex] = { ...newFrames[selectedFrameIndex], motionPreset: e.target.value };
+                                setStoryboardFrames(newFrames);
+                              }}
+                              disabled={storyboardLocked}
+                              className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+                            >
+                              <option value="static">Static</option>
+                              <option value="ken-burns">Ken Burns</option>
+                              <option value="pan-left">Pan Left</option>
+                              <option value="pan-right">Pan Right</option>
+                              <option value="zoom-in">Zoom In</option>
+                              <option value="zoom-out">Zoom Out</option>
+                              <option value="dolly-in">Dolly In</option>
+                              <option value="dolly-out">Dolly Out</option>
+                            </select>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">⏱ Duration</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              step="0.5"
+                              value={storyboardFrames[selectedFrameIndex].duration}
+                              onChange={(e) => {
+                                const newFrames = [...storyboardFrames];
+                                newFrames[selectedFrameIndex] = { ...newFrames[selectedFrameIndex], duration: parseFloat(e.target.value) };
+                                setStoryboardFrames(newFrames);
+                              }}
+                              disabled={storyboardLocked}
+                              className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-neutral-300 mb-2">✨ Transition</label>
+                            <select
+                              value={storyboardFrames[selectedFrameIndex].transition}
+                              onChange={(e) => {
+                                const newFrames = [...storyboardFrames];
+                                newFrames[selectedFrameIndex] = { ...newFrames[selectedFrameIndex], transition: e.target.value };
+                                setStoryboardFrames(newFrames);
+                              }}
+                              disabled={storyboardLocked}
+                              className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+                            >
+                              <option value="fade">Fade</option>
+                              <option value="cut">Cut</option>
+                              <option value="dissolve">Dissolve</option>
+                              <option value="wipe">Wipe</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-neutral-700 rounded-lg mx-auto mb-4 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-neutral-500" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20 4v12H8V4h12m0-2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7.53 12L9 10.5l1.4-1.41 2.07 2.08L17.6 6 19 7.41 12.47 14z"/>
+                        </svg>
+                      </div>
+                      <h3 className="text-xl text-white mb-2">Storyboard Empty</h3>
+                      <p className="text-neutral-400 mb-4">Add frames from the Gallery to start building your story</p>
+                      <button
+                        onClick={() => setDirectorMode('gallery')}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                      >
+                        Go to Gallery
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
 function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFinishLink, hoverPort }:{ item: any, dark:boolean, onChange:(it:any)=>void, scale?: number, onStartLink?:(port:'male'|'female')=>void, onFinishLink?:(port:'male'|'female', targetId:string)=>void, hoverPort: { id: string; port: 'male'|'female' } | null }){
   const ref = useRef<HTMLDivElement|null>(null);
-  const rafRef = useRef<number | null>(null);
-  const lastTransform = useRef<{dx:number;dy:number}>({ dx: 0, dy: 0 });
-  useEffect(()=>{
-    const el = ref.current;
-    if (!el) return;
-    let sx=0, sy=0, ox=0, oy=0, dx=0, dy=0, dragging=false;
-    function onMouseDown(e: MouseEvent){
-      const tgt = e.target as HTMLElement;
-      if (tgt.classList.contains('resize')) return;
-      if (tgt.closest('.port')) return; // do not start drag when clicking ports
-      e.stopPropagation();
-      e.preventDefault();
-      dragging = true;
-      sx = e.clientX; sy = e.clientY; ox = item.x; oy = item.y; dx = 0; dy = 0;
-      (el as HTMLElement).style.willChange = 'transform';
-      window.addEventListener('mousemove', onMove, { passive: true });
-      window.addEventListener('mouseup', onUp);
-    }
-    function onMove(e: MouseEvent){
-      const sc = scale || 1;
-      if (!dragging || e.buttons !== 1) { onUp(); return; }
-      dx = (e.clientX - sx) / sc;
-      dy = (e.clientY - sy) / sc;
-      lastTransform.current = { dx, dy };
-      if (rafRef.current == null) {
-        rafRef.current = requestAnimationFrame(() => {
-          const { dx, dy } = lastTransform.current;
-          (el as HTMLElement).style.transform = `translate(${dx}px, ${dy}px)`;
-          rafRef.current = null;
-        });
-      }
-    }
-    function onUp(){
-      if (!dragging) return;
-      dragging = false;
-      (el as HTMLElement).style.transform = '';
-      (el as HTMLElement).style.willChange = '';
-      if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      const nx = ox + dx;
-      const ny = oy + dy;
-      if (dx !== 0 || dy !== 0) onChange({ ...item, x:nx, y:ny });
-    }
-    el.addEventListener('mousedown', onMouseDown);
-    return ()=>{ el.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [item, onChange, scale]);
+  const videoRef = useRef<HTMLVideoElement|null>(null);
+  const [videoUi, setVideoUi] = useState<{ playing: boolean; current: number; duration: number; volume: number; muted: boolean }>({ playing: false, current: 0, duration: 0, volume: 1, muted: false });
 
-  // Simple resize handle (bottom-right)
+  // Wire up video events if this item is a video
+  useEffect(()=>{
+    if (item.type !== 'video') return;
+    const v = videoRef.current;
+    if (!v) return;
+    const onLoaded = ()=>{
+      setVideoUi(s=>({ ...s, duration: v.duration || 0 }));
+      // Maintain original aspect ratio once metadata is known
+      const vw = v.videoWidth || 0; const vh = v.videoHeight || 0;
+      if (vw > 0 && vh > 0) {
+        const aspect = vw / vh;
+        const targetH = Math.max(80, Math.round(item.w / aspect));
+        // Only update if aspect not set or size mismatched by > 1px
+        if (!item.aspect || Math.abs(item.h - targetH) > 1) {
+          onChange({ ...item, aspect, h: targetH });
+        } else if (!item.aspect) {
+          onChange({ ...item, aspect });
+        }
+      }
+    };
+    const onTime = ()=>{
+      setVideoUi(s=>({ ...s, current: v.currentTime || 0 }));
+    };
+    const onPlay = ()=> setVideoUi(s=>({ ...s, playing: true }));
+    const onPause = ()=> setVideoUi(s=>({ ...s, playing: false }));
+    v.addEventListener('loadedmetadata', onLoaded);
+    v.addEventListener('timeupdate', onTime);
+    v.addEventListener('play', onPlay);
+    v.addEventListener('pause', onPause);
+    return ()=>{
+      v.removeEventListener('loadedmetadata', onLoaded);
+      v.removeEventListener('timeupdate', onTime);
+      v.removeEventListener('play', onPlay);
+      v.removeEventListener('pause', onPause);
+    };
+  }, [item, onChange]);
+
+  // Simple resize handle (bottom-right) with aspect ratio lock for images/videos
   useEffect(()=>{
     const el = ref.current;
     if (!el) return;
@@ -2607,8 +5353,20 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
       const sc = scale || 1;
       if (!resizing || e.buttons !== 1) { onUp(); return; }
       dw = (e.clientX - sx) / sc; dh = (e.clientY - sy) / sc;
-      const nw = Math.max(120, ow + dw);
-      const nh = Math.max(80, oh + dh);
+      let nw = Math.max(120, ow + dw);
+      let nh = Math.max(80, oh + dh);
+      const isMedia = item.type === 'image' || item.type === 'video';
+      const aspect = (item as any).aspect && (item as any).aspect > 0 ? (item as any).aspect : (ow / oh);
+      if (isMedia && aspect > 0) {
+        // Keep original aspect ratio; choose dominant delta axis
+        if (Math.abs(dw) >= Math.abs(dh)) {
+          nw = Math.max(120, ow + dw);
+          nh = Math.max(80, Math.round(nw / aspect));
+        } else {
+          nh = Math.max(80, oh + dh);
+          nw = Math.max(120, Math.round(nh * aspect));
+        }
+      }
       (el as HTMLElement).style.width = `${nw}px`;
       (el as HTMLElement).style.height = `${nh}px`;
       // Update font scale relative to height for text items
@@ -2624,13 +5382,24 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
       (el as HTMLElement).style.willChange = '';
-      const nw = Math.max(120, ow + dw);
-      const nh = Math.max(80, oh + dh);
+      let nw = Math.max(120, ow + dw);
+      let nh = Math.max(80, oh + dh);
+      const isMedia = item.type === 'image' || item.type === 'video';
+      const aspect = (item as any).aspect && (item as any).aspect > 0 ? (item as any).aspect : (ow / oh);
+      if (isMedia && aspect > 0) {
+        if (Math.abs(dw) >= Math.abs(dh)) {
+          nw = Math.max(120, ow + dw);
+          nh = Math.max(80, Math.round(nw / aspect));
+        } else {
+          nh = Math.max(80, oh + dh);
+          nw = Math.max(120, Math.round(nh * aspect));
+        }
+      }
       if (item.type === 'text') {
         const newScale = Math.max(0.5, Math.min(6, nh / 160 * (item.fontScale || 3.2)));
         onChange({ ...item, w:nw, h:nh, fontScale: newScale });
       } else {
-        onChange({ ...item, w:nw, h:nh });
+        onChange({ ...item, w:nw, h:nh, ...(isMedia ? { aspect } : {}) });
       }
     }
     handle.addEventListener('mousedown', onDown);
@@ -2638,8 +5407,8 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
   }, [item, onChange, scale]);
 
   return (
-    <div ref={ref} style={{ position:'absolute', left:item.x, top:item.y, width:item.w, height:item.h }}
-         className={`canvas-item group rounded border ${item.type==='text'
+  <div ref={ref} style={{ position:'absolute', left:item.x, top:item.y, width:item.w, height:item.h }}
+     className={`canvas-item group rounded border cursor-move touch-none ${item.type==='text'
            ? ((typeof window !== 'undefined' && (window as any).__editingTextId === item.id) || false
                ? (dark ? 'border-neutral-700' : 'border-neutral-300')
                : 'border-transparent')
@@ -2649,21 +5418,153 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
            const rect = (document.body as HTMLElement).getBoundingClientRect();
            (window as any).__setGridMenu && (window as any).__setGridMenu({ open:true, x:e.clientX - rect.left, y:e.clientY - rect.top, targetId: item.id });
          }}
+         onMouseDown={(e) => {
+           if (e.button !== 0) return;
+           
+           const target = e.target as HTMLElement;
+           if (target.classList.contains('resize')) return;
+           if (target.closest('.port')) return;
+           if (target.closest('.video-controls-bar')) return;
+           if (item.type === 'text' && target.tagName === 'TEXTAREA') return;
+           
+           e.preventDefault();
+           e.stopPropagation();
+           
+           const startX = e.clientX;
+           const startY = e.clientY;
+           const startItemX = item.x;
+           const startItemY = item.y;
+           
+           const handleMouseMove = (moveEvent: MouseEvent) => {
+             moveEvent.preventDefault();
+             const deltaX = moveEvent.clientX - startX;
+             const deltaY = moveEvent.clientY - startY;
+             
+             // Update position immediately
+             onChange({ ...item, x: startItemX + deltaX, y: startItemY + deltaY });
+           };
+           
+           const handleMouseUp = () => {
+             document.removeEventListener('mousemove', handleMouseMove);
+             document.removeEventListener('mouseup', handleMouseUp);
+           };
+           
+           document.addEventListener('mousemove', handleMouseMove);
+           document.addEventListener('mouseup', handleMouseUp);
+         }}
+         title="Drag to move, resize from bottom-right corner"
     >
       {item.type==='video' ? (
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-full w-full overflow-hidden relative group">
           <video
+            ref={videoRef}
             src={(typeof item.url==='string' && item.url.startsWith('http') && typeof location!=='undefined' && !item.url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
-            className="h-full w-full origin-center object-cover transition-transform duration-200 group-hover:scale-[1.12]"
-            controls
+            className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer"
+            preload="metadata"
+            // No native controls to avoid overlay interference; click-drag moves node
+            draggable={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              if (v.paused) {
+                v.play();
+              } else {
+                v.pause();
+              }
+            }}
           />
+          
+          {/* Play overlay when paused */}
+          {!videoUi.playing && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className={`rounded-full p-4 ${dark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-sm shadow-lg`}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 5v14l11-7z" fill={dark ? '#ffffff' : '#111111'} />
+                </svg>
+              </div>
+            </div>
+          )}
+          
+          {/* Custom controls bar placed below the node with enhanced features */}
+          <div
+            className={`video-controls-bar absolute left-0 top-full mt-1 w-full select-none ${dark ? 'text-white' : 'text-black'}`}
+            onMouseDown={(e)=>{ e.stopPropagation(); }}
+            onClick={(e)=>{ e.stopPropagation(); }}
+          >
+            <div className={`mx-auto flex w-full items-center gap-2 rounded-md border px-2 py-1 ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-white/90 border-neutral-300 backdrop-blur'} shadow-lg`}>
+              <button
+                className={`rounded px-2 py-1 text-xs transition-colors ${dark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-neutral-100 hover:bg-neutral-200'}`}
+                onClick={(e)=>{ e.stopPropagation(); const v = videoRef.current; if (!v) return; if (v.paused) { v.play(); } else { v.pause(); } }}
+                title={videoUi.playing ? 'Pause' : 'Play'}
+              >{videoUi.playing ? '⏸️' : '▶️'}</button>
+              
+              {/* Time display */}
+              <span className="text-xs tabular-nums">
+                {Math.floor(videoUi.current / 60)}:{Math.floor(videoUi.current % 60).toString().padStart(2, '0')} / {Math.floor(videoUi.duration / 60)}:{Math.floor(videoUi.duration % 60).toString().padStart(2, '0')}
+              </span>
+              
+              <input
+                type="range"
+                min={0}
+                max={videoUi.duration || 0}
+                step={0.1}
+                value={Math.min(videoUi.current, videoUi.duration || 0)}
+                onChange={(e)=>{
+                  const v = videoRef.current; if (!v) return; const t = Number(e.target.value); v.currentTime = t; setVideoUi(s=>({ ...s, current: t }));
+                }}
+                onMouseDown={(e)=> e.stopPropagation()}
+                className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #ff8a00 0%, #ff8a00 ${(videoUi.current / (videoUi.duration || 1)) * 100}%, #e5e7eb ${(videoUi.current / (videoUi.duration || 1)) * 100}%, #e5e7eb 100%)`
+                }}
+              />
+              
+              <button
+                className={`rounded p-1.5 transition-colors ${dark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-neutral-100 hover:bg-neutral-200'}`}
+                onClick={(e)=>{ e.stopPropagation(); const v = videoRef.current; if (!v) return; const next = !v.muted; v.muted = next; setVideoUi(s=>({ ...s, muted: next })); }}
+                title={videoUi.muted ? 'Unmute' : 'Mute'}
+                aria-label={videoUi.muted ? 'Unmute' : 'Mute'}
+              >
+                {videoUi.muted ? (
+                  // Muted icon (speaker with slash)
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 5L6 9H3v6h3l5 4V5z" stroke={dark ? '#ffffff' : '#111111'} strokeWidth="1.6" fill="none"/>
+                    <path d="M16 9l5 6M21 9l-5 6" stroke={dark ? '#ffffff' : '#111111'} strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  // Volume icon (speaker with waves)
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 5L6 9H3v6h3l5 4V5z" stroke={dark ? '#ffffff' : '#111111'} strokeWidth="1.6" fill="none"/>
+                    <path d="M16 8c1.5 1.5 1.5 6 0 7" stroke={dark ? '#ffffff' : '#111111'} strokeWidth="1.6" strokeLinecap="round"/>
+                    <path d="M19 6c3 3 3 9 0 12" stroke={dark ? '#ffffff' : '#111111'} strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       ) : item.type==='image' ? (
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-full w-full overflow-hidden relative">
           <img
             src={(typeof item.url==='string' && item.url.startsWith('http') && typeof location!=='undefined' && !item.url.startsWith(location.origin)) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
-            className="h-full w-full origin-center object-cover transition-transform duration-200 group-hover:scale-[1.12]"
+            className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+            loading="lazy"
             alt="canvas"
+            draggable={false}
+            onLoad={(e)=>{
+              const img = e.currentTarget as HTMLImageElement;
+              const iw = img.naturalWidth || 0, ih = img.naturalHeight || 0;
+              if (iw > 0 && ih > 0) {
+                const aspect = iw / ih;
+                const targetH = Math.max(80, Math.round(item.w / aspect));
+                if (!item.aspect || Math.abs(item.h - targetH) > 1) {
+                  onChange({ ...item, aspect, h: targetH });
+                } else if (!item.aspect) {
+                  onChange({ ...item, aspect });
+                }
+              }
+            }}
           />
         </div>
       ) : (

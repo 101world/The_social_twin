@@ -6,8 +6,8 @@ export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest, { params }: { params: { folderId: string } }) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
+  const a = await auth();
+  let userId = a.userId as string | null;
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const folderId = params.folderId;
@@ -43,8 +43,8 @@ export async function GET(req: NextRequest, { params }: { params: { folderId: st
 
 export async function POST(req: NextRequest, { params }: { params: { folderId: string } }) {
   try {
-    const a = auth();
-    let userId = a.userId as string | null;
+  const a = await auth();
+  let userId = a.userId as string | null;
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const folderId = params.folderId;
