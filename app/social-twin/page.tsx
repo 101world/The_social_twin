@@ -488,6 +488,7 @@ export default function SocialTwinPage() {
 
   // Infinite scroll: load older on scroll top
   const listRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -511,6 +512,38 @@ export default function SocialTwinPage() {
     el.addEventListener('scroll', onScroll);
     return () => { el.removeEventListener('scroll', onScroll); };
   }, [feedCursor, isLoadingMore]);
+
+  // Mobile keyboard-safe: keep viewport stable and composer above the keyboard
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const docEl = document.documentElement;
+    const updateVars = () => {
+      const vv = window.visualViewport;
+      const vh = (vv?.height ?? window.innerHeight) * 0.01;
+      docEl.style.setProperty('--vh', `${vh}px`);
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+      docEl.style.setProperty('--kb-offset', `${kb}px`);
+      const h = composerRef.current?.offsetHeight ?? 64;
+      docEl.style.setProperty('--composer-h', `${h}px`);
+    };
+    updateVars();
+    const onResize = () => updateVars();
+    const onScroll = () => updateVars();
+    window.visualViewport?.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('scroll', onScroll);
+    window.addEventListener('resize', onResize);
+    let ro: ResizeObserver | null = null;
+    try {
+      ro = new ResizeObserver(() => updateVars());
+      if (composerRef.current) ro.observe(composerRef.current);
+    } catch {}
+    return () => {
+      window.visualViewport?.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      try { ro?.disconnect(); } catch {}
+    };
+  }, []);
 
   // After messages load, if targetScrollTs set, scroll to nearest message
   useEffect(() => {
@@ -865,8 +898,8 @@ export default function SocialTwinPage() {
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '100vw',
-        height: '100vh',
+  width: '100vw',
+  height: 'calc(var(--vh, 1vh) * 100)',
         overflowY: 'hidden',
         overflowX: 'hidden',
         WebkitOverflowScrolling: 'touch',
@@ -884,7 +917,7 @@ export default function SocialTwinPage() {
       >
         {simpleMode ? 'Pro Mode' : 'Normal Mode'}
       </button>
-      {simpleMode && (
+      {simpleMode && !isMobile && (
         <button
           className={`fixed left-4 top-4 z-[10001] rounded-full px-3 py-1 text-xs shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white'}`}
           onClick={()=> setSidebarOpen(v=>!v)}
@@ -1125,7 +1158,8 @@ export default function SocialTwinPage() {
                 style={{
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
-                  touchAction: 'pan-y'
+                  touchAction: 'pan-y',
+                  paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + 8px)'
                 }}
               >
                 {messages.length === 0 ? (
@@ -1241,6 +1275,8 @@ export default function SocialTwinPage() {
               )}
                 <div ref={chatEndRef} />
               </div>
+            </>
+          )}
 
           {/* Chat Controls - only show for chat tab */}
           {activeTab === 'chat' && (
@@ -1494,7 +1530,24 @@ export default function SocialTwinPage() {
               ) : null}
             </div>
 
-            <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
+            <div
+              ref={composerRef}
+              className={`flex gap-2 items-end ${simpleMode ? (isMobile ? '' : 'sticky bottom-2') : ''}`}
+              style={
+                simpleMode && isMobile
+                  ? {
+                      position: 'fixed',
+                      left: 0,
+                      right: 0,
+                      bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))',
+                      zIndex: 10000,
+                      background: darkMode ? '#000000' : '#ffffff',
+                      padding: '8px',
+                      borderTop: darkMode ? '1px solid #262626' : '1px solid #e5e7eb'
+                    }
+                  : undefined
+              }
+            >
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -1811,77 +1864,6 @@ export default function SocialTwinPage() {
               </>
             ) : null}
           </div>
-
-          <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''}`}>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type your prompt..."
-              className={`min-h-[44px] flex-1 resize-y rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`}
-            />
-            {/* Right-side vertical controls: Send above Upload */}
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleSend}
-                className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`}
-                title="Send"
-                aria-label="Send"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
-                  <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              <label className={`cursor-pointer rounded-full p-2 flex items-center justify-center bg-black hover:opacity-90`} title="Attach image/video/pdf">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="#ffffff">
-                  <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke="#ffffff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <input
-                  type="file"
-                  accept="image/*,video/*,application/pdf"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      const dataUrl = String(reader.result || "");
-                      setAttached({ name: f.name, type: f.type, dataUrl });
-                    };
-                    reader.readAsDataURL(f);
-                  }}
-                />
-              </label>
-            </div>
-            </div>
-            {attached ? (
-              <div className="mt-2 flex items-center gap-3">
-                <div className="flex items-center gap-2 rounded border p-2">
-                  {attached && attached.type.startsWith('image') ? (
-                    <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
-                  ) : attached && attached.type.startsWith('video') ? (
-                    <div className="h-12 w-12 overflow-hidden rounded border">
-                      <video src={attached.dataUrl} className="h-full w-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
-                      PDF
-                    </div>
-                  )}
-                  <div className="text-xs">
-                    <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
-                    <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
-                  </div>
-                </div>
-                <button
-                  className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
-                  onClick={() => setAttached(null)}
-                >Remove</button>
-              </div>
-            ) : null}
-          </div>
-          )}
         </div>
       </section>
       {/* Canvas grid background */}
