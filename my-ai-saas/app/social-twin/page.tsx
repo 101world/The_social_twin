@@ -1633,7 +1633,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l backdrop-blur-sm transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white/95 border-neutral-300')} min-w-0`}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
         style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' }}
       >
         {/* Full-rail click target when collapsed */}
@@ -1662,7 +1662,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </svg>
           )}
         </button>
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white/90 backdrop-blur-sm'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           <h1 className="text-base md:text-lg font-semibold tracking-tight">
             {creditInfo?.subscription_active && creditInfo?.subscription_plan
               ? (()=>{
