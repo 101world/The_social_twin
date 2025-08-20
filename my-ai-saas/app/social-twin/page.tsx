@@ -1596,6 +1596,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
     const onVvResize = () => { updateVh(); updateKb(); };
     const onVvScroll = () => { updateKb(); };
+    let ro: ResizeObserver | null = null;
+    if (typeof (window as any).ResizeObserver === 'function') {
+      ro = new (window as any).ResizeObserver(() => updateComposerH());
+      if (composerRef.current) ro.observe(composerRef.current);
+    }
     updateVh();
     updateKb();
     updateComposerH();
@@ -1610,6 +1615,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       window.visualViewport?.removeEventListener('resize', onVvResize);
       window.visualViewport?.removeEventListener('scroll', onVvScroll);
       window.removeEventListener('resize', updateComposerH);
+  try { ro?.disconnect?.(); } catch {}
     };
   }, []);
 
@@ -1713,7 +1719,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {activeTab === 'chat' && (
             <>
         <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
-          style={{ paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px))' }}>
+          style={{ paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + 8px)' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
@@ -1922,7 +1928,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-        <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015] bg-transparent`}
+  <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-300 bg-white/95'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015] backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-6px_12px_rgba(0,0,0,0.08)]`}
           style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
                 {/* Core controls - clean and tighter */}
                 <div className="mb-2 space-y-2">
