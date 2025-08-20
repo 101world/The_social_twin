@@ -47,12 +47,20 @@ export async function POST(req: NextRequest) {
     const eventType = e?.type || '';
     console.log('Webhook received:', eventType, JSON.stringify(e, null, 2));
 
-    if (eventType === 'user.updated' || eventType === 'session.created') {
+    if (eventType === 'user.created' || eventType === 'user.updated' || eventType === 'session.created') {
       // For user events, extract userId directly
       const userId = e?.data?.id || null;
       if (userId) {
-        // Ensure user has credits row
-        await admin.from('user_credits').upsert({ user_id: userId, credits: 0 }, { onConflict: 'user_id' });
+        // Ensure user has credits row (give new users some starter credits)
+        const startingCredits = eventType === 'user.created' ? 100 : 0; // 100 credits for new users
+        await admin.from('user_credits').upsert({ 
+          user_id: userId, 
+          credits: startingCredits 
+        }, { onConflict: 'user_id' });
+        
+        if (eventType === 'user.created') {
+          console.log(`New user ${userId} created with ${startingCredits} starter credits`);
+        }
       }
     }
 

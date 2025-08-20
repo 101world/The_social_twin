@@ -95,6 +95,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [chatCollapsed, setChatCollapsed] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -399,6 +400,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return ()=>{
       try { delete (window as any).__setGridMenu; delete (window as any).__setHoverPort; } catch {}
     };
+  }, []);
+
+  // Mobile detection effect
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   // Animate wind lines continuously - throttled to reduce re-renders
@@ -1645,7 +1657,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             title="Expand chat"
           />
         ) : null}
-        {/* Collapse handle - Always visible for better UX */}
+        {/* Collapse handle - Hidden on mobile in simple mode to avoid interfering with mobile UX */}
+        {!(simpleMode && isMobile) && (
         <button
           className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
           onClick={()=> setChatCollapsed(v=>!v)}
@@ -1662,6 +1675,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </svg>
           )}
         </button>
+        )}
   <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           <h1 className="text-base md:text-lg font-semibold tracking-tight">
             {creditInfo?.subscription_active && creditInfo?.subscription_plan
