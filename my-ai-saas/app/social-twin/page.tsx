@@ -1082,6 +1082,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }, [composerShown]);
 
+  // Lock page scroll when settings modal is open (mobile usability)
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [settingsOpen]);
+
   // Auto-load unified chat feed ONLY if no project is being loaded (projectId in URL)
   // This ensures chat area starts empty by default until user chooses a project
   useEffect(() => {
@@ -1599,7 +1607,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     let ro: ResizeObserver | null = null;
     if (typeof (window as any).ResizeObserver === 'function') {
       ro = new (window as any).ResizeObserver(() => updateComposerH());
-      if (composerRef.current) ro.observe(composerRef.current);
+      if (composerRef.current && ro) ro.observe(composerRef.current);
     }
     updateVh();
     updateKb();
@@ -2976,9 +2984,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       </section>
       {/* Settings Modal */}
       {settingsOpen && (
-        <div className={`fixed inset-0 z-[200] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'}`} onClick={() => setSettingsOpen(false)}>
-          <div className={`w-[92vw] max-w-xl rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
-            <div className={`flex items-center justify-between px-4 py-3 ${darkMode ? 'border-b border-neutral-800' : 'border-b border-neutral-200'}`}>
+        <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
+          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-white/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
               <div className="text-sm font-medium">Settings</div>
               <button className={`rounded p-1 ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'}`} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
             </div>
@@ -3034,9 +3042,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </select>
                 </div>
               </div>
-              <div className="flex gap-2 mt-2">
-                <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
-                <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
+              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-white/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
+                <div className="flex gap-2 justify-end">
+                  <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
+                  <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
+                </div>
               </div>
             </div>
           </div>
