@@ -1936,7 +1936,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-  <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800 bg-neutral-900/98' : 'border-neutral-300 bg-white/95'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015] backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-6px_12px_rgba(0,0,0,0.08)]`}
+  <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015] bg-transparent`}
           style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
                 {/* Core controls - clean and tighter */}
                 <div className="mb-2 space-y-2">
