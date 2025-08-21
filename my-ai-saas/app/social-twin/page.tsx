@@ -110,6 +110,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [loraName, setLoraName] = useState<string>("");
   const [loraScale, setLoraScale] = useState<number|''>('');
   const [batchSize, setBatchSize] = useState<number|''>('');
+  const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
   // Workflow popover and tweakable settings
   const [showWorkflowPopoverFor, setShowWorkflowPopoverFor] = useState<'image'|'image-modify'|null>(null);
@@ -1334,6 +1335,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           lora: loraName || undefined,
           lora_scale: typeof loraScale === 'number' ? loraScale : undefined,
           batch_size: typeof batchSize === 'number' ? batchSize : undefined,
+          seed: typeof seed === 'number' ? seed : undefined,
+          denoise: typeof denoise === 'number' ? denoise : undefined,
+          unet: unetName || undefined,
           aspect_ratio: aspectRatio || undefined,
               cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
               guidance: typeof guidance === 'number' ? guidance : undefined,
@@ -2711,7 +2715,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <IconButton title="Video mode" onClick={() => setMode('video')}> 
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </IconButton>
-                  <div className="ml-1 flex items-center gap-2">
+                    <div className="ml-1 flex items-center gap-2">
                     <button
                       onClick={() => setAdvancedOpen(!advancedOpen)}
                       className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
@@ -2719,20 +2723,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     >
                       {advancedOpen ? 'Less' : 'More'}
                     </button>
-                    {/* Workflow tweak popover trigger */}
+                    {/* Single More button opens the workflow popover for the active image mode */}
                     <button
-                      onClick={() => setShowWorkflowPopoverFor(v => v === 'image' ? null : 'image')}
+                      onClick={() => {
+                        // Only show workflow settings for image or image-modify; default to image for text mode
+                        const target = mode === 'image-modify' ? 'image-modify' : 'image';
+                        setShowWorkflowPopoverFor((v) => v === target ? null : (target as any));
+                      }}
                       className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
-                      title="Image workflow settings"
+                      title="Workflow settings"
                     >
                       Workflow
-                    </button>
-                    <button
-                      onClick={() => setShowWorkflowPopoverFor(v => v === 'image-modify' ? null : 'image-modify')}
-                      className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
-                      title="Modify workflow settings"
-                    >
-                      Modify Workflow
                     </button>
                     {(messages.length > 0 || canvasItems.length > 0) && (
                       <button
@@ -2753,21 +2754,59 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <div className="text-sm font-medium">{showWorkflowPopoverFor === 'image' ? 'Image Workflow' : 'Modify Workflow'}</div>
                       <button className="text-xs" onClick={() => setShowWorkflowPopoverFor(null)}>Close</button>
                     </div>
+                    <div className="mb-2 flex gap-2">
+                      <button className="px-2 py-1 rounded border text-xs" onClick={() => { setSampler('euler'); setSteps(20); setCfgScale(5); setDenoise(1); setBatchSize(1); }}>Fast</button>
+                      <button className="px-2 py-1 rounded border text-xs" onClick={() => { setSampler('dpm_2'); setSteps(35); setCfgScale(8); setDenoise(1); setBatchSize(1); }}>Quality</button>
+                      <button className="px-2 py-1 rounded border text-xs" onClick={() => { setSampler('dpm_2'); setSteps(30); setCfgScale(7); setDenoise(0.45); setUnetName('flux1-kontext-dev.safetensors'); setBatchSize(1); }}>Modify-safe</button>
+                      <button className="px-2 py-1 rounded border text-xs" onClick={() => { setBatchSize(4); setSteps(25); setCfgScale(6.5); }}>Exploration</button>
+                    </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <label className="col-span-2">
-                        <input type="checkbox" checked={useFluxDev} onChange={(e)=> setUseFluxDev(e.target.checked)} /> Use Flux Dev
+                        Aspect Ratio / Size
+                        <div className="flex gap-2 mt-1">
+                          <select value={aspectRatio} onChange={(e)=> setAspectRatio(e.target.value)} className="rounded border px-2 py-1 text-xs w-1/2">
+                            <option value="">Default</option>
+                            <option value="1:1">1:1</option>
+                            <option value="3:4">3:4</option>
+                            <option value="4:3">4:3</option>
+                            <option value="16:9">16:9</option>
+                          </select>
+                          <input placeholder="WxH (px)" value={(typeof (width) !== 'undefined' && (width as any)) || ''} onChange={(e)=> {
+                            const v = e.target.value.split('x');
+                            try { if (v.length===2) { (window as any).__tmpW = Number(v[0]); (window as any).__tmpH = Number(v[1]); } }
+                            catch {}
+                          }} className="rounded border px-2 py-1 text-xs w-1/2" />
+                        </div>
                       </label>
                       <label>
-                        Sampler
-                        <select value={sampler} onChange={(e)=> setSampler(e.target.value)} className="w-full rounded border px-2 py-1 text-xs">
-                          <option value="euler">Euler</option>
-                          <option value="heun">Heun</option>
-                          <option value="dpm_2">DPM++ 2M</option>
-                        </select>
+                        Qty (batch)
+                        <input type="number" min={1} max={8} value={batchSize} onChange={(e)=> setBatchSize(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
                       </label>
                       <label>
-                        Denoise
+                        Steps
+                        <input type="number" min={1} max={200} value={steps} onChange={(e)=> setSteps(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
+                      </label>
+                      <label>
+                        CFG
+                        <input type="number" step="0.1" min={0} max={30} value={cfgScale} onChange={(e)=> setCfgScale(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
+                      </label>
+                      <label>
+                        Seed
+                        <div className="flex gap-2">
+                          <input type="number" value={seed} onChange={(e)=> setSeed(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
+                          <button className="px-2 py-1 rounded border text-xs" onClick={()=> setSeed(Math.floor(Math.random()*1e9))}>Random</button>
+                        </div>
+                      </label>
+                      <label>
+                        Strength
                         <input type="number" step="0.01" min="0" max="1" value={denoise} onChange={(e)=> setDenoise(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
+                      </label>
+                      <label className="col-span-2">
+                        Effect (LoRA)
+                        <div className="flex gap-2 mt-1">
+                          <input value={loraName} onChange={(e)=> setLoraName(e.target.value)} className="w-3/4 rounded border px-2 py-1 text-xs font-mono" />
+                          <input type="number" step="0.1" min={0} max={2} value={loraScale} onChange={(e)=> setLoraScale(e.target.value === '' ? '' : Number(e.target.value))} className="w-1/4 rounded border px-2 py-1 text-xs" />
+                        </div>
                       </label>
                       <label className="col-span-2">
                         UNET

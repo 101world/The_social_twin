@@ -151,6 +151,26 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
       if (typeof cfg === 'number') graph[samplerKey].inputs.cfg = cfg;
       graph[samplerKey].inputs.seed = userSeed;
     }
+    // Apply workflow_settings if present (sampler/denoise/UNet overrides)
+    try {
+      const wf = (params as any).workflow_settings;
+      if (wf) {
+        if (wf.sampler && samplerKey && graph[samplerKey]?.inputs) {
+          graph[samplerKey].inputs.sampler_name = wf.sampler;
+          graph[samplerKey].inputs.sampler = wf.sampler;
+        }
+        if (typeof wf.denoise === 'number' && samplerKey && graph[samplerKey]?.inputs) {
+          graph[samplerKey].inputs.denoise = wf.denoise;
+        }
+        if (wf.unet) {
+          const unetKey = findByClassAndTitle(graph, 'UNet', 'UNET') || findNodeKeyBy(graph, (n:any)=> (n.class_type||'').toLowerCase().includes('unet'));
+          if (unetKey && graph[unetKey]?.inputs) {
+            graph[unetKey].inputs.unet_name = wf.unet;
+            graph[unetKey].inputs.name = wf.unet;
+          }
+        }
+      }
+    } catch (e) { /* ignore workflow tweak failures */ }
     if (typeof ckpt_name === 'string' && ckpt_name && ckptKey && graph[ckptKey]?.inputs) {
       graph[ckptKey].inputs.ckpt_name = ckpt_name;
     }
