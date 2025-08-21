@@ -10,6 +10,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/dev/runpod",
   "/api/webhooks/clerk",
   "/api/webhooks/razorpay",
+  // Internal server-to-server generation call; upstream route enforces auth+credits
+  "/api/social-twin/generate",
   // Allow these in dev; route handlers still enforce auth for real data
   "/api/users/credits",
   "/api/generations",
