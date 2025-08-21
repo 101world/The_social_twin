@@ -1,16 +1,25 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Allow unauthenticated access to public pages and webhooks
-export default clerkMiddleware({
-  publicRoutes: [
-    "/", // home
-    "/sign-in(.*)",
-    "/sign-up(.*)",
-    "/api/webhooks/(.*)",
-    "/dev",
-    "/api/dev/(.*)",
-    "/favicon.ico",
-  ],
+// Mark public routes explicitly; everything else is protected by Clerk
+const isPublicRoute = createRouteMatcher([
+  "/", // home
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks/(.*)",
+  "/dev",
+  "/api/dev/(.*)",
+  // Internal server-to-server generation call (auth + credits are enforced upstream in generate-with-tracking)
+  "/api/social-twin/generate",
+  "/favicon.ico",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req)) return; // allow
+  const { userId } = await auth();
+  if (!userId) {
+    // For API routes, return 401; for pages, Clerk will handle redirects
+    return new Response('Authentication Required', { status: 401 });
+  }
 });
 
 export const config = {

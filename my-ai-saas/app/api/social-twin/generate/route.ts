@@ -112,6 +112,25 @@ export async function POST(req: NextRequest) {
       return JSON.parse(raw);
     }
 
+    // Helpers to locate nodes regardless of numeric IDs after re-export
+    function findNodeKeyBy(graphObj: any, predicate: (node: any) => boolean): string | null {
+      try {
+        for (const k of Object.keys(graphObj)) {
+          const n = graphObj[k];
+          if (n && typeof n === 'object' && predicate(n)) return k;
+        }
+      } catch {}
+      return null;
+    }
+    function findByClassAndTitle(graphObj: any, classType: string, titleIncludes?: string): string | null {
+      return findNodeKeyBy(graphObj, (n) => {
+        if (n.class_type !== classType) return false;
+        if (!titleIncludes) return true;
+        const t = n?._meta?.title || '';
+        return typeof t === 'string' && t.toLowerCase().includes(titleIncludes.toLowerCase());
+      });
+    }
+
     // Generate a unique seed for this user's generation
     const userSeed = typeof body?.seed === 'number' ? body.seed : Math.floor(Math.random() * 1000000);
 
@@ -121,41 +140,50 @@ export async function POST(req: NextRequest) {
           graph = await loadWorkflowJson('Socialtwin-Image.json');
           isSocialTwin = true;
           console.log('Loaded SocialTwin-Image.json');
-          // Patch known nodes: 6 (positive prompt), 33 (negative), 27 (width/height/batch), 31 (sampler params), 30 (ckpt optional)
-          if (graph['6']?.inputs) graph['6'].inputs.text = prompt;
-          if (typeof body?.negative === 'string' && graph['33']?.inputs) graph['33'].inputs.text = body.negative;
-          if (graph['27']?.inputs) {
-            const w = typeof body?.width === 'number' ? body.width : graph['27'].inputs.width ?? 1024;
-            const h = typeof body?.height === 'number' ? body.height : graph['27'].inputs.height ?? 1024;
-            graph['27'].inputs.width = w;
-            graph['27'].inputs.height = h;
-            if (typeof body?.batch_size === 'number') graph['27'].inputs.batch_size = body.batch_size;
+          // Locate nodes by class/title to survive re-exports
+          const posKey = findByClassAndTitle(graph, 'CLIPTextEncode', 'Positive') || '6';
+          const negKey = findByClassAndTitle(graph, 'CLIPTextEncode', 'Negative') || '33';
+          const dimsKey = findByClassAndTitle(graph, 'EmptySD3LatentImage') || '27';
+          const samplerKey = findByClassAndTitle(graph, 'KSampler') || '31';
+          const ckptKey = findByClassAndTitle(graph, 'CheckpointLoaderSimple') || '30';
+
+          if (posKey && graph[posKey]?.inputs) graph[posKey].inputs.text = prompt;
+          if (typeof body?.negative === 'string' && negKey && graph[negKey]?.inputs) graph[negKey].inputs.text = body.negative;
+          if (dimsKey && graph[dimsKey]?.inputs) {
+            const w = typeof body?.width === 'number' ? body.width : graph[dimsKey].inputs.width ?? 1024;
+            const h = typeof body?.height === 'number' ? body.height : graph[dimsKey].inputs.height ?? 1024;
+            graph[dimsKey].inputs.width = w;
+            graph[dimsKey].inputs.height = h;
+            if (typeof body?.batch_size === 'number') graph[dimsKey].inputs.batch_size = body.batch_size;
           }
-          if (graph['31']?.inputs) {
-            if (typeof body?.steps === 'number') graph['31'].inputs.steps = Math.max(1, Math.round(body.steps));
-            if (typeof body?.cfg === 'number') graph['31'].inputs.cfg = body.cfg;
-            graph['31'].inputs.seed = userSeed;
+          if (samplerKey && graph[samplerKey]?.inputs) {
+            if (typeof body?.steps === 'number') graph[samplerKey].inputs.steps = Math.max(1, Math.round(body.steps));
+            if (typeof body?.cfg === 'number') graph[samplerKey].inputs.cfg = body.cfg;
+            graph[samplerKey].inputs.seed = userSeed;
           }
-          if (typeof body?.ckpt_name === 'string' && body.ckpt_name && graph['30']?.inputs) {
-            graph['30'].inputs.ckpt_name = body.ckpt_name;
+          if (typeof body?.ckpt_name === 'string' && body.ckpt_name && ckptKey && graph[ckptKey]?.inputs) {
+            graph[ckptKey].inputs.ckpt_name = body.ckpt_name;
           }
         } else if (mode === 'image-modify') {
           graph = await loadWorkflowJson('SocialTwin-Modify.json');
           isSocialTwin = true;
           console.log('Loaded SocialTwin-Modify.json');
-          // Patch known nodes: 6 (positive prompt), 188 (dims), 31 (sampler params)
-          if (graph['6']?.inputs) graph['6'].inputs.text = prompt;
-          if (graph['188']?.inputs) {
-            const w = typeof body?.width === 'number' ? body.width : graph['188'].inputs.width ?? 1024;
-            const h = typeof body?.height === 'number' ? body.height : graph['188'].inputs.height ?? 1024;
-            graph['188'].inputs.width = w;
-            graph['188'].inputs.height = h;
-            if (typeof body?.batch_size === 'number') graph['188'].inputs.batch_size = body.batch_size;
+          // Patch by class/title: prompt (CLIPTextEncode Positive), dims (EmptySD3LatentImage), sampler (KSampler)
+          const posKey2 = findByClassAndTitle(graph, 'CLIPTextEncode', 'Positive') || '6';
+          const dimsKey2 = findByClassAndTitle(graph, 'EmptySD3LatentImage') || '188';
+          const samplerKey2 = findByClassAndTitle(graph, 'KSampler') || '31';
+          if (posKey2 && graph[posKey2]?.inputs) graph[posKey2].inputs.text = prompt;
+          if (dimsKey2 && graph[dimsKey2]?.inputs) {
+            const w = typeof body?.width === 'number' ? body.width : graph[dimsKey2].inputs.width ?? 1024;
+            const h = typeof body?.height === 'number' ? body.height : graph[dimsKey2].inputs.height ?? 1024;
+            graph[dimsKey2].inputs.width = w;
+            graph[dimsKey2].inputs.height = h;
+            if (typeof body?.batch_size === 'number') graph[dimsKey2].inputs.batch_size = body.batch_size;
           }
-          if (graph['31']?.inputs) {
-            if (typeof body?.steps === 'number') graph['31'].inputs.steps = Math.max(1, Math.round(body.steps));
-            if (typeof body?.cfg === 'number') graph['31'].inputs.cfg = body.cfg;
-            graph['31'].inputs.seed = userSeed;
+          if (samplerKey2 && graph[samplerKey2]?.inputs) {
+            if (typeof body?.steps === 'number') graph[samplerKey2].inputs.steps = Math.max(1, Math.round(body.steps));
+            if (typeof body?.cfg === 'number') graph[samplerKey2].inputs.cfg = body.cfg;
+            graph[samplerKey2].inputs.seed = userSeed;
           }
         }
       } catch (e) {
