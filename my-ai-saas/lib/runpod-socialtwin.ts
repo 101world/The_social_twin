@@ -19,6 +19,7 @@ type RunParams = {
   apiKey?: string;
   userId?: string | null;
   ckpt_name?: string; // optional override for image mode
+  workflow_settings?: any;
 };
 
 function ensureBase(url: string) {
@@ -125,6 +126,26 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
       graph[dimsKey].inputs.height = typeof height === 'number' ? height : (graph[dimsKey].inputs.height ?? 1024);
       if (typeof batch_size === 'number') graph[dimsKey].inputs.batch_size = batch_size;
     }
+    // Apply workflow_settings if present
+    try {
+      const wf = (params as any).workflow_settings;
+      if (wf) {
+        if (wf.sampler && samplerKey && graph[samplerKey]?.inputs) {
+          graph[samplerKey].inputs.sampler_name = wf.sampler;
+          graph[samplerKey].inputs.sampler = wf.sampler;
+        }
+        if (typeof wf.denoise === 'number' && samplerKey && graph[samplerKey]?.inputs) {
+          graph[samplerKey].inputs.denoise = wf.denoise;
+        }
+        if (wf.unet) {
+          const unetKey = findByClassAndTitle(graph, 'UNet', 'UNET') || findNodeKeyBy(graph, (n:any)=> (n.class_type||'').toLowerCase().includes('unet'));
+          if (unetKey && graph[unetKey]?.inputs) {
+            graph[unetKey].inputs.unet_name = wf.unet;
+            graph[unetKey].inputs.name = wf.unet;
+          }
+        }
+      }
+    } catch (e) { /* ignore */ }
     if (samplerKey && graph[samplerKey]?.inputs) {
       if (typeof steps === 'number') graph[samplerKey].inputs.steps = Math.max(1, Math.round(steps));
       if (typeof cfg === 'number') graph[samplerKey].inputs.cfg = cfg;

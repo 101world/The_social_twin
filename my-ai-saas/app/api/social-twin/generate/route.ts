@@ -162,6 +162,29 @@ export async function POST(req: NextRequest) {
             if (typeof body?.cfg === 'number') graph[samplerKey].inputs.cfg = body.cfg;
             graph[samplerKey].inputs.seed = userSeed;
           }
+          // Apply optional workflow tweaks from client (sampler, denoise, unet, etc.)
+          try {
+            const wf = body?.workflow_settings;
+            if (wf) {
+              if (wf.sampler && samplerKey && graph[samplerKey]?.inputs) {
+                // try common field names
+                graph[samplerKey].inputs.sampler_name = wf.sampler;
+                graph[samplerKey].inputs.sampler = wf.sampler;
+              }
+              if (typeof wf.denoise === 'number' && samplerKey && graph[samplerKey]?.inputs) {
+                graph[samplerKey].inputs.denoise = wf.denoise;
+              }
+              if (wf.unet) {
+                // locate UNet loader node and patch its name
+                const unetKey = findByClassAndTitle(graph, 'UNet', 'UNET') || findNodeKeyBy(graph, (n:any)=> (n.class_type||'').toLowerCase().includes('unet'));
+                if (unetKey && graph[unetKey]?.inputs) {
+                  // try common input names
+                  graph[unetKey].inputs.unet_name = wf.unet;
+                  graph[unetKey].inputs.name = wf.unet;
+                }
+              }
+            }
+          } catch (e) { console.warn('Failed to apply workflow_settings to image graph', e); }
           if (typeof body?.ckpt_name === 'string' && body.ckpt_name && ckptKey && graph[ckptKey]?.inputs) {
             graph[ckptKey].inputs.ckpt_name = body.ckpt_name;
           }
@@ -185,7 +208,8 @@ export async function POST(req: NextRequest) {
               height: typeof body?.height === 'number' ? body.height : undefined,
               steps: typeof body?.steps === 'number' ? body.steps : undefined,
               cfg: typeof body?.cfg === 'number' ? body.cfg : undefined,
-              seed: userSeed
+              seed: userSeed,
+              workflow_settings: body?.workflow_settings
             });
 
             // Mirror image upload/logging skeleton used by image flow below

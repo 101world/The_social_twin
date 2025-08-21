@@ -111,6 +111,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [loraScale, setLoraScale] = useState<number|''>('');
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
+  // Workflow popover and tweakable settings
+  const [showWorkflowPopoverFor, setShowWorkflowPopoverFor] = useState<'image'|'image-modify'|null>(null);
+  const [useFluxDev, setUseFluxDev] = useState<boolean>(true);
+  const [sampler, setSampler] = useState<string>('euler');
+  const [denoise, setDenoise] = useState<number|''>('');
+  const [unetName, setUnetName] = useState<string>('flux1-kontext-dev.safetensors');
 
   // Quick Create enhanced state
   const [showQuickAdvanced, setShowQuickAdvanced] = useState<boolean>(false);
@@ -572,6 +578,29 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setProjects([]);
     } finally {
       setProjectsLoading(false);
+    }
+  }
+
+  // Refresh the Generated tab by fetching the latest history for this user.
+  async function refreshGeneratedHistory(limit = 24) {
+    try {
+      if (!userId) return;
+      const r = await fetch(`/api/social-twin/history?limit=${limit}`, { headers: { 'X-User-Id': userId || '' } });
+      if (!r.ok) return;
+      const j = await r.json().catch(() => ({} as any));
+      const items = Array.isArray(j.items) ? j.items : (j.items || []);
+      if (!items.length) return;
+      setBinItems(prev => {
+        // merge newest items while avoiding duplicates by id
+        const existingIds = new Set(prev.map((it: any) => it.id));
+        const newItems = items.filter((it: any) => !existingIds.has(it.id));
+        // Prepend newest items
+        const merged = [...newItems, ...prev];
+        // Keep to reasonable length
+        return merged.slice(0, Math.max(limit, merged.length));
+      });
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -1314,6 +1343,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           userId: userId || undefined,
           attachment: attached || undefined,
           imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
+          workflow_settings: showWorkflowPopoverFor ? {
+            target: showWorkflowPopoverFor,
+            use_flux_dev: useFluxDev,
+            sampler,
+            denoise: typeof denoise === 'number' ? denoise : undefined,
+            unet: unetName || undefined,
+          } : undefined,
         }),
       });
 
@@ -1379,6 +1415,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
   // credits may have been deducted; refresh balance UI via shared provider
   refreshCredits();
+  // Refresh generated history so new outputs appear in the Generated tab
+  try { refreshGeneratedHistory(); } catch {}
+  // Make sure Save Project button is available after generation
+  setShowSaveProject(true);
     } catch (err: any) {
       setMessages((prev) => [
         ...prev,
@@ -2679,6 +2719,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     >
                       {advancedOpen ? 'Less' : 'More'}
                     </button>
+                    {/* Workflow tweak popover trigger */}
+                    <button
+                      onClick={() => setShowWorkflowPopoverFor(v => v === 'image' ? null : 'image')}
+                      className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
+                      title="Image workflow settings"
+                    >
+                      Workflow
+                    </button>
+                    <button
+                      onClick={() => setShowWorkflowPopoverFor(v => v === 'image-modify' ? null : 'image-modify')}
+                      className={`rounded border px-2 py-1 text-xs transition-colors ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-300 hover:bg-gray-50'}`}
+                      title="Modify workflow settings"
+                    >
+                      Modify Workflow
+                    </button>
                     {(messages.length > 0 || canvasItems.length > 0) && (
                       <button
                         onClick={() => setProjectModalOpen(true)}
@@ -2690,6 +2745,37 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     )}
                   </div>
                 </div>
+
+                {/* Workflow Popover - simple inline panel */}
+                {showWorkflowPopoverFor && (
+                  <div className={`mt-2 p-3 rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium">{showWorkflowPopoverFor === 'image' ? 'Image Workflow' : 'Modify Workflow'}</div>
+                      <button className="text-xs" onClick={() => setShowWorkflowPopoverFor(null)}>Close</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <label className="col-span-2">
+                        <input type="checkbox" checked={useFluxDev} onChange={(e)=> setUseFluxDev(e.target.checked)} /> Use Flux Dev
+                      </label>
+                      <label>
+                        Sampler
+                        <select value={sampler} onChange={(e)=> setSampler(e.target.value)} className="w-full rounded border px-2 py-1 text-xs">
+                          <option value="euler">Euler</option>
+                          <option value="heun">Heun</option>
+                          <option value="dpm_2">DPM++ 2M</option>
+                        </select>
+                      </label>
+                      <label>
+                        Denoise
+                        <input type="number" step="0.01" min="0" max="1" value={denoise} onChange={(e)=> setDenoise(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded border px-2 py-1 text-xs" />
+                      </label>
+                      <label className="col-span-2">
+                        UNET
+                        <input value={unetName} onChange={(e)=> setUnetName(e.target.value)} className="w-full rounded border px-2 py-1 text-xs font-mono" />
+                      </label>
+                    </div>
+                  </div>
+                )}
                 {attached ? (
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-2 rounded border p-2">
