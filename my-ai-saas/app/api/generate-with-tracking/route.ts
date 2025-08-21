@@ -156,14 +156,24 @@ export async function POST(req: NextRequest) {
       });
 
       // Better error handling for HTML responses
-      const responseText = await generateResponse.text();
-      let generateResult: any;
+      const generateResponseText = await generateResponse.text();
+      let generateResult;
       
       try {
-        generateResult = JSON.parse(responseText);
+        generateResult = JSON.parse(generateResponseText);
       } catch (parseError) {
-        console.error('Failed to parse generate response as JSON:', responseText.substring(0, 500));
-        throw new Error(`Generate API returned invalid JSON. Response: ${responseText.substring(0, 200)}`);
+        // RunPod returned HTML instead of JSON - likely an error page
+        const isHtml = generateResponseText.trim().startsWith('<!DOCTYPE html>') || generateResponseText.trim().startsWith('<html>');
+        
+        return NextResponse.json({ 
+          error: 'Generation request failed',
+          details: isHtml 
+            ? `RunPod API returned HTML error page. Status: ${generateResponse.status}. Check RunPod URL and API key.`
+            : `Generate API returned invalid JSON. Response: ${generateResponseText.substring(0, 200)}...`,
+          runpodStatus: generateResponse.status,
+          isHtmlResponse: isHtml,
+          responsePreview: generateResponseText.substring(0, 200)
+        }, { status: 502 });
       }
 
       if (!generateResponse.ok) {
