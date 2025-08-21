@@ -1039,18 +1039,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
 
   useEffect(() => {
-    // Load RunPod endpoints from localStorage on first render [[memory:5857110]]
-    const DEFAULT_RP = "https://94ek2f3pah7ure-3001.proxy.runpod.net/";
-    setTextUrl(localStorage.getItem(LOCAL_KEYS.text) || "");
+    // Load RunPod endpoints from localStorage with environment variable fallbacks
+    const DEFAULT_TEXT = process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL || "";
+    const DEFAULT_IMAGE = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://64e5p2jm3e5r3k-3001.proxy.runpod.net/";
+    const DEFAULT_IMAGE_MODIFY = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || DEFAULT_IMAGE;
+    const DEFAULT_VIDEO = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL || "";
+    const DEFAULT_VIDEO_WAN = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_WAN_URL || "";
+    const DEFAULT_VIDEO_KLING = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_KLING_URL || "";
+    
+    setTextUrl(localStorage.getItem(LOCAL_KEYS.text) || DEFAULT_TEXT);
     const lsImg = localStorage.getItem(LOCAL_KEYS.image);
     const lsImgMod = localStorage.getItem(LOCAL_KEYS.imageModify);
-    setImageUrl(lsImg || DEFAULT_RP);
-    setImageModifyUrl(lsImgMod || DEFAULT_RP);
-    if (!lsImg) localStorage.setItem(LOCAL_KEYS.image, DEFAULT_RP);
-    if (!lsImgMod) localStorage.setItem(LOCAL_KEYS.imageModify, DEFAULT_RP);
-    setVideoUrl(localStorage.getItem(LOCAL_KEYS.video) || "");
-    setVideoWanUrl(localStorage.getItem(LOCAL_KEYS.videoWan) || "");
-    setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || "");
+    setImageUrl(lsImg || DEFAULT_IMAGE);
+    setImageModifyUrl(lsImgMod || DEFAULT_IMAGE_MODIFY);
+    if (!lsImg && DEFAULT_IMAGE) localStorage.setItem(LOCAL_KEYS.image, DEFAULT_IMAGE);
+    if (!lsImgMod && DEFAULT_IMAGE_MODIFY) localStorage.setItem(LOCAL_KEYS.imageModify, DEFAULT_IMAGE_MODIFY);
+    setVideoUrl(localStorage.getItem(LOCAL_KEYS.video) || DEFAULT_VIDEO);
+    setVideoWanUrl(localStorage.getItem(LOCAL_KEYS.videoWan) || DEFAULT_VIDEO_WAN);
+    setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || DEFAULT_VIDEO_KLING);
     setLoraName(localStorage.getItem(LOCAL_KEYS.loraName) || "");
     const lsScale = localStorage.getItem(LOCAL_KEYS.loraScale);
     setLoraScale(lsScale ? Number(lsScale) : "");

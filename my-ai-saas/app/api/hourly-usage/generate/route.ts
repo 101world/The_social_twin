@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase configuration missing');
+  }
+  return createClient(url, key);
+}
 
 // ============================================
 // HOURLY SESSION AI GENERATION
@@ -34,7 +40,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user has an active hourly session
-    const { data: sessionData, error: sessionError } = await supabase
+  const supabase = getSupabase();
+  const { data: sessionData, error: sessionError } = await supabase
       .from('hourly_usage_sessions')
       .select('*')
       .eq('user_id', userId)
@@ -89,7 +96,7 @@ export async function POST(req: NextRequest) {
                            'Generation completed successfully';
 
     // Update session with generation count (no credit deduction for hourly users)
-    const { error: updateError } = await supabase
+  const { error: updateError } = await supabase
       .from('hourly_usage_sessions')
       .update({
         generations_count: sessionData.generations_count + 1,
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Log the generation for tracking
-    const { error: logError } = await supabase
+  const { error: logError } = await supabase
       .from('user_generations')
       .insert({
         user_id: userId,
@@ -171,7 +178,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Get current active session
-    const { data: sessionData, error: sessionError } = await supabase
+  const supabase = getSupabase();
+  const { data: sessionData, error: sessionError } = await supabase
       .from('hourly_usage_sessions')
       .select('*')
       .eq('user_id', userId)
@@ -188,7 +196,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get generation count for this session
-    const { data: generationsData, error: generationsError } = await supabase
+  const { data: generationsData, error: generationsError } = await supabase
       .from('user_generations')
       .select('*')
       .eq('user_id', userId)

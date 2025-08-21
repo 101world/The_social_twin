@@ -51,9 +51,10 @@ export async function POST(req: NextRequest) {
       referer: req.headers.get('referer')
     });
     
-    const mode: Mode = body?.mode;
-    const prompt: string = body?.prompt ?? '';
-    const runpodUrl: string = body?.runpodUrl ?? '';
+  const mode: Mode = body?.mode;
+  const prompt: string = body?.prompt ?? '';
+  const DEFAULT_IMAGE_RUNPOD = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://64e5p2jm3e5r3k-3001.proxy.runpod.net/';
+  const runpodUrl: string = body?.runpodUrl ?? DEFAULT_IMAGE_RUNPOD ?? '';
     const referenceImageUrl: string | undefined = body?.imageUrl; // for image-modify
     const apiKey = process.env.RUNPOD_API_KEY;
     
@@ -98,75 +99,90 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // Build a simple, direct workflow that works with any ComfyUI setup
-    // Skip the complexity - just build a basic workflow and send it
-    console.log('=== BUILDING SIMPLE DIRECT WORKFLOW FOR USER:', userId, '===');
-    
-    // Generate a unique seed for this user's generation
-    const userSeed = body?.seed || Math.floor(Math.random() * 1000000);
-    
-    const graph = {
-      "1": {
-        inputs: {
-          ckpt_name: "sd_xl_base_1.0.safetensors"
-        },
-        class_type: "CheckpointLoaderSimple"
-      },
-      "2": {
-        inputs: {
-          text: prompt,
-          clip: ["1", 1]
-        },
-        class_type: "CLIPTextEncode"
-      },
-      "3": {
-        inputs: {
-          text: body?.negative || "",
-          clip: ["1", 1]
-        },
-        class_type: "CLIPTextEncode"
-      },
-      "4": {
-        inputs: {
-          width: body?.width || 1024,
-          height: body?.height || 1024,
-          batch_size: body?.batch_size || 1
-        },
-        class_type: "EmptyLatentImage"
-      },
-      "5": {
-        inputs: {
-          seed: userSeed,
-          steps: body?.steps || 20,
-          cfg: body?.cfg || 8,
-          sampler_name: "euler",
-          scheduler: "normal",
-          denoise: 1,
-          model: ["1", 0],
-          positive: ["2", 0],
-          negative: ["3", 0],
-          latent_image: ["4", 0]
-        },
-        class_type: "KSampler"
-      },
-      "6": {
-        inputs: {
-          samples: ["5", 0],
-          vae: ["1", 2]
-        },
-        class_type: "VAEDecode"
-      },
-      "7": {
-        inputs: {
-          filename_prefix: `user_${userId}_${Date.now()}`,
-          images: ["6", 0]
-        },
-        class_type: "SaveImage"
-      }
-    };
+    // Build the graph: Prefer Social Twin Flux workflows for image and image-modify; fallback to simple graph for others
+    console.log('=== SELECTING WORKFLOW GRAPH ===');
+    const useSocialTwin = (mode === 'image' || mode === 'image-modify');
+    let graph: any = {};
+    let isSocialTwin = false;
 
-    // If modify workflow, upload reference image to Comfy and inject into LoadImage node
-    if (mode === 'image-modify') {
+    // Helper to load workflow JSON from the project Workflows folder
+    async function loadWorkflowJson(fileName: string): Promise<any> {
+      const p = path.resolve(process.cwd(), 'Workflows', fileName);
+      const raw = await fs.readFile(p, 'utf-8');
+      return JSON.parse(raw);
+    }
+
+    // Generate a unique seed for this user's generation
+    const userSeed = typeof body?.seed === 'number' ? body.seed : Math.floor(Math.random() * 1000000);
+
+    if (useSocialTwin) {
+      try {
+        if (mode === 'image') {
+          graph = await loadWorkflowJson('Socialtwin-Image.json');
+          isSocialTwin = true;
+          console.log('Loaded SocialTwin-Image.json');
+          // Patch known nodes: 6 (positive prompt), 33 (negative), 27 (width/height/batch), 31 (sampler params), 30 (ckpt optional)
+          if (graph['6']?.inputs) graph['6'].inputs.text = prompt;
+          if (typeof body?.negative === 'string' && graph['33']?.inputs) graph['33'].inputs.text = body.negative;
+          if (graph['27']?.inputs) {
+            const w = typeof body?.width === 'number' ? body.width : graph['27'].inputs.width ?? 1024;
+            const h = typeof body?.height === 'number' ? body.height : graph['27'].inputs.height ?? 1024;
+            graph['27'].inputs.width = w;
+            graph['27'].inputs.height = h;
+            if (typeof body?.batch_size === 'number') graph['27'].inputs.batch_size = body.batch_size;
+          }
+          if (graph['31']?.inputs) {
+            if (typeof body?.steps === 'number') graph['31'].inputs.steps = Math.max(1, Math.round(body.steps));
+            if (typeof body?.cfg === 'number') graph['31'].inputs.cfg = body.cfg;
+            graph['31'].inputs.seed = userSeed;
+          }
+          if (typeof body?.ckpt_name === 'string' && body.ckpt_name && graph['30']?.inputs) {
+            graph['30'].inputs.ckpt_name = body.ckpt_name;
+          }
+        } else if (mode === 'image-modify') {
+          graph = await loadWorkflowJson('SocialTwin-Modify.json');
+          isSocialTwin = true;
+          console.log('Loaded SocialTwin-Modify.json');
+          // Patch known nodes: 6 (positive prompt), 188 (dims), 31 (sampler params)
+          if (graph['6']?.inputs) graph['6'].inputs.text = prompt;
+          if (graph['188']?.inputs) {
+            const w = typeof body?.width === 'number' ? body.width : graph['188'].inputs.width ?? 1024;
+            const h = typeof body?.height === 'number' ? body.height : graph['188'].inputs.height ?? 1024;
+            graph['188'].inputs.width = w;
+            graph['188'].inputs.height = h;
+            if (typeof body?.batch_size === 'number') graph['188'].inputs.batch_size = body.batch_size;
+          }
+          if (graph['31']?.inputs) {
+            if (typeof body?.steps === 'number') graph['31'].inputs.steps = Math.max(1, Math.round(body.steps));
+            if (typeof body?.cfg === 'number') graph['31'].inputs.cfg = body.cfg;
+            graph['31'].inputs.seed = userSeed;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load Social Twin workflow, falling back to simple graph:', e);
+      }
+    }
+
+    // Fallback simple SD/SDXL graph if Social Twin not used/available
+    if (!isSocialTwin) {
+      console.log('Using simple SD/SDXL graph fallback');
+      // Pick checkpoint via body override or default
+      const ckptName: string = typeof body?.ckpt_name === 'string' && body.ckpt_name
+        ? body.ckpt_name
+        : 'sd_xl_base_1.0.safetensors';
+      graph = {
+        "1": { inputs: { ckpt_name: ckptName }, class_type: "CheckpointLoaderSimple" },
+        "2": { inputs: { text: prompt, clip: ["1", 1] }, class_type: "CLIPTextEncode" },
+        "3": { inputs: { text: body?.negative || "", clip: ["1", 1] }, class_type: "CLIPTextEncode" },
+        "4": { inputs: { width: body?.width || 1024, height: body?.height || 1024, batch_size: typeof body?.batch_size === 'number' ? body.batch_size : 1 }, class_type: "EmptyLatentImage" },
+        "5": { inputs: { seed: userSeed, steps: body?.steps || 20, cfg: body?.cfg || 8, sampler_name: "euler", scheduler: "normal", denoise: 1, model: ["1", 0], positive: ["2", 0], negative: ["3", 0], latent_image: ["4", 0] }, class_type: "KSampler" },
+        "6": { inputs: { samples: ["5", 0], vae: ["1", 2] }, class_type: "VAEDecode" },
+        "7": { inputs: { filename_prefix: `user_${userId}_${Date.now()}`, images: ["6", 0] }, class_type: "SaveImage" }
+      };
+    }
+
+  // If modify workflow, upload reference image to Comfy and inject into LoadImage node (expects filename only)
+  if (mode === 'image-modify') {
       const refUrl: string | undefined = referenceImageUrl || (typeof body?.attachment?.dataUrl === 'string' ? body.attachment.dataUrl : undefined);
       if (!refUrl) {
         return NextResponse.json({ error: 'Image Modify requires imageUrl or attachment.dataUrl' }, { status: 400 });
@@ -237,29 +253,21 @@ export async function POST(req: NextRequest) {
       if (!uploadedName) {
         return NextResponse.json({ error: 'Failed to upload reference image to Comfy' }, { status: 502 });
       }
-      // Find LoadImage node and set its image field (Comfy expects filename only). For SocialTwin-Modify.json, default id is 190.
+      // Find LoadImage node and set its image field; for SocialTwin-Modify.json, id is '190'
       let loadKey: string | null = null;
-      for (const k of Object.keys(graph)) {
-        const node = (graph as any)[k];
-        if (node && node.class_type === 'LoadImage' && node.inputs) { loadKey = k; break; }
-      }
-      // Fallback to known id 190 if present
-      if (!loadKey && (graph as any)['190']?.class_type === 'LoadImage') loadKey = '190';
-      // Some exported graphs call it "Load Image"; normalize
+      if ((graph as any)['190']?.class_type === 'LoadImage') loadKey = '190';
       if (!loadKey) {
         for (const k of Object.keys(graph)) {
           const node = (graph as any)[k];
-          if (node && (node.class_type === 'Load Image' || node._meta?.title === 'Load Image') && node.inputs) { loadKey = k; break; }
+          if (node && (node.class_type === 'LoadImage' || node.class_type === 'Load Image' || node._meta?.title === 'Load Image') && node.inputs) { loadKey = k; break; }
         }
       }
-      if (!loadKey) {
-        return NextResponse.json({ error: 'Modify graph missing LoadImage node' }, { status: 400 });
-      }
+      if (!loadKey) return NextResponse.json({ error: 'Modify graph missing LoadImage node' }, { status: 400 });
       (graph as any)[loadKey].inputs.image = uploadedName;
       // Some graphs also have a path or folder input; prefer using comfy default input folder only
     }
 
-    // If video image-to-video, require and upload reference image, inject into LoadImage
+    // If video image-to-video, require and upload reference image, inject into LoadImage (simple support)
     if (mode === 'video' && ((typeof body?.video_type === 'string' && body.video_type === 'image') || (!body?.video_type && (typeof body?.attachment?.dataUrl === 'string')))) {
       const refUrl: string | undefined = (typeof body?.imageUrl === 'string' && body.imageUrl) || (typeof body?.attachment?.dataUrl === 'string' ? body.attachment.dataUrl : undefined);
       if (!refUrl) {
@@ -310,33 +318,22 @@ export async function POST(req: NextRequest) {
       (graph as any)[loadKey].inputs.image = uploadedName;
     }
 
-    // Configure the simple workflow with user parameters
-    // Node 2: Positive prompt
-    graph['2'].inputs.text = prompt;
-    
-    // Node 3: Negative prompt
-    if (typeof body?.negative === 'string') {
-      graph['3'].inputs.text = body.negative;
-    }
-    
-    // Node 4: Latent image dimensions and batch
-    if (body?.width || body?.height) {
-      graph['4'].inputs.width = body.width || 1024;
-      graph['4'].inputs.height = body.height || 1024;
-    }
-    if (typeof body?.batch_size === 'number') {
-      graph['4'].inputs.batch_size = body.batch_size;
-    }
-    
-    // Node 5: Sampling parameters
-    if (typeof body?.cfg === 'number') {
-      graph['5'].inputs.cfg = body.cfg;
-    }
-    if (typeof body?.steps === 'number') {
-      graph['5'].inputs.steps = Math.max(1, Math.round(body.steps));
-    }
-    if (typeof body?.seed === 'number') {
-      graph['5'].inputs.seed = body.seed;
+    // If using simple graph, do final parameter patches
+    if (!isSocialTwin) {
+      if (graph['2']?.inputs) graph['2'].inputs.text = prompt;
+      if (typeof body?.negative === 'string' && graph['3']?.inputs) graph['3'].inputs.text = body.negative;
+      if (graph['4']?.inputs) {
+        if (body?.width || body?.height) {
+          graph['4'].inputs.width = body.width || 1024;
+          graph['4'].inputs.height = body.height || 1024;
+        }
+        if (typeof body?.batch_size === 'number') graph['4'].inputs.batch_size = body.batch_size;
+      }
+      if (graph['5']?.inputs) {
+        if (typeof body?.cfg === 'number') graph['5'].inputs.cfg = body.cfg;
+        if (typeof body?.steps === 'number') graph['5'].inputs.steps = Math.max(1, Math.round(body.steps));
+        graph['5'].inputs.seed = userSeed;
+      }
     }
 
     // Send graph to RunPod (try /prompt with {prompt}, then '/' with raw graph)
@@ -353,8 +350,9 @@ export async function POST(req: NextRequest) {
     console.log('Graph (first 1000 chars):', JSON.stringify(graph, null, 2).substring(0, 1000));
 
     async function submit(): Promise<{ res: Response; bodyText: string }> {
-      // 1) POST /prompt with { prompt: graph }
-      const promptPayload = { prompt: graph };
+  // 1) POST /prompt with { prompt: graph, client_id }
+  const clientId = (userId ? `user_${userId}` : `client_${Math.random().toString(36).slice(2)}`);
+  const promptPayload = { prompt: graph, client_id: clientId } as any;
       const promptUrl = `${base}/prompt`;
       
       console.log('=== ATTEMPT 1: POST /prompt ===');

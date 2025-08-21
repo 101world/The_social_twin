@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user balance info using the RPC function
+  // Get user balance info using the RPC function
   const supabase = getSupabase();
   const { data, error } = await supabase
       .rpc('get_user_balance_info', { p_user_id: userId });

@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase configuration missing');
+  }
+  return createClient(url, key);
+}
 
 // ============================================
 // RAZORPAY WEBHOOK FOR HOURLY BALANCE TOP-UPS
@@ -22,8 +28,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify webhook signature
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('Missing RAZORPAY_WEBHOOK_SECRET env');
+      return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 });
+    }
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET!)
+      .createHmac('sha256', webhookSecret)
       .update(body)
       .digest('hex');
 
@@ -57,6 +68,7 @@ export async function POST(req: NextRequest) {
       console.log(`Processing hourly balance top-up: $${topupAmountUSD} for user ${userId}`);
 
       try {
+        const supabase = getSupabase();
         // Update transaction status to completed
         const { error: updateError } = await supabase
           .from('hourly_topup_transactions')
@@ -110,7 +122,8 @@ export async function POST(req: NextRequest) {
         console.error('Error processing hourly balance top-up:', error);
         
         // Mark transaction as failed
-        await supabase
+  const supabase = getSupabase();
+  await supabase
           .from('hourly_topup_transactions')
           .update({
             status: 'failed',
@@ -134,8 +147,9 @@ export async function POST(req: NextRequest) {
       
       console.log('Hourly balance payment failed:', orderId);
 
-      // Update transaction status to failed
-      await supabase
+  // Update transaction status to failed
+  const supabase = getSupabase();
+  await supabase
         .from('hourly_topup_transactions')
         .update({
           status: 'failed',

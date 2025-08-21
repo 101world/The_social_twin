@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+function getAdminSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    return { error: 'Missing Supabase env (NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)', client: null as any };
+  }
+  return { error: null as string | null, client: createClient(url, key) };
+}
 
 // ============================================
 // END HOURLY SESSION API
@@ -20,6 +27,11 @@ export async function POST(req: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    const { error: envErr, client: supabase } = getAdminSupabase();
+    if (envErr) {
+      return NextResponse.json({ error: envErr }, { status: 500 });
     }
 
     // Call Supabase RPC to end hourly session
@@ -81,6 +93,11 @@ export async function GET(req: NextRequest) {
         { error: 'Authentication required' },
         { status: 401 }
       );
+    }
+
+    const { error: envErr, client: supabase } = getAdminSupabase();
+    if (envErr) {
+      return NextResponse.json({ error: envErr }, { status: 500 });
     }
 
     // Get current active session and balance

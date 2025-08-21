@@ -42,13 +42,16 @@ export async function POST(req: NextRequest) {
     const {
       prompt,
       mode,
-      runpodUrl,
+      runpodUrl: runpodUrlRaw,
       provider,
       batch_size = 1,
       userId: bodyUserId,
       attachment,
       ...otherParams
     } = body;
+
+    const DEFAULT_IMAGE_RUNPOD = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://64e5p2jm3e5r3k-3001.proxy.runpod.net/';
+    const runpodUrl = (typeof runpodUrlRaw === 'string' && runpodUrlRaw) ? runpodUrlRaw : DEFAULT_IMAGE_RUNPOD;
 
     // Validate mode and calculate costs
     if (!mode || !['text', 'image', 'image-modify', 'video'].includes(mode)) {
@@ -155,7 +158,7 @@ export async function POST(req: NextRequest) {
       const generatePayload = {
         prompt,
         mode,
-        runpodUrl,
+  runpodUrl,
         provider,
         batch_size,
         userId,
@@ -163,15 +166,27 @@ export async function POST(req: NextRequest) {
         ...otherParams
       };
       
+      // Resolve correct origin (Vercel can differ between req.nextUrl.origin and public URL)
+      const inferredOrigin = (() => {
+        try {
+          const u = new URL(req.url);
+          return `${u.protocol}//${u.host}`;
+        } catch { /* ignore */ }
+        return req.nextUrl.origin;
+      })();
+      const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined;
+      const baseOrigin = vercelOrigin || inferredOrigin || req.nextUrl.origin;
+      const internalGenerateUrl = `${baseOrigin}/api/social-twin/generate`;
+
       console.log('=== OUTGOING REQUEST TO SOCIAL-TWIN/GENERATE ===');
-      console.log('URL:', `${req.nextUrl.origin}/api/social-twin/generate`);
+      console.log('Resolved Origin:', baseOrigin);
+      console.log('URL:', internalGenerateUrl);
       console.log('Headers:', {
         'Content-Type': 'application/json',
         'X-User-Id': userId,
       });
       console.log('Payload:', JSON.stringify(generatePayload, null, 2));
-      
-      const generateResponse = await fetch(`${req.nextUrl.origin}/api/social-twin/generate`, {
+      const generateResponse = await fetch(internalGenerateUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,9 +196,10 @@ export async function POST(req: NextRequest) {
       });
 
       console.log('=== RESPONSE FROM SOCIAL-TWIN/GENERATE ===');
-      console.log('Status:', generateResponse.status);
-      console.log('Status Text:', generateResponse.statusText);
-      console.log('Headers:', Object.fromEntries(generateResponse.headers.entries()));
+  const respHeaders = Object.fromEntries(generateResponse.headers.entries());
+  console.log('Status:', generateResponse.status);
+  console.log('Status Text:', generateResponse.statusText);
+  console.log('Headers:', respHeaders);
 
       // Better error handling for HTML responses
       const generateResponseText = await generateResponse.text();
@@ -196,20 +212,164 @@ export async function POST(req: NextRequest) {
         console.log('Parsed Response:', JSON.stringify(generateResult, null, 2));
       } catch (parseError) {
         console.error('Failed to parse response as JSON:', parseError);
-        // RunPod returned HTML instead of JSON - likely an error page
-        const isHtml = generateResponseText.trim().startsWith('<!DOCTYPE html>') || generateResponseText.trim().startsWith('<html>');
-        
-        console.log('Is HTML Response:', isHtml);
-        
-        return NextResponse.json({ 
-          error: 'Generation request failed',
-          details: isHtml 
-            ? `RunPod API returned HTML error page. Status: ${generateResponse.status}. Check RunPod URL and API key.`
-            : `Generate API returned invalid JSON. Response: ${generateResponseText.substring(0, 200)}...`,
-          runpodStatus: generateResponse.status,
-          isHtmlResponse: isHtml,
-          responsePreview: generateResponseText.substring(0, 200)
-        }, { status: 502 });
+          // Likely hit a non-API route (Next.js HTML) instead of our generate route
+          const isHtml = (respHeaders['content-type'] || '').includes('text/html')
+            || generateResponseText.trim().startsWith('<!DOCTYPE html>')
+            || generateResponseText.trim().startsWith('<html>');
+
+          const hint = isHtml
+            ? 'HTML came from your app, not RunPod. Your API route may be missing in this deployment (wrong project root) or origin was resolved incorrectly.'
+            : 'Generate API returned invalid JSON.';
+
+          // Fallback: call RunPod directly for image generation if internal route returned HTML
+          if (isHtml && mode === 'image' && typeof runpodUrl === 'string' && runpodUrl) {
+            console.warn('Internal API returned HTML; attempting direct RunPod fallback...');
+
+            async function directRunpodImage(): Promise<{ images: string[]; videos: string[]; runpod: any }> {
+              const base = runpodUrl.replace(/\/$/, '');
+              const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+              };
+              const apiKey = process.env.RUNPOD_API_KEY;
+              if (apiKey) {
+                headers['Authorization'] = `Bearer ${apiKey}`;
+                headers['x-api-key'] = apiKey;
+                headers['X-RunPod-Api-Key'] = apiKey;
+              }
+
+              // Try to auto-pick a checkpoint via /object_info
+              let ckptName = 'sd_xl_base_1.0.safetensors';
+              try {
+                const oi = await fetch(`${base}/object_info`, { headers: { 'Accept': 'application/json' } });
+                if (oi.ok) {
+                  const oij = await oi.json().catch(() => null as any);
+                  const cand = oij?.CheckpointLoaderSimple || oij?.CheckpointLoader || oij?.LoadCheckpoint;
+                  const req = cand?.input?.required || cand?.input?.inputs || {};
+                  const opt = cand?.input?.optional || {};
+                  const getChoices = (slot: any) => Array.isArray(slot) && slot.length > 1 && slot[1] && typeof slot[1] === 'object' ? (slot[1].choices || slot[1].values || []) : [];
+                  const choices = getChoices(req?.ckpt_name) || getChoices(opt?.ckpt_name) || [];
+                  if (Array.isArray(choices) && choices.length) {
+                    ckptName = (choices.find((x: any) => typeof x === 'string' && /xl/i.test(x)) || choices[0]) as string;
+                  }
+                }
+              } catch {}
+
+              const userSeed = typeof (otherParams?.seed) === 'number' ? otherParams.seed : Math.floor(Math.random() * 1000000);
+              const width = typeof (otherParams?.width) === 'number' ? otherParams.width : 1024;
+              const height = typeof (otherParams?.height) === 'number' ? otherParams.height : 1024;
+              const steps = typeof (otherParams?.steps) === 'number' ? Math.max(1, Math.round(otherParams.steps as number)) : 20;
+              const cfg = typeof (otherParams?.cfg) === 'number' ? otherParams.cfg : 8;
+              const batch = typeof (batch_size) === 'number' ? batch_size : 1;
+              const negative = typeof (otherParams?.negative) === 'string' ? otherParams.negative : '';
+
+              const graph: any = {
+                "1": { inputs: { ckpt_name: ckptName }, class_type: "CheckpointLoaderSimple" },
+                "2": { inputs: { text: prompt, clip: ["1", 1] }, class_type: "CLIPTextEncode" },
+                "3": { inputs: { text: negative, clip: ["1", 1] }, class_type: "CLIPTextEncode" },
+                "4": { inputs: { width, height, batch_size: batch }, class_type: "EmptyLatentImage" },
+                "5": { inputs: { seed: userSeed, steps, cfg, sampler_name: "euler", scheduler: "normal", denoise: 1, model: ["1", 0], positive: ["2", 0], negative: ["3", 0], latent_image: ["4", 0] }, class_type: "KSampler" },
+                "6": { inputs: { samples: ["5", 0], vae: ["1", 2] }, class_type: "VAEDecode" },
+                "7": { inputs: { filename_prefix: `user_${userId}_${Date.now()}`, images: ["6", 0] }, class_type: "SaveImage" }
+              };
+
+              const clientId = `user_${userId || 'anon'}`;
+              const submit = await fetch(`${base}/prompt`, { method: 'POST', headers, body: JSON.stringify({ prompt: graph, client_id: clientId }) });
+              const submitText = await submit.text();
+              if (!submit.ok) throw new Error(`RunPod submit failed ${submit.status}: ${submitText.slice(0, 200)}`);
+              let sj: any = {};
+              try { sj = JSON.parse(submitText); } catch {}
+              const promptId: string | undefined = sj?.prompt_id || sj?.id || sj?.promptId;
+              if (!promptId) throw new Error('Missing prompt_id in RunPod response');
+
+              const images: string[] = [];
+              const videos: string[] = [];
+              for (let i = 0; i < 150; i++) {
+                const h = await fetch(`${base}/history/${encodeURIComponent(promptId)}`, { headers });
+                const ht = await h.text();
+                let hj: any = {};
+                try { hj = ht ? JSON.parse(ht) : {}; } catch {}
+                const bag: any = hj?.[promptId]?.outputs || hj?.outputs || {};
+                try {
+                  for (const k of Object.keys(bag)) {
+                    const node = bag[k];
+                    if (node?.images) {
+                      for (const img of node.images) {
+                        const fn = img?.filename ?? img?.name ?? img;
+                        const sub = img?.subfolder ?? '';
+                        const t = img?.type ?? 'output';
+                        const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
+                        if (/\.(mp4|webm)(\?|$)/i.test(String(fn))) videos.push(url); else images.push(url);
+                      }
+                    }
+                    if (node?.videos) {
+                      for (const vid of node.videos) {
+                        const fn = vid?.filename ?? vid?.name ?? vid;
+                        const sub = vid?.subfolder ?? '';
+                        const t = vid?.type ?? 'output';
+                        const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
+                        videos.push(url);
+                      }
+                    }
+                  }
+                } catch {}
+                if (images.length || videos.length) break;
+                await new Promise(r => setTimeout(r, 2000));
+              }
+              return { images, videos, runpod: sj };
+            }
+
+            try {
+              const out = await directRunpodImage();
+              const urls = out.images.length ? out.images : out.videos;
+              const resultUrl = urls[0] || null;
+
+              await supabase
+                .from('generations')
+                .update({
+                  result_url: resultUrl,
+                  content: null,
+                  metadata: { ...(generationRecord as any).metadata, status: 'completed', batch_results: { images: out.images, videos: out.videos, urls } },
+                  duration_seconds: null
+                })
+                .eq('id', generationRecord.id);
+
+              // Deduct credits if affordable
+              let didDeduct = false;
+              let newBalance: number | null = null;
+              if (canAfford) {
+                const { data: bal, error: deductError } = await supabase.rpc('deduct_credits_simple', { p_user_id: userId, p_amount: totalCost });
+                if (!deductError && typeof bal === 'number') { didDeduct = true; newBalance = bal; }
+              }
+
+              return NextResponse.json({
+                ok: true,
+                url: resultUrl,
+                urls,
+                images: out.images,
+                videos: out.videos,
+                runpod: out.runpod,
+                creditInfo: { cost: totalCost, didDeduct, remainingCredits: didDeduct ? (newBalance as number) : availableCredits, generationId: generationRecord.id },
+                allowanceWarning
+              });
+            } catch (fbErr) {
+              console.error('Direct RunPod fallback failed:', fbErr);
+              return NextResponse.json({
+                error: 'Generation request failed',
+                details: `${hint} Status: ${generateResponse.status}. Origin: ${baseOrigin}`,
+                runpodStatus: generateResponse.status,
+                isHtmlResponse: isHtml,
+                responsePreview: generateResponseText.substring(0, 200),
+              }, { status: 502 });
+            }
+          }
+
+          return NextResponse.json({
+            error: 'Generation request failed',
+            details: `${hint} Status: ${generateResponse.status}. Origin: ${baseOrigin}`,
+            runpodStatus: generateResponse.status,
+            isHtmlResponse: isHtml,
+            responsePreview: generateResponseText.substring(0, 200),
+          }, { status: 502 });
       }
 
       if (!generateResponse.ok) {

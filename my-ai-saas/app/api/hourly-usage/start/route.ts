@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const runtime = 'nodejs';
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase configuration missing');
+  }
+  return createClient(url, key);
+}
 
 // ============================================
 // START HOURLY SESSION API
@@ -22,8 +28,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Call Supabase RPC to start hourly session
-    const { data, error } = await supabase.rpc('start_hourly_session', {
+  // Call Supabase RPC to start hourly session
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('start_hourly_session', {
       p_user_id: userId
     });
 
