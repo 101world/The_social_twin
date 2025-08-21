@@ -1,0 +1,476 @@
+{
+  "6": {
+    "inputs": {
+      "text": "the camera slowly tracks in like a cinematic slow show moving very slowly while the character stands still  the camera breathing eyes slowly blinking, not moving just staring into the camera \n ",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "text": "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly",
+      "clip": [
+        "38",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "38": {
+    "inputs": {
+      "clip_name": "t5xxl_fp16.safetensors",
+      "type": "ltxv",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "44": {
+    "inputs": {
+      "ckpt_name": "ltxv-13b-0.9.7-dev.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "73": {
+    "inputs": {
+      "sampler_name": "gradient_estimation"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "1103": {
+    "inputs": {
+      "scheduler": "linear_quadratic",
+      "steps": 30,
+      "denoise": 1,
+      "model": [
+        "44",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "1206": {
+    "inputs": {
+      "image": "freepik__ultrarealistic-cinematic-still-of-mahi-a-poetic-in__59953.jpeg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "1241": {
+    "inputs": {
+      "frame_rate": 24.000000000000004,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "LTXVConditioning",
+    "_meta": {
+      "title": "LTXVConditioning"
+    }
+  },
+  "1335": {
+    "inputs": {
+      "samples": [
+        "1338",
+        0
+      ],
+      "vae": [
+        "1870",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "1336": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "ltxv-base",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": false,
+      "images": [
+        "1335",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "1338": {
+    "inputs": {
+      "width": 768,
+      "height": 512,
+      "num_frames": 97,
+      "optional_cond_indices": "0",
+      "strength": 0.8,
+      "crop": "center",
+      "crf": 30,
+      "blur": 0,
+      "model": [
+        "44",
+        0
+      ],
+      "vae": [
+        "44",
+        2
+      ],
+      "guider": [
+        "1807",
+        0
+      ],
+      "sampler": [
+        "73",
+        0
+      ],
+      "sigmas": [
+        "1103",
+        0
+      ],
+      "noise": [
+        "1507",
+        0
+      ],
+      "optional_cond_images": [
+        "1206",
+        0
+      ]
+    },
+    "class_type": "LTXVBaseSampler",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Base Sampler"
+    }
+  },
+  "1507": {
+    "inputs": {
+      "noise_seed": 794396971240249
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "1593": {
+    "inputs": {
+      "factor": 0.25,
+      "latents": [
+        "1691",
+        0
+      ],
+      "reference": [
+        "1338",
+        0
+      ]
+    },
+    "class_type": "LTXVAdainLatent",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Adain Latent"
+    }
+  },
+  "1596": {
+    "inputs": {
+      "step": 18,
+      "sigmas": [
+        "1103",
+        0
+      ]
+    },
+    "class_type": "SplitSigmas",
+    "_meta": {
+      "title": "SplitSigmas"
+    }
+  },
+  "1598": {
+    "inputs": {
+      "noise_seed": 628428099616878
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "1599": {
+    "inputs": {
+      "frame_rate": 24,
+      "loop_count": 0,
+      "filename_prefix": "ltxv-hd",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 18,
+      "save_metadata": false,
+      "trim_to_audio": false,
+      "pingpong": false,
+      "save_output": false,
+      "images": [
+        "1699",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "1601": {
+    "inputs": {
+      "tile_size": 1280,
+      "overlap": 128,
+      "temporal_size": 256,
+      "temporal_overlap": 32,
+      "samples": [
+        "1871",
+        0
+      ],
+      "vae": [
+        "1870",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode (Tiled)"
+    }
+  },
+  "1661": {
+    "inputs": {
+      "width": 1280,
+      "height": 1280,
+      "upscale_method": "bicubic",
+      "keep_proportion": true,
+      "divisible_by": 2,
+      "crop": "center",
+      "image": [
+        "1601",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJ",
+    "_meta": {
+      "title": "Resize Image (deprecated)"
+    }
+  },
+  "1691": {
+    "inputs": {
+      "samples": [
+        "1338",
+        0
+      ],
+      "upscale_model": [
+        "1828",
+        0
+      ],
+      "vae": [
+        "44",
+        2
+      ]
+    },
+    "class_type": "LTXVLatentUpsampler",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Latent Upsampler"
+    }
+  },
+  "1699": {
+    "inputs": {
+      "grain_intensity": 0.010000000000000002,
+      "saturation": 0.5000000000000001,
+      "images": [
+        "1661",
+        0
+      ]
+    },
+    "class_type": "LTXVFilmGrain",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Film Grain"
+    }
+  },
+  "1807": {
+    "inputs": {
+      "skip_steps_sigma_threshold": 0.9970000000000002,
+      "cfg_star_rescale": true,
+      "sigmas": "1.0, 0.9933, 0.9850, 0.9767, 0.9008, 0.6180",
+      "cfg_values": "1,16,8,8,4,1",
+      "stg_scale_values": "0, 4, 4, 2, 1, 1",
+      "stg_rescale_values": "1, 1, 1, 1, 1, 1",
+      "stg_layers_indices": "[35], [35], [35], [42], [42], [42]",
+      "model": [
+        "44",
+        0
+      ],
+      "positive": [
+        "1241",
+        0
+      ],
+      "negative": [
+        "1241",
+        1
+      ],
+      "preset": [
+        "1809",
+        0
+      ]
+    },
+    "class_type": "STGGuiderAdvanced",
+    "_meta": {
+      "title": "🅛🅣🅧 STG Guider Advanced"
+    }
+  },
+  "1809": {
+    "inputs": {
+      "preset": "13b Dynamic"
+    },
+    "class_type": "STGAdvancedPresets",
+    "_meta": {
+      "title": "🅛🅣🅧 STG Advanced Presets"
+    }
+  },
+  "1813": {
+    "inputs": {
+      "skip_steps_sigma_threshold": 0.9970000000000002,
+      "cfg_star_rescale": true,
+      "sigmas": "1",
+      "cfg_values": "1",
+      "stg_scale_values": "1",
+      "stg_rescale_values": "1",
+      "stg_layers_indices": "[42]",
+      "model": [
+        "44",
+        0
+      ],
+      "positive": [
+        "1241",
+        0
+      ],
+      "negative": [
+        "1241",
+        1
+      ],
+      "preset": [
+        "1864",
+        0
+      ]
+    },
+    "class_type": "STGGuiderAdvanced",
+    "_meta": {
+      "title": "🅛🅣🅧 STG Guider Advanced"
+    }
+  },
+  "1828": {
+    "inputs": {
+      "upscale_model": "ltxv-spatial-upscaler-0.9.8.safetensors",
+      "spatial_upsample": true,
+      "temporal_upsample": false
+    },
+    "class_type": "LTXVLatentUpsamplerModelLoader",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Latent Upsampler Model Loader"
+    }
+  },
+  "1864": {
+    "inputs": {
+      "preset": "13b Upscale"
+    },
+    "class_type": "STGAdvancedPresets",
+    "_meta": {
+      "title": "🅛🅣🅧 STG Advanced Presets"
+    }
+  },
+  "1870": {
+    "inputs": {
+      "timestep": 0.05000000000000001,
+      "scale": 0.025000000000000005,
+      "seed": 903145584142926,
+      "vae": [
+        "44",
+        2
+      ]
+    },
+    "class_type": "Set VAE Decoder Noise",
+    "_meta": {
+      "title": "🅛🅣🅧 Set VAE Decoder Noise"
+    }
+  },
+  "1871": {
+    "inputs": {
+      "horizontal_tiles": 1,
+      "vertical_tiles": 1,
+      "overlap": 1,
+      "latents_cond_strength": 0.15000000000000002,
+      "boost_latent_similarity": false,
+      "crop": "disabled",
+      "optional_cond_indices": "0",
+      "images_cond_strengths": "0.9",
+      "model": [
+        "44",
+        0
+      ],
+      "vae": [
+        "44",
+        2
+      ],
+      "noise": [
+        "1598",
+        0
+      ],
+      "sampler": [
+        "73",
+        0
+      ],
+      "sigmas": [
+        "1596",
+        1
+      ],
+      "guider": [
+        "1813",
+        0
+      ],
+      "latents": [
+        "1593",
+        0
+      ],
+      "optional_cond_images": [
+        "1206",
+        0
+      ]
+    },
+    "class_type": "LTXVTiledSampler",
+    "_meta": {
+      "title": "🅛🅣🅧 LTXV Tiled Sampler"
+    }
+  }
+}
