@@ -24,6 +24,21 @@ export async function POST(req: NextRequest) {
   // Clerk auth still required for user identity; admin key stays server-side only.
 
   const body = await req.json();
+    
+    // Log the complete request for debugging
+    console.log('=== GENERATION REQUEST DEBUG ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('User ID:', userId);
+    console.log('Request Body:', JSON.stringify(body, null, 2));
+    console.log('Request Headers:', {
+      'content-type': req.headers.get('content-type'),
+      'user-agent': req.headers.get('user-agent'),
+      'x-forwarded-for': req.headers.get('x-forwarded-for'),
+      'x-real-ip': req.headers.get('x-real-ip'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer')
+    });
+    
     const {
       prompt,
       mode,
@@ -137,33 +152,54 @@ export async function POST(req: NextRequest) {
 
     // Now make the actual generation request to the existing social-twin/generate endpoint
     try {
+      const generatePayload = {
+        prompt,
+        mode,
+        runpodUrl,
+        provider,
+        batch_size,
+        userId,
+        attachment,
+        ...otherParams
+      };
+      
+      console.log('=== OUTGOING REQUEST TO SOCIAL-TWIN/GENERATE ===');
+      console.log('URL:', `${req.nextUrl.origin}/api/social-twin/generate`);
+      console.log('Headers:', {
+        'Content-Type': 'application/json',
+        'X-User-Id': userId,
+      });
+      console.log('Payload:', JSON.stringify(generatePayload, null, 2));
+      
       const generateResponse = await fetch(`${req.nextUrl.origin}/api/social-twin/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-User-Id': userId,
         },
-        body: JSON.stringify({
-          prompt,
-          mode,
-          runpodUrl,
-          provider,
-          batch_size,
-          userId,
-          attachment,
-          ...otherParams
-        }),
+        body: JSON.stringify(generatePayload),
       });
+
+      console.log('=== RESPONSE FROM SOCIAL-TWIN/GENERATE ===');
+      console.log('Status:', generateResponse.status);
+      console.log('Status Text:', generateResponse.statusText);
+      console.log('Headers:', Object.fromEntries(generateResponse.headers.entries()));
 
       // Better error handling for HTML responses
       const generateResponseText = await generateResponse.text();
+      console.log('Raw Response (first 500 chars):', generateResponseText.substring(0, 500));
+      
       let generateResult;
       
       try {
         generateResult = JSON.parse(generateResponseText);
+        console.log('Parsed Response:', JSON.stringify(generateResult, null, 2));
       } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
         // RunPod returned HTML instead of JSON - likely an error page
         const isHtml = generateResponseText.trim().startsWith('<!DOCTYPE html>') || generateResponseText.trim().startsWith('<html>');
+        
+        console.log('Is HTML Response:', isHtml);
         
         return NextResponse.json({ 
           error: 'Generation request failed',

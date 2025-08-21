@@ -30,14 +30,26 @@ async function ensureSocialTwinTopic(supabase: ReturnType<typeof createSupabaseC
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('=== Social Twin Generate API Called ===');
-    const authState = await auth();
-    let userId = authState.userId as string | null;
-    const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
-    console.log('Auth state:', { userId, hasGetToken: !!getToken });
+  const authState = await auth();
+  let userId = authState.userId as string | null;
+  const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
 
     const body = await req.json();
-    console.log('Request body:', { mode: body?.mode, prompt: body?.prompt?.substring(0, 100), runpodUrl: body?.runpodUrl });
+    
+    // Log the complete request for debugging
+    console.log('=== SOCIAL-TWIN GENERATE REQUEST ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('User ID:', userId);
+    console.log('Request Body:', JSON.stringify(body, null, 2));
+    console.log('Request Headers:', {
+      'content-type': req.headers.get('content-type'),
+      'user-agent': req.headers.get('user-agent'),
+      'x-user-id': req.headers.get('x-user-id'),
+      'x-forwarded-for': req.headers.get('x-forwarded-for'),
+      'x-real-ip': req.headers.get('x-real-ip'),
+      origin: req.headers.get('origin'),
+      referer: req.headers.get('referer')
+    });
     
     const mode: Mode = body?.mode;
     const prompt: string = body?.prompt ?? '';
@@ -45,7 +57,14 @@ export async function POST(req: NextRequest) {
     const referenceImageUrl: string | undefined = body?.imageUrl; // for image-modify
     const apiKey = process.env.RUNPOD_API_KEY;
     
-    console.log('Parsed values:', { mode, promptLength: prompt.length, runpodUrl, hasApiKey: !!apiKey });
+    console.log('=== PARSED REQUEST DATA ===');
+    console.log('Mode:', mode);
+    console.log('Prompt:', prompt);
+    console.log('RunPod URL:', runpodUrl);
+    console.log('Reference Image URL:', referenceImageUrl);
+    console.log('API Key Present:', !!apiKey);
+    console.log('API Key (partial):', apiKey ? `${apiKey.substring(0, 10)}...` : 'MISSING');
+    console.log('Other params:', JSON.stringify({ ...body, prompt: '[REDACTED]', runpodUrl: '[REDACTED]' }, null, 2));
 
     if (!mode || !['text', 'image', 'image-modify', 'video'].includes(mode)) {
       return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
@@ -319,16 +338,43 @@ export async function POST(req: NextRequest) {
       ...(apiKey ? { 'X-RunPod-Api-Key': apiKey } : {}),
     } as Record<string, string>;
 
+    console.log('=== RUNPOD SUBMISSION ===');
+    console.log('Base URL:', base);
+    console.log('Headers:', headers);
+    console.log('Graph (first 1000 chars):', JSON.stringify(graph, null, 2).substring(0, 1000));
+
     async function submit(): Promise<{ res: Response; bodyText: string }> {
       // 1) POST /prompt with { prompt: graph }
-      let res = await fetch(`${base}/prompt`, {
-        method: 'POST', headers, body: JSON.stringify({ prompt: graph }),
+      const promptPayload = { prompt: graph };
+      const promptUrl = `${base}/prompt`;
+      
+      console.log('=== ATTEMPT 1: POST /prompt ===');
+      console.log('URL:', promptUrl);
+      console.log('Payload (first 500 chars):', JSON.stringify(promptPayload, null, 2).substring(0, 500));
+      
+      let res = await fetch(promptUrl, {
+        method: 'POST', headers, body: JSON.stringify(promptPayload),
       });
       let text = await res.text();
+      
+      console.log('Response Status:', res.status);
+      console.log('Response Headers:', Object.fromEntries(res.headers.entries()));
+      console.log('Response Body (first 500 chars):', text.substring(0, 500));
+      
       if (res.ok) return { res, bodyText: text };
+      
       // 2) POST base with raw graph
+      console.log('=== ATTEMPT 2: POST base URL ===');
+      console.log('URL:', base);
+      console.log('Raw Graph (first 500 chars):', JSON.stringify(graph, null, 2).substring(0, 500));
+      
       res = await fetch(base, { method: 'POST', headers, body: JSON.stringify(graph) });
       text = await res.text();
+      
+      console.log('Response Status:', res.status);
+      console.log('Response Headers:', Object.fromEntries(res.headers.entries()));
+      console.log('Response Body (first 500 chars):', text.substring(0, 500));
+      
       if (res.ok) return { res, bodyText: text };
       // Return last attempt
       return { res, bodyText: text };
@@ -338,7 +384,19 @@ export async function POST(req: NextRequest) {
     const submitText = submitAttempt.bodyText;
     let submitJson: any = {};
     try { submitJson = submitText ? JSON.parse(submitText) : {}; } catch { /* raw */ }
+    
+    console.log('=== SUBMIT RESULT ===');
+    console.log('Success:', submitAttempt.res.ok);
+    console.log('Status:', submitAttempt.res.status);
+    console.log('Response Text:', submitText);
+    console.log('Parsed JSON:', JSON.stringify(submitJson, null, 2));
+    
     if (!submitAttempt.res.ok) {
+      const isHtml = submitText.trim().startsWith('<!DOCTYPE html>') || submitText.trim().startsWith('<html>');
+      console.log('Error - Is HTML Response:', isHtml);
+      if (isHtml) {
+        console.log('HTML Response detected - likely RunPod connectivity issue');
+      }
       return NextResponse.json({ error: `RunPod submit failed (${submitAttempt.res.status})`, runpodResponse: submitJson }, { status: submitAttempt.res.status || 502 });
     }
 
@@ -478,14 +536,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, url: aiImage, urls: aiImage ? [aiImage] : [], runpod: rpJson });
   } catch (err: any) {
-    console.error('=== Social Twin Generate Error ===');
-    console.error('Error details:', err);
-    console.error('Stack trace:', err?.stack);
-    return NextResponse.json({ 
-      error: err?.message ?? 'Internal error',
-      details: err?.stack ?? 'No stack trace available',
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
+    return NextResponse.json({ error: err?.message ?? 'Internal error' }, { status: 500 });
   }
 }
 
