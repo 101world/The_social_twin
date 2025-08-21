@@ -155,7 +155,16 @@ export async function POST(req: NextRequest) {
         }),
       });
 
-      const generateResult = await generateResponse.json();
+      // Better error handling for HTML responses
+      const responseText = await generateResponse.text();
+      let generateResult: any;
+      
+      try {
+        generateResult = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse generate response as JSON:', responseText.substring(0, 500));
+        throw new Error(`Generate API returned invalid JSON. Response: ${responseText.substring(0, 200)}`);
+      }
 
       if (!generateResponse.ok) {
         // Update generation record with error
