@@ -1,10 +1,11 @@
--- ===================================================================
--- RUNPOD CONNECTION TEST API
--- Create this to test your RunPod endpoint directly
--- ===================================================================
+/* ===================================================================
+  RUNPOD CONNECTION TEST API
+  Create this to test your RunPod endpoint directly
+  ===================================================================
 
--- First, create this API endpoint to test RunPod connectivity
--- File: app/api/test-runpod/route.ts
+  First, create this API endpoint to test RunPod connectivity
+  File: app/api/test-runpod/route.ts
+*/
 
 export async function POST(req: Request) {
   try {

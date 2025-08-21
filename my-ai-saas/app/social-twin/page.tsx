@@ -4220,9 +4220,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </button>
 
                 <button 
-                  className={`rounded px-4 py-1 text-xs text-white ${canAffordGeneration ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`} 
+                  className={`rounded px-4 py-1 text-xs text-white ${canAffordGeneration ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'} ${(mode === 'image-modify' && !attached) ? 'opacity-50 cursor-not-allowed' : ''}`} 
                   onClick={()=>{ 
                     if (!canAffordGeneration) return; 
+                    if (mode === 'image-modify' && !attached) { setMessages(prev => [...prev, { id: generateId(), role: 'error', content: 'Image Modify requires an image attachment.' }]); return; }
                     // Apply quick image style if any
                     if ((mode==='image') && quickImageStyle && input.trim()) {
                       const styleMap: Record<string,string> = {
@@ -4235,8 +4236,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }
                     handleSend(); setQuickCreateOpen(false); 
                   }}
-                  disabled={!canAffordGeneration}
-                  title={canAffordGeneration ? 'Generate' : `Need ${generationCost} credits`}
+                  disabled={!canAffordGeneration || (mode === 'image-modify' && !attached)}
+                  title={(!canAffordGeneration) ? `Need ${generationCost} credits` : (mode === 'image-modify' && !attached) ? 'Attach an image to modify' : 'Generate'}
                 >
                   Generate (~{generationCost})
                 </button>

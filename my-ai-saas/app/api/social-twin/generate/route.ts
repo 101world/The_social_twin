@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -134,7 +135,7 @@ export async function POST(req: NextRequest) {
     // Generate a unique seed for this user's generation
     const userSeed = typeof body?.seed === 'number' ? body.seed : Math.floor(Math.random() * 1000000);
 
-    if (useSocialTwin) {
+  if (useSocialTwin) {
       try {
         if (mode === 'image') {
           graph = await loadWorkflowJson('Socialtwin-Image.json');
@@ -165,25 +166,69 @@ export async function POST(req: NextRequest) {
             graph[ckptKey].inputs.ckpt_name = body.ckpt_name;
           }
         } else if (mode === 'image-modify') {
-          graph = await loadWorkflowJson('SocialTwin-Modify.json');
-          isSocialTwin = true;
-          console.log('Loaded SocialTwin-Modify.json');
-          // Patch by class/title: prompt (CLIPTextEncode Positive), dims (EmptySD3LatentImage), sampler (KSampler)
-          const posKey2 = findByClassAndTitle(graph, 'CLIPTextEncode', 'Positive') || '6';
-          const dimsKey2 = findByClassAndTitle(graph, 'EmptySD3LatentImage') || '188';
-          const samplerKey2 = findByClassAndTitle(graph, 'KSampler') || '31';
-          if (posKey2 && graph[posKey2]?.inputs) graph[posKey2].inputs.text = prompt;
-          if (dimsKey2 && graph[dimsKey2]?.inputs) {
-            const w = typeof body?.width === 'number' ? body.width : graph[dimsKey2].inputs.width ?? 1024;
-            const h = typeof body?.height === 'number' ? body.height : graph[dimsKey2].inputs.height ?? 1024;
-            graph[dimsKey2].inputs.width = w;
-            graph[dimsKey2].inputs.height = h;
-            if (typeof body?.batch_size === 'number') graph[dimsKey2].inputs.batch_size = body.batch_size;
+          // For modify, require both prompt and image and reuse shared runSocialTwinGeneration
+          const refUrl: string | undefined = referenceImageUrl || (typeof body?.attachment?.dataUrl === 'string' ? body.attachment.dataUrl : undefined);
+          if (!refUrl) {
+            return NextResponse.json({ error: 'Image Modify requires imageUrl or attachment.dataUrl' }, { status: 400 });
           }
-          if (samplerKey2 && graph[samplerKey2]?.inputs) {
-            if (typeof body?.steps === 'number') graph[samplerKey2].inputs.steps = Math.max(1, Math.round(body.steps));
-            if (typeof body?.cfg === 'number') graph[samplerKey2].inputs.cfg = body.cfg;
-            graph[samplerKey2].inputs.seed = userSeed;
+          // Delegate to shared runner which loads the SocialTwin-Modify.json, uploads the ref image, submits and polls
+          try {
+            const out = await runSocialTwinGeneration({
+              mode: 'image-modify',
+              prompt,
+              imageUrl: refUrl,
+              runpodUrl,
+              apiKey,
+              userId,
+              batch_size: typeof body?.batch_size === 'number' ? body.batch_size : 1,
+              width: typeof body?.width === 'number' ? body.width : undefined,
+              height: typeof body?.height === 'number' ? body.height : undefined,
+              steps: typeof body?.steps === 'number' ? body.steps : undefined,
+              cfg: typeof body?.cfg === 'number' ? body.cfg : undefined,
+              seed: userSeed
+            });
+
+            // Mirror image upload/logging skeleton used by image flow below
+            const type = 'image';
+            const sourceUrls = out.urls && out.urls.length ? out.urls : (out.images && out.images.length ? out.images : []);
+            const deliveredUrls: string[] = [];
+            if (supabase && canLog && sourceUrls.length) {
+              const bucket = 'generated-images';
+              // @ts-ignore
+              if ((supabase as any).storage?.createBucket) { try { await (supabase as any).storage.createBucket(bucket, { public: false }); } catch {} }
+              for (const src of sourceUrls) {
+                try {
+                  let contentType = 'image/png';
+                  let data: Uint8Array | null = null;
+                  if (typeof src === 'string' && src.startsWith('data:')) {
+                    const m = /data:(.*?);base64,(.*)$/.exec(src);
+                    if (m) { contentType = m[1] || contentType; data = Buffer.from(m[2], 'base64'); }
+                  } else {
+                    const resp = await fetch(src as string);
+                    contentType = resp.headers.get('content-type') || contentType;
+                    data = new Uint8Array(await resp.arrayBuffer());
+                  }
+                  if (!data) continue;
+                  const ext = contentType.startsWith('image/') ? '.png' : '';
+                  const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+                  const pathName = `${userId}/${fileName}`;
+                  const up = await (supabase as any).storage.from(bucket).upload(pathName, data, { contentType, upsert: false });
+                  if (!up.error) {
+                    const storagePath = `storage:${bucket}/${pathName}`;
+                    if (topicId) {
+                      try { await supabase.from('media_generations').insert({ topic_id: topicId, user_id: userId!, type, prompt, result_url: storagePath }); } catch {}
+                    }
+                    const signed = await (supabase as any).storage.from(bucket).createSignedUrl(pathName, 60 * 60 * 24 * 7);
+                    if (!signed.error) deliveredUrls.push(signed.data.signedUrl);
+                  }
+                } catch {}
+              }
+            }
+            if (deliveredUrls.length === 0 && sourceUrls.length) deliveredUrls.push(sourceUrls[0]);
+            return NextResponse.json({ ok: true, url: deliveredUrls[0], urls: deliveredUrls, images: deliveredUrls, videos: [], runpod: out.runpod });
+          } catch (e: any) {
+            console.error('Modify delegation failed:', e);
+            return NextResponse.json({ error: e?.message || 'Modify generation failed' }, { status: 500 });
           }
         }
       } catch (e) {
