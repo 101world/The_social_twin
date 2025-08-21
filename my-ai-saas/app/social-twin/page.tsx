@@ -1213,8 +1213,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
 
   async function handleSend() {
+    console.log('🚀 HANDLE_SEND CALLED');
+    console.log('Raw input:', JSON.stringify(input));
+    console.log('Call stack:', new Error().stack);
+    
     const trimmed = input.trim();
-    if (!trimmed) return;
+    console.log('Trimmed input:', JSON.stringify(trimmed));
+    
+    if (!trimmed) {
+      console.log('❌ Empty input, returning');
+      return;
+    }
     // Chat commands: save project / create project <title>
     const lower = trimmed.toLowerCase();
     if (lower === 'save project' || lower === 'create project') {

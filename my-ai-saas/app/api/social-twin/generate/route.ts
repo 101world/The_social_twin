@@ -102,6 +102,50 @@ export async function POST(req: NextRequest) {
     // Choose graph based on mode
     const workflowsDir = path.join(process.cwd(), 'Workflows');
     let graphFile = path.join(workflowsDir, 'Socialtwin-Image.json');
+    let graph: any;
+    
+    // Try universal workflow first for better compatibility
+    try {
+      console.log('=== USING UNIVERSAL WORKFLOW ===');
+      const universalResponse = await fetch(`${req.nextUrl.origin}/api/universal-workflow`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          runpodUrl: base,
+          prompt,
+          mode,
+          width: body?.width || 1024,
+          height: body?.height || 1024,
+          batch_size: body?.batch_size || 1,
+          cfg: body?.cfg || 8,
+          steps: body?.steps || 20,
+          negative: body?.negative || '',
+          seed: body?.seed || Math.floor(Math.random() * 1000000)
+        })
+      });
+      
+      if (universalResponse.ok) {
+        const universalResult = await universalResponse.json();
+        console.log('Universal workflow succeeded:', universalResult);
+        
+        // Return the result directly from universal workflow
+        if (universalResult.imageUrl || universalResult.videoUrl) {
+          return NextResponse.json({
+            ok: true,
+            url: universalResult.imageUrl || universalResult.videoUrl,
+            urls: universalResult.images || universalResult.videos || [],
+            images: universalResult.images || [],
+            videos: universalResult.videos || [],
+            runpod: universalResult.runpod || {}
+          });
+        }
+      }
+      console.log('Universal workflow failed, falling back to static workflow');
+    } catch (error) {
+      console.log('Universal workflow error, falling back:', error);
+    }
+    
+    // Fallback to static workflow files
     if (mode === 'image-modify') {
       graphFile = path.join(workflowsDir, 'SocialTwin-Modify.json');
     } else if (mode === 'video') {
@@ -130,7 +174,7 @@ export async function POST(req: NextRequest) {
       }
     }
   const graphRaw = await fs.readFile(graphFile, 'utf8');
-    const graph = JSON.parse(graphRaw);
+    graph = JSON.parse(graphRaw);
 
     // If modify workflow, upload reference image to Comfy and inject into LoadImage node
     if (mode === 'image-modify') {
