@@ -43,15 +43,69 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await admin.from('processed_webhooks').select('id').eq('id', eventId).maybeSingle();
     if (existing) return NextResponse.json({ ok: true });
 
-    // Handle subscription/payment events
-    const t = e?.type || e?.event || '';
-    if (String(t).startsWith('subscription') || String(t).startsWith('payment')) {
-      const userId = e?.data?.object?.metadata?.clerk_user_id || e?.data?.object?.metadata?.user_id || null;
-      const subId = e?.data?.object?.id || e?.data?.object?.subscription || null;
-      const status = e?.data?.object?.status ?? e?.data?.object?.paid ?? 'unknown';
+    // Handle Clerk subscription events
+    const eventType = e?.type || '';
+    console.log('Webhook received:', eventType, JSON.stringify(e, null, 2));
 
+    if (eventType === 'user.created' || eventType === 'user.updated' || eventType === 'session.created') {
+      // For user events, extract userId directly
+      const userId = e?.data?.id || null;
       if (userId) {
-        await admin.from('user_billing').upsert([{ user_id: userId, plan: e?.data?.object?.price?.nickname || null, status: String(status), clerk_subscription_id: subId }]);
+        // Ensure user has credits row (give new users some starter credits)
+        const startingCredits = eventType === 'user.created' ? 100 : 0; // 100 credits for new users
+        await admin.from('user_credits').upsert({ 
+          user_id: userId, 
+          credits: startingCredits 
+        }, { onConflict: 'user_id' });
+        
+        if (eventType === 'user.created') {
+          console.log(`New user ${userId} created with ${startingCredits} starter credits`);
+        }
+      }
+    }
+
+    // Handle subscription/payment events from Razorpay via Clerk
+    if (String(eventType).includes('subscription') || String(eventType).includes('payment')) {
+      const userId = e?.data?.object?.metadata?.clerk_user_id || 
+                    e?.data?.object?.metadata?.user_id ||
+                    e?.data?.object?.customer?.metadata?.clerk_user_id ||
+                    e?.data?.user_id ||
+                    null;
+      
+      const subId = e?.data?.object?.id || e?.data?.object?.subscription || null;
+      const status = e?.data?.object?.status || 'unknown';
+      const planName = e?.data?.object?.price?.nickname || 
+                      e?.data?.object?.items?.data?.[0]?.price?.nickname ||
+                      e?.data?.object?.plan?.nickname ||
+                      null;
+
+      console.log('Processing subscription:', { userId, subId, status, planName });
+
+      if (userId && planName) {
+        await admin.from('user_billing').upsert({
+          user_id: userId, 
+          plan: planName, 
+          status: String(status), 
+          clerk_subscription_id: subId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        
+        // Set initial monthly credits based on plan (updated to match new billing system)
+        const monthlyGrants: Record<string, number> = {
+          'free': 0,
+          'one_t': 1120,
+          'one_z': 4050,
+          'one_pro': 8700
+        };
+        const credits = monthlyGrants[planName.toLowerCase()] ?? 0;
+        
+        await admin.from('user_credits').upsert({
+          user_id: userId,
+          credits: credits,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+        
+        console.log(`Updated billing for ${userId}: ${planName} (${credits} credits)`);
       }
     }
 

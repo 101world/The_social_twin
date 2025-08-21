@@ -31,12 +31,6 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
   const [filter, setFilter] = useState<'all' | 'text' | 'image' | 'video'>('all');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [monthlyUsage, setMonthlyUsage] = useState<{
-    usage: { images: number; videos: number };
-    limits: { maxImages: number; maxVideos: number } | null;
-    plan: string;
-    remaining: { images: number; videos: number } | null;
-  } | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     today: 0,
@@ -48,22 +42,9 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
   useEffect(() => {
     if (userId) {
       fetchGenerations();
-      fetchMonthlyUsage();
       calculateStats();
     }
   }, [userId, filter]);
-
-  const fetchMonthlyUsage = async () => {
-    try {
-      const response = await fetch('/api/users/monthly-usage');
-      if (response.ok) {
-        const data = await response.json();
-        setMonthlyUsage(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch monthly usage:', err);
-    }
-  };
 
   const fetchGenerations = async (pageNum = 0, reset = true) => {
     try {
@@ -218,72 +199,6 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
             <div className="text-2xl font-bold text-purple-500">{totalCreditsUsed}</div>
           </div>
         </div>
-
-        {/* Monthly Usage Limits */}
-        {monthlyUsage && monthlyUsage.limits && (
-          <div className={`p-4 rounded-lg mb-4 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-            <h3 className="text-sm font-semibold mb-3">📊 Monthly Usage ({monthlyUsage.plan})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Images Progress */}
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Images</span>
-                  <span className={monthlyUsage.usage.images >= monthlyUsage.limits.maxImages ? 'text-red-500 font-bold' : ''}>
-                    {monthlyUsage.usage.images}/{monthlyUsage.limits.maxImages}
-                  </span>
-                </div>
-                <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                  <div 
-                    className={`h-2 rounded-full ${
-                      monthlyUsage.usage.images >= monthlyUsage.limits.maxImages 
-                        ? 'bg-red-500' 
-                        : monthlyUsage.usage.images / monthlyUsage.limits.maxImages > 0.8
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                    }`}
-                    style={{ 
-                      width: `${Math.min(100, (monthlyUsage.usage.images / monthlyUsage.limits.maxImages) * 100)}%` 
-                    }}
-                  />
-                </div>
-                {monthlyUsage.remaining && (
-                  <div className="text-xs opacity-70 mt-1">
-                    {monthlyUsage.remaining.images} remaining
-                  </div>
-                )}
-              </div>
-
-              {/* Videos Progress */}
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Videos</span>
-                  <span className={monthlyUsage.usage.videos >= monthlyUsage.limits.maxVideos ? 'text-red-500 font-bold' : ''}>
-                    {monthlyUsage.usage.videos}/{monthlyUsage.limits.maxVideos}
-                  </span>
-                </div>
-                <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                  <div 
-                    className={`h-2 rounded-full ${
-                      monthlyUsage.usage.videos >= monthlyUsage.limits.maxVideos 
-                        ? 'bg-red-500' 
-                        : monthlyUsage.usage.videos / monthlyUsage.limits.maxVideos > 0.8
-                        ? 'bg-yellow-500'
-                        : 'bg-blue-500'
-                    }`}
-                    style={{ 
-                      width: `${Math.min(100, (monthlyUsage.usage.videos / monthlyUsage.limits.maxVideos) * 100)}%` 
-                    }}
-                  />
-                </div>
-                {monthlyUsage.remaining && (
-                  <div className="text-xs opacity-70 mt-1">
-                    {monthlyUsage.remaining.videos} remaining
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Generation Type Distribution */}
         <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'} mb-4`}>
