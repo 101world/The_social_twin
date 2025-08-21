@@ -30,16 +30,22 @@ async function ensureSocialTwinTopic(supabase: ReturnType<typeof createSupabaseC
 
 export async function POST(req: NextRequest) {
   try {
-  const authState = await auth();
-  let userId = authState.userId as string | null;
-  const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
+    console.log('=== Social Twin Generate API Called ===');
+    const authState = await auth();
+    let userId = authState.userId as string | null;
+    const getToken = authState.getToken as undefined | ((opts?: any) => Promise<string | null>);
+    console.log('Auth state:', { userId, hasGetToken: !!getToken });
 
     const body = await req.json();
+    console.log('Request body:', { mode: body?.mode, prompt: body?.prompt?.substring(0, 100), runpodUrl: body?.runpodUrl });
+    
     const mode: Mode = body?.mode;
     const prompt: string = body?.prompt ?? '';
     const runpodUrl: string = body?.runpodUrl ?? '';
     const referenceImageUrl: string | undefined = body?.imageUrl; // for image-modify
     const apiKey = process.env.RUNPOD_API_KEY;
+    
+    console.log('Parsed values:', { mode, promptLength: prompt.length, runpodUrl, hasApiKey: !!apiKey });
 
     if (!mode || !['text', 'image', 'image-modify', 'video'].includes(mode)) {
       return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
@@ -472,7 +478,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, url: aiImage, urls: aiImage ? [aiImage] : [], runpod: rpJson });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? 'Internal error' }, { status: 500 });
+    console.error('=== Social Twin Generate Error ===');
+    console.error('Error details:', err);
+    console.error('Stack trace:', err?.stack);
+    return NextResponse.json({ 
+      error: err?.message ?? 'Internal error',
+      details: err?.stack ?? 'No stack trace available',
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 }
 
