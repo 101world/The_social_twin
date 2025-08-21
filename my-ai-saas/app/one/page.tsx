@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import FreeCreditsButton from '@/components/FreeCreditsButton';
 
 const MatrixRain = () => {
   useEffect(() => {
@@ -311,10 +312,19 @@ Your secret access code is "070907"`;
               </div>
 
               <div className="p-6 border-t border-green-400/30 text-center flex-shrink-0">
-                <div className="inline-block bg-green-400/10 border border-green-400 rounded px-4 py-2">
+                <div className="inline-block bg-green-400/10 border border-green-400 rounded px-4 py-2 mb-4">
                   <span className="text-green-400 text-sm font-mono">
                     STATUS: MANIFESTO_TRANSMITTED :: END_OF_LINE
                   </span>
+                </div>
+                
+                {/* Free Credits Button */}
+                <div className="mt-6 flex justify-center">
+                  <FreeCreditsButton className="w-full max-w-sm" />
+                </div>
+                
+                <div className="mt-4 text-green-400/60 text-xs font-mono">
+                  INITIATE_SYSTEM :: CLAIM_YOUR_GENESIS_CREDITS
                 </div>
               </div>
             </div>
