@@ -98,83 +98,72 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // Build a ComfyUI prompt graph from your workflow files
-    // Choose graph based on mode
-    const workflowsDir = path.join(process.cwd(), 'Workflows');
-    let graphFile = path.join(workflowsDir, 'Socialtwin-Image.json');
-    let graph: any;
+    // Build a simple, direct workflow that works with any ComfyUI setup
+    // Skip the complexity - just build a basic workflow and send it
+    console.log('=== BUILDING SIMPLE DIRECT WORKFLOW FOR USER:', userId, '===');
     
-    // Try universal workflow first for better compatibility
-    try {
-      console.log('=== USING UNIVERSAL WORKFLOW ===');
-      const universalResponse = await fetch(`${req.nextUrl.origin}/api/universal-workflow`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          runpodUrl: base,
-          prompt,
-          mode,
+    // Generate a unique seed for this user's generation
+    const userSeed = body?.seed || Math.floor(Math.random() * 1000000);
+    
+    const graph = {
+      "1": {
+        inputs: {
+          ckpt_name: "sd_xl_base_1.0.safetensors"
+        },
+        class_type: "CheckpointLoaderSimple"
+      },
+      "2": {
+        inputs: {
+          text: prompt,
+          clip: ["1", 1]
+        },
+        class_type: "CLIPTextEncode"
+      },
+      "3": {
+        inputs: {
+          text: body?.negative || "",
+          clip: ["1", 1]
+        },
+        class_type: "CLIPTextEncode"
+      },
+      "4": {
+        inputs: {
           width: body?.width || 1024,
           height: body?.height || 1024,
-          batch_size: body?.batch_size || 1,
-          cfg: body?.cfg || 8,
+          batch_size: body?.batch_size || 1
+        },
+        class_type: "EmptyLatentImage"
+      },
+      "5": {
+        inputs: {
+          seed: userSeed,
           steps: body?.steps || 20,
-          negative: body?.negative || '',
-          seed: body?.seed || Math.floor(Math.random() * 1000000)
-        })
-      });
-      
-      if (universalResponse.ok) {
-        const universalResult = await universalResponse.json();
-        console.log('Universal workflow succeeded:', universalResult);
-        
-        // Return the result directly from universal workflow
-        if (universalResult.imageUrl || universalResult.videoUrl) {
-          return NextResponse.json({
-            ok: true,
-            url: universalResult.imageUrl || universalResult.videoUrl,
-            urls: universalResult.images || universalResult.videos || [],
-            images: universalResult.images || [],
-            videos: universalResult.videos || [],
-            runpod: universalResult.runpod || {}
-          });
-        }
+          cfg: body?.cfg || 8,
+          sampler_name: "euler",
+          scheduler: "normal",
+          denoise: 1,
+          model: ["1", 0],
+          positive: ["2", 0],
+          negative: ["3", 0],
+          latent_image: ["4", 0]
+        },
+        class_type: "KSampler"
+      },
+      "6": {
+        inputs: {
+          samples: ["5", 0],
+          vae: ["1", 2]
+        },
+        class_type: "VAEDecode"
+      },
+      "7": {
+        inputs: {
+          filename_prefix: `user_${userId}_${Date.now()}`,
+          images: ["6", 0]
+        },
+        class_type: "SaveImage"
       }
-      console.log('Universal workflow failed, falling back to static workflow');
-    } catch (error) {
-      console.log('Universal workflow error, falling back:', error);
-    }
-    
-    // Fallback to static workflow files
-    if (mode === 'image-modify') {
-      graphFile = path.join(workflowsDir, 'SocialTwin-Modify.json');
-    } else if (mode === 'video') {
-      // Choose video graph based on requested subtype
-      const videoType: 'text' | 'image' = (typeof body?.video_type === 'string' && body.video_type === 'image') ? 'image' : 'text';
-      const videoModel: string | undefined = typeof body?.video_model === 'string' ? body.video_model : 'ltxv';
-      const videoDir = path.join(workflowsDir, 'VideoWorkflows');
-      if (videoModel === 'ltxv') {
-        graphFile = path.join(videoDir, videoType === 'text' ? 'LTXV-TEXT_VIDEO.json' : 'LTXIMAGETOVIDEO.json');
-      } else if (videoModel === 'kling') {
-        graphFile = path.join(videoDir, videoType === 'text' ? 'KLING-TEXT_VIDEO.json' : 'KLING-IMAGETOVIDEO.json');
-      } else if (videoModel === 'wan') {
-        graphFile = path.join(videoDir, videoType === 'text' ? 'Wan-text-video.json' : 'Wan-Image-video.json');
-      }
-      // Validate the chosen workflow exists; if not, return 501 Not Implemented so UI can inform user
-      try {
-        await fs.access(graphFile);
-      } catch {
-        return NextResponse.json({ error: 'Requested video workflow not available yet', workflow: path.basename(graphFile) }, { status: 501 });
-      }
-      // Business rule: image-to-video requires image + text
-      if (videoType === 'image') {
-        const hasRef = typeof body?.imageUrl === 'string' || typeof body?.attachment?.dataUrl === 'string';
-        if (!hasRef) return NextResponse.json({ error: 'Image-to-video requires image attachment' }, { status: 400 });
-        if (!prompt || String(prompt).trim().length === 0) return NextResponse.json({ error: 'Image-to-video requires text prompt' }, { status: 400 });
-      }
-    }
-  const graphRaw = await fs.readFile(graphFile, 'utf8');
-    graph = JSON.parse(graphRaw);
+    };
 
     // If modify workflow, upload reference image to Comfy and inject into LoadImage node
     if (mode === 'image-modify') {
@@ -321,57 +310,33 @@ export async function POST(req: NextRequest) {
       (graph as any)[loadKey].inputs.image = uploadedName;
     }
 
-    // Positive prompt → node 6.inputs.text
-    if (graph['6']?.inputs) {
-      graph['6'].inputs.text = prompt;
+    // Configure the simple workflow with user parameters
+    // Node 2: Positive prompt
+    graph['2'].inputs.text = prompt;
+    
+    // Node 3: Negative prompt
+    if (typeof body?.negative === 'string') {
+      graph['3'].inputs.text = body.negative;
     }
-    // Negative prompt (optional) → node 33.inputs.text
-    if (graph['33']?.inputs && typeof body?.negative === 'string') {
-      graph['33'].inputs.text = body.negative;
+    
+    // Node 4: Latent image dimensions and batch
+    if (body?.width || body?.height) {
+      graph['4'].inputs.width = body.width || 1024;
+      graph['4'].inputs.height = body.height || 1024;
     }
-    // Batch/AR → node 27 (image) or 188 (modify) EmptySD3LatentImage
-    const ar: string | undefined = body?.aspect_ratio;
-    const mapAR = (val?: string) => {
-      switch (val) {
-        case '16:9': return { w: 1920, h: 1088 };
-        case '9:16': return { w: 1088, h: 1920 };
-        case '3:2': return { w: 1536, h: 1024 };
-        case '2:3': return { w: 1024, h: 1536 };
-        case '4:3': return { w: 1408, h: 1056 };
-        case '1:1':
-        default: return { w: 1024, h: 1024 };
-      }
-    };
-    const dims = mapAR(ar);
-    if (graph['27']?.inputs) {
-      graph['27'].inputs.width = dims.w;
-      graph['27'].inputs.height = dims.h;
-      if (typeof body?.batch_size === 'number') graph['27'].inputs.batch_size = body.batch_size;
+    if (typeof body?.batch_size === 'number') {
+      graph['4'].inputs.batch_size = body.batch_size;
     }
-    if (graph['188']?.inputs) {
-      // Only touch batch size for modify unless AR provided
-      if (ar) { graph['188'].inputs.width = dims.w; graph['188'].inputs.height = dims.h; }
-      if (typeof body?.batch_size === 'number') graph['188'].inputs.batch_size = body.batch_size;
+    
+    // Node 5: Sampling parameters
+    if (typeof body?.cfg === 'number') {
+      graph['5'].inputs.cfg = body.cfg;
     }
-    // LoRA loader (rgthree) is node 47; we pass through filename/scale when provided
-    if (graph['47']?.inputs && typeof body?.lora === 'string' && body.lora) {
-      // Many rgthree loaders accept a list of loras; here we set header field if present
-      // If your graph needs a different field, tell me and I will map it exactly
-      graph['47'].inputs['➕ Add Lora'] = body.lora;
-      if (typeof body?.lora_scale === 'number') {
-        graph['47'].inputs['lora_scale'] = body.lora_scale;
-      }
+    if (typeof body?.steps === 'number') {
+      graph['5'].inputs.steps = Math.max(1, Math.round(body.steps));
     }
-
-    // CFG/Guidance/Seed (with safe defaults = keep workflow defaults)
-    const cfgScale: number | undefined = typeof body?.cfg === 'number' ? body.cfg : undefined;
-    const guidance: number | undefined = typeof body?.guidance === 'number' ? body.guidance : undefined;
-    const overrideSteps: number | undefined = typeof body?.steps === 'number' ? body.steps : undefined;
-    if (graph['31']?.inputs) {
-      if (typeof cfgScale === 'number') graph['31'].inputs.cfg = cfgScale;
-      if (typeof overrideSteps === 'number') graph['31'].inputs.steps = Math.max(1, Math.round(overrideSteps));
-      if (typeof guidance === 'number' && graph['35']?.inputs) graph['35'].inputs.guidance = guidance;
-      // default: do not set seed to preserve workflow default
+    if (typeof body?.seed === 'number') {
+      graph['5'].inputs.seed = body.seed;
     }
 
     // Send graph to RunPod (try /prompt with {prompt}, then '/' with raw graph)
