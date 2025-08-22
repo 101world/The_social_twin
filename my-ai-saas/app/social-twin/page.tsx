@@ -2025,144 +2025,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-300 bg-white'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015]`}
           style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
-                {/* Core controls - clean and tighter */}
-                <div className="mb-2 space-y-2">
-                  {/* Primary row - mode-specific essentials */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1">
-                      {mode === 'text' && (
-                        <select
-                          value={textProvider}
-                          onChange={(e)=> setTextProvider(e.target.value as any)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Provider"
-                        >
-                          <option value="social">Social</option>
-                          <option value="openai">OpenAI</option>
-                          <option value="deepseek">DeepSeek</option>
-                        </select>
-                      )}
-                      
-                      {mode === 'image' && (
-                        <>
-                          <select
-                            value={effectsPreset}
-                            onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Effects"
-                          >
-                            <option value="off">Effects: Off</option>
-                            <option value="subtle">Effects: Subtle</option>
-                            <option value="cinematic">Effects: Cinematic</option>
-                            <option value="stylized">Effects: Stylized</option>
-                          </select>
-                          <select
-                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === 'None') { setLoraName(''); setCharacterOn(false); }
-                              else if (v === 'Custom...') { setCharacterOn(true); }
-                              else { setLoraName(v); setCharacterOn(true); }
-                            }}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Character"
-                          >
-                            {LORA_CHOICES.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        </>
-                      )}
-                      
-                      {mode === 'image-modify' && (
-                        <>
-                          <select
-                            value={effectsPreset}
-                            onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Effects"
-                          >
-                            <option value="off">Effects: Off</option>
-                            <option value="subtle">Effects: Subtle</option>
-                            <option value="cinematic">Effects: Cinematic</option>
-                            <option value="stylized">Effects: Stylized</option>
-                          </select>
-                          <select
-                            value={batchSize === '' ? '' : String(batchSize)}
-                            onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Quantity"
-                          >
-                            <option value="">Qty: 1</option>
-                            {BATCH_CHOICES.map((n) => (
-                              <option key={n} value={n}>Qty: {n}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={aspectRatio}
-                            onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Aspect Ratio"
-                          >
-                            <option value="">1:1</option>
-                            {AR_CHOICES.map((ar) => (
-                              <option key={ar} value={ar}>{ar}</option>
-                            ))}
-                          </select>
-                        </>
-                      )}
-                      
-                      {mode === 'video' && (
-                        <>
-                          <select
-                            value={videoModel}
-                            onChange={(e)=> setVideoModel(e.target.value as any)}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Model"
-                          >
-                            <option value="ltxv">LTXV</option>
-                            <option value="wan">WAN</option>
-                          </select>
-                          <select
-                            value={batchSize === '' ? '' : String(batchSize)}
-                            onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Quantity"
-                          >
-                            <option value="">Qty: 1</option>
-                            {BATCH_CHOICES.map((n) => (
-                              <option key={n} value={n}>Qty: {n}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={aspectRatio}
-                            onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                            title="Aspect Ratio"
-                          >
-                            <option value="">16:9</option>
-                            {AR_CHOICES.map((ar) => (
-                              <option key={ar} value={ar}>{ar}</option>
-                            ))}
-                          </select>
-                        </>
-                      )}
-                    </div>
+                {/* Character input row (only when needed) */}
+                {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="character.safetensors"
+                      value={loraName}
+                      onChange={(e) => setLoraName(e.target.value)}
+                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
+                    />
                   </div>
-                  
-                  {/* Secondary row - character input for image modes */}
-                  {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder="character.safetensors"
-                        value={loraName}
-                        onChange={(e) => setLoraName(e.target.value)}
-                        className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
 
                 {/* Advanced Options - Comprehensive Creator Studio Integration */}
                 {advancedOpen && (
@@ -2670,7 +2544,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
                 {/* Mode buttons row with Save Project on right */}
                 <div className="mb-2 flex items-center gap-2 justify-between">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {/* Mode buttons */}
                     <button 
                       title="Text mode" 
                       onClick={() => setMode('text')}
@@ -2712,6 +2587,132 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
                       </svg>
                     </button>
+                    
+                    {/* Quick dropdowns */}
+                    {mode === 'text' && (
+                      <select
+                        value={textProvider}
+                        onChange={(e)=> setTextProvider(e.target.value as any)}
+                        className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                        title="Provider"
+                      >
+                        <option value="social">Social</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="deepseek">DeepSeek</option>
+                      </select>
+                    )}
+                    
+                    {mode === 'image' && (
+                      <>
+                        <select
+                          value={effectsPreset}
+                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Effects"
+                        >
+                          <option value="off">Effects: Off</option>
+                          <option value="subtle">Effects: Subtle</option>
+                          <option value="cinematic">Effects: Cinematic</option>
+                          <option value="stylized">Effects: Stylized</option>
+                        </select>
+                        <select
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Quantity"
+                        >
+                          <option value="">Qty: 1</option>
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>Qty: {n}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Aspect Ratio"
+                        >
+                          <option value="">1:1</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                    
+                    {mode === 'image-modify' && (
+                      <>
+                        <select
+                          value={effectsPreset}
+                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Effects"
+                        >
+                          <option value="off">Effects: Off</option>
+                          <option value="subtle">Effects: Subtle</option>
+                          <option value="cinematic">Effects: Cinematic</option>
+                          <option value="stylized">Effects: Stylized</option>
+                        </select>
+                        <select
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Quantity"
+                        >
+                          <option value="">Qty: 1</option>
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>Qty: {n}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Aspect Ratio"
+                        >
+                          <option value="">1:1</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                    
+                    {mode === 'video' && (
+                      <>
+                        <select
+                          value={videoModel}
+                          onChange={(e)=> setVideoModel(e.target.value as any)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Model"
+                        >
+                          <option value="ltxv">LTXV</option>
+                          <option value="wan">WAN</option>
+                        </select>
+                        <select
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Quantity"
+                        >
+                          <option value="">Qty: 1</option>
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>Qty: {n}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Aspect Ratio"
+                        >
+                          <option value="">16:9</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {(messages.length > 0 || canvasItems.length > 0) && (
