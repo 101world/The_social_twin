@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     // Include status and error_message so the UI can show processing/failed items.
   let query = supabase
       .from('media_generations')
-      .select('id,type,prompt,result_url,generation_params,created_at,topic_id,status,error_message')
+      .select('id,type,prompt,result_url,thumbnail_url,generation_params,created_at,topic_id,status,error_message')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -43,8 +43,16 @@ export async function GET(req: NextRequest) {
     const items = await Promise.all((data || []).map(async (it) => {
       let display_url: string | null = null;
       try {
+        // Priority 0: explicit thumbnail_url (prefer small, web-friendly preview if available)
+        if (!display_url && typeof it.thumbnail_url === 'string' && it.thumbnail_url.startsWith('storage:')) {
+          const parts = it.thumbnail_url.replace('storage:', '').split('/');
+          const bucket = parts.shift() as string;
+          const path = parts.join('/');
+          const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+          if (!signed.error) display_url = signed.data.signedUrl;
+        }
         // Priority 1: explicit result_url pointing to storage (create signed URL)
-        if (typeof it.result_url === 'string' && it.result_url.startsWith('storage:')) {
+        if (!display_url && typeof it.result_url === 'string' && it.result_url.startsWith('storage:')) {
           const parts = it.result_url.replace('storage:', '').split('/');
           const bucket = parts.shift() as string;
           const path = parts.join('/');
@@ -62,6 +70,18 @@ export async function GET(req: NextRequest) {
         }
       } catch (e) {
         // ignore display URL building errors
+      }
+      // Final fallback: if there's still no display_url, return a small SVG data URL
+      // that indicates the item's status (pending/processing) so the UI can show
+      // a meaningful placeholder regardless of RunPod availability.
+      if (!display_url) {
+        try {
+          const statusText = (it.status || 'pending').toString().toUpperCase();
+          const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='512' height='320'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='22' fill='%23666'>${statusText}</text></svg>`;
+          display_url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+        } catch (e) {
+          // if encoding fails, leave display_url null
+        }
       }
       return { ...it, display_url };
     }));

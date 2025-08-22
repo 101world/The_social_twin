@@ -90,6 +90,60 @@ async function processJob(job: any, supabase: any, runFn: any) {
 
     // Persist outputs to Supabase storage and update media_generations ONLY if user opted in.
     const sourceUrls = (out.urls && out.urls.length) ? out.urls : (out.images && out.images.length ? out.images : []);
+
+    // Always try to persist the first RunPod image as a small temporary thumbnail so the
+    // UI can show a preview even when the user didn't opt-in to save the full generation.
+    // This uploads to `<userId>/temp/thumb-...` in the `generated-images` bucket and sets
+    // `thumbnail_url` in the DB later if there isn't a saved full image.
+    let thumbnailStoragePath: string | null = null;
+    if (sourceUrls && sourceUrls.length) {
+      const firstSrc = sourceUrls[0];
+      try {
+        let data: Buffer | null = null;
+        if (typeof firstSrc === 'string' && firstSrc.startsWith('data:')) {
+          const m = /data:(.*?);base64,(.*)$/i.exec(firstSrc as string);
+          if (m) { data = Buffer.from(m[2], 'base64'); }
+        } else {
+          const resp = await fetch(firstSrc as string);
+          const arrayBuf = await resp.arrayBuffer();
+          data = Buffer.from(arrayBuf);
+        }
+        if (data) {
+          // Try to convert to lossless WebP for web-friendly preview with minimal quality loss
+          let webpBuffer: Buffer | null = null;
+          try {
+            // If SKIP_SHARP is set, avoid loading the native `sharp` binary which can crash on
+            // some Windows environments. Otherwise try to convert to lossless WebP.
+            if (process.env.SKIP_SHARP === 'true') {
+              webpBuffer = data;
+            } else {
+              // Dynamically require sharp so the worker still runs if sharp isn't installed in some environments
+              // eslint-disable-next-line @typescript-eslint/no-var-requires
+              const sharp = require('sharp');
+              webpBuffer = await sharp(data).webp({ lossless: true }).toBuffer();
+            }
+          } catch (e) {
+            // If sharp isn't available or conversion fails, fall back to original buffer
+            console.warn('sharp conversion failed or skipped', String(e));
+            webpBuffer = data;
+          }
+          if (webpBuffer) {
+            const thumbName = `thumb-${Date.now()}-${Math.random().toString(36).slice(2)}.webp`;
+            const thumbPath = `${job.user_id}/temp/${thumbName}`;
+            try { await supabase.storage.createBucket('generated-images', { public: false }).catch(()=>{}); } catch {}
+            const upThumb = await supabase.storage.from('generated-images').upload(thumbPath, webpBuffer, { contentType: 'image/webp', upsert: false });
+            if (!upThumb.error) {
+              thumbnailStoragePath = `storage:generated-images/${thumbPath}`;
+            } else {
+              console.warn('Thumbnail upload error', upThumb.error);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Thumbnail generation/upload failed', e);
+      }
+    }
+
     const delivered: string[] = [];
     const saveToLibrary = (job.generation_params && job.generation_params.saveToLibrary) === true;
     if (saveToLibrary && sourceUrls.length) {
@@ -137,6 +191,14 @@ async function processJob(job: any, supabase: any, runFn: any) {
         // mark generation as saved in generation_params for visibility
         const params = { ...(job.generation_params || {}), saved_to_library: true };
         updates.generation_params = params;
+      } else if (thumbnailStoragePath) {
+        // No full saved delivery, but we uploaded a small temp thumbnail — use that for thumbnail_url
+        updates.thumbnail_url = thumbnailStoragePath;
+        // Also persist thumbnail path into generation_params.result_urls for UI convenience
+        try {
+          const params = { ...(job.generation_params || {}), result_urls: sourceUrls, saved_to_library: false };
+          updates.generation_params = params;
+        } catch (e) { /* ignore */ }
       }
       await supabase.from('media_generations').update(updates).eq('id', id);
     } catch (e) {
