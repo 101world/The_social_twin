@@ -12,12 +12,45 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkUserGenerations() {
-  const userId = 'user_31bGWlhyPTrdmTlkEwkGlhoxtU9';
+  const userId = 'user_31bGWlhyPTrdmtIkEwkGlhoxtU9';
   
   console.log(`\n🔍 Checking generations for user: ${userId}\n`);
   
+  // First, search for the specific dynasties prompt
+  console.log('--- SEARCHING FOR DYNASTIES PROMPT ---');
+  const { data: dynastiesGens, error: dynastiesError } = await supabase
+    .from('media_generations')
+    .select('*')
+    .eq('user_id', userId)
+    .ilike('prompt', '%dynasties%')
+    .order('created_at', { ascending: false });
+
+  if (dynastiesError) {
+    console.error('Error searching for dynasties:', dynastiesError);
+  } else {
+    console.log(`Found ${dynastiesGens?.length || 0} dynasties generations:`);
+    
+    if (dynastiesGens && dynastiesGens.length > 0) {
+      dynastiesGens.forEach((gen, index) => {
+        console.log(`\n${index + 1}. ID: ${gen.id}`);
+        console.log(`   Created: ${gen.created_at}`);
+        console.log(`   Type: ${gen.type}`);
+        console.log(`   Status: ${gen.status || 'N/A'}`);
+        console.log(`   Prompt: ${gen.prompt}`);
+        console.log(`   Result URL: ${gen.result_url || 'N/A'}`);
+        console.log(`   Thumbnail: ${gen.thumbnail_url || 'N/A'}`);
+        console.log(`   Generation Params:`, gen.generation_params ? 'YES' : 'NO');
+        if (gen.generation_params) {
+          console.log(`   Params Detail:`, JSON.stringify(gen.generation_params, null, 2));
+        }
+      });
+    } else {
+      console.log('   No dynasties generations found');
+    }
+  }
+
   // Check media_generations table (primary)
-  console.log('--- MEDIA_GENERATIONS TABLE ---');
+  console.log('\n--- ALL MEDIA_GENERATIONS FOR USER ---');
   const { data: mediaGens, error: mediaError } = await supabase
     .from('media_generations')
     .select('*')

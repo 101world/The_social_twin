@@ -133,17 +133,18 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     const { data: generationRecord, error: insertError } = await supabase
-      .from('generations')
+      .from('media_generations')
       .insert([{
         user_id: userId,
         type: normType,
         prompt: prompt || null,
-        duration_seconds: normType === 'video' && durationSecondsInput ? durationSecondsInput : null,
-        metadata: {
+        status: 'pending',
+        generation_params: {
           cost: totalCost,
           batch_size,
           runpod_url: runpodUrl,
           provider,
+          duration_seconds: normType === 'video' && durationSecondsInput ? durationSecondsInput : null,
           ...otherParams
         }
       }])
@@ -189,12 +190,14 @@ export async function POST(req: NextRequest) {
   const respDurationSec = undefined;
 
     await supabase
-        .from('generations')
+        .from('media_generations')
         .update({
           result_url: resultUrl,
-          content,
-          metadata: {
-            ...generationRecord.metadata,
+          thumbnail_url: resultUrl,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          generation_params: {
+            ...generationRecord.generation_params,
             status: 'completed',
             batch_results: {
               images: batchImages,
@@ -243,10 +246,12 @@ export async function POST(req: NextRequest) {
 
       // Update generation record with error
       await supabase
-        .from('generations')
+        .from('media_generations')
         .update({
-          metadata: {
-            ...generationRecord.metadata,
+          status: 'failed',
+          error_message: generationError instanceof Error ? generationError.message : 'Unknown error',
+          generation_params: {
+            ...generationRecord.generation_params,
             error: generationError instanceof Error ? generationError.message : 'Unknown error',
             status: 'failed'
           }
