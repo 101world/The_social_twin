@@ -135,37 +135,10 @@ export async function POST(req: NextRequest) {
     // Generate a unique seed for this user's generation
     const userSeed = typeof body?.seed === 'number' ? body.seed : Math.floor(Math.random() * 1000000);
 
-    // --- BACKGROUND WORKER ENQUEUE (option 2) ---
-    // If we have a Supabase client, insert a pending media_generations row and return immediately.
-    // A separate worker will pick up pending rows, run the generation and persist outputs.
-    try {
-      if (supabase && userId) {
-        const genParams = {
-          mode,
-          prompt,
-          requestBody: body,
-          runpodUrl,
-          seed: userSeed,
-          enqueued_at: new Date().toISOString()
-        };
-        const insertPayload: any = {
-          topic_id: topicId || null,
-          user_id: userId,
-          type: mode === 'image-modify' ? 'image-modify' : mode,
-          prompt: prompt,
-          status: 'pending',
-          generation_params: genParams
-        };
-        const { data: created, error: insertErr } = await supabase.from('media_generations').insert(insertPayload).select('id').single();
-        if (insertErr || !created) {
-          console.warn('Failed to enqueue generation job, falling back to synchronous path', insertErr);
-        } else {
-          return NextResponse.json({ ok: true, enqueued: true, job_id: created.id, message: 'Generation enqueued for background processing' });
-        }
-      }
-    } catch (e) {
-      console.warn('Enqueue attempt failed, continuing with synchronous flow', e);
-    }
+    // --- BACKGROUND WORKER ENQUEUE (DISABLED) ---
+    // Bypassing background worker - doing synchronous generation instead
+    // This ensures generated images show up immediately in the Generated tab
+    console.log('Background worker enqueue disabled - using synchronous generation');
     // --- end enqueue ---
 
   if (useSocialTwin) {
@@ -273,7 +246,7 @@ export async function POST(req: NextRequest) {
                   if (!up.error) {
                     const storagePath = `storage:${bucket}/${pathName}`;
                     if (topicId) {
-                      try { await supabase.from('media_generations').insert({ topic_id: topicId, user_id: userId!, type, prompt, result_url: storagePath }); } catch {}
+                      try { await supabase.from('media_generations').insert({ topic_id: topicId, user_id: userId!, type, prompt, result_url: storagePath, status: 'completed', completed_at: new Date().toISOString() }); } catch {}
                     }
                     const signed = await (supabase as any).storage.from(bucket).createSignedUrl(pathName, 60 * 60 * 24 * 7);
                     if (!signed.error) deliveredUrls.push(signed.data.signedUrl);
@@ -655,7 +628,7 @@ export async function POST(req: NextRequest) {
               const storagePath = `storage:${bucket}/${path}`;
               // insert one row per asset
               if (topicId) {
-                try { await supabase.from('media_generations').insert({ topic_id: topicId, user_id: userId!, type, prompt, result_url: storagePath }); } catch {}
+                try { await supabase.from('media_generations').insert({ topic_id: topicId, user_id: userId!, type, prompt, result_url: storagePath, status: 'completed', completed_at: new Date().toISOString() }); } catch {}
               }
               const signed = await (supabase as any).storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
               if (!signed.error) deliveredUrls.push(signed.data.signedUrl);
