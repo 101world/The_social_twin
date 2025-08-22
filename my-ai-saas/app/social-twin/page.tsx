@@ -122,6 +122,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Quick Create enhanced state
   const [showQuickAdvanced, setShowQuickAdvanced] = useState<boolean>(false);
   const [sendToCanvas, setSendToCanvas] = useState<boolean>(true);
+  const [saveToLibrary, setSaveToLibrary] = useState<boolean>(false);
   // Quick Create dropdown/tabs selections
   const [quickTemplateSel, setQuickTemplateSel] = useState<string>('');
   const [quickPresetSel, setQuickPresetSel] = useState<string>('');
@@ -159,6 +160,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       } else if (saved === '1') {
         setSimpleMode(true);
       }
+    } catch {}
+  }, []);
+
+  // Initialize saveToLibrary preference from localStorage
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('social_twin_save_to_library');
+      if (v === '1') setSaveToLibrary(true);
+      else if (v === '0') setSaveToLibrary(false);
     } catch {}
   }, []);
 
@@ -1246,6 +1256,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
     if (batchSize !== "") localStorage.setItem(LOCAL_KEYS.batchSize, String(batchSize));
     localStorage.setItem(LOCAL_KEYS.aspectRatio, aspectRatio);
+  try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
   }
 
   async function handleSend() {
@@ -1354,6 +1365,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             denoise: typeof denoise === 'number' ? denoise : undefined,
             unet: unetName || undefined,
           } : undefined,
+          // Respect user's choice whether to save generated media into their personal library
+          saveToLibrary: saveToLibrary === true,
         }),
       });
 
@@ -3634,8 +3647,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                 )}
               </div>
-      {/* Bottom action bar */}
-      <div className="flex flex-wrap gap-2 justify-center border-t border-white/10 pt-3">
+  {/* Bottom action bar */}
+  <div className="flex flex-wrap gap-2 justify-center border-t border-white/10 pt-3">
                 <button
                   onClick={() => {
                     if (viewerItem.topic_id) {
@@ -3695,6 +3708,40 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 >
                   🎨 Send to canvas
                 </button>
+                
+                {/* Save to Library - one-click server action */}
+                {(() => {
+                  const isSaved = (viewerItem?.result_url && typeof viewerItem.result_url === 'string' && viewerItem.result_url.startsWith('storage:')) || (viewerItem?.generation_params && (viewerItem.generation_params.saved_to_library === true || viewerItem.generation_params.savedToLibrary === true));
+                  return (
+                    <button
+                      onClick={async () => {
+                        if (isSaved) return;
+                        try {
+                          const res = await fetch('/api/social-twin/save-to-library', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+                            body: JSON.stringify({ id: viewerItem.id })
+                          });
+                          const j = await res.json().catch(() => null);
+                          if (res.ok) {
+                            // optimistic UI update for viewer and grid
+                            setViewerItem(prev => prev ? { ...prev, generation_params: { ...(prev.generation_params || {}), saved_to_library: true, savedToLibrary: true }, result_url: (j?.result_url || prev.result_url) } : prev);
+                            setBinItems(prev => prev.map(it => it.id === viewerItem.id ? { ...it, generation_params: { ...(it.generation_params || {}), saved_to_library: true, savedToLibrary: true }, result_url: (j?.result_url || it.result_url) } : it));
+                          } else {
+                            alert((j && (j.error || j.message)) || 'Save failed');
+                          }
+                        } catch (e) {
+                          console.error(e);
+                          alert('Save failed');
+                        }
+                      }}
+                      disabled={isSaved}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors ${isSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isSaved ? '💾 Saved' : '💾 Save to Library'}
+                    </button>
+                  );
+                })()}
               </div>
               
               {/* Details toggle and metadata */}
@@ -4286,6 +4333,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <path d="M12 5v14M5 12h14" stroke={sendToCanvas ? '#2563EB' : '#374151'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   <span className="text-xs">Canvas</span>
+                </button>
+
+                {/* Save to Library Toggle (opt-in) */}
+                <button
+                  onClick={() => { setSaveToLibrary(!saveToLibrary); try { localStorage.setItem('social_twin_save_to_library', !saveToLibrary ? '1' : '0'); } catch {} }}
+                  className={`rounded-md px-3 py-1 text-sm border ${saveToLibrary ? 'bg-amber-100 border-amber-300 text-black' : 'border-neutral-200 hover:bg-neutral-50'}`}
+                  title="Save generated media to your Library"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="inline mr-1">
+                    <path d="M3 7h18M7 3v4M17 3v4" stroke={saveToLibrary ? '#92400E' : '#374151'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="text-xs">Save</span>
                 </button>
 
                 {/* Batch Generate for Creators */}

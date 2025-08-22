@@ -135,6 +135,39 @@ export async function POST(req: NextRequest) {
     // Generate a unique seed for this user's generation
     const userSeed = typeof body?.seed === 'number' ? body.seed : Math.floor(Math.random() * 1000000);
 
+    // --- BACKGROUND WORKER ENQUEUE (option 2) ---
+    // If we have a Supabase client, insert a pending media_generations row and return immediately.
+    // A separate worker will pick up pending rows, run the generation and persist outputs.
+    try {
+      if (supabase && userId) {
+        const genParams = {
+          mode,
+          prompt,
+          requestBody: body,
+          runpodUrl,
+          seed: userSeed,
+          enqueued_at: new Date().toISOString()
+        };
+        const insertPayload: any = {
+          topic_id: topicId || null,
+          user_id: userId,
+          type: mode === 'image-modify' ? 'image-modify' : mode,
+          prompt: prompt,
+          status: 'pending',
+          generation_params: genParams
+        };
+        const { data: created, error: insertErr } = await supabase.from('media_generations').insert(insertPayload).select('id').single();
+        if (insertErr || !created) {
+          console.warn('Failed to enqueue generation job, falling back to synchronous path', insertErr);
+        } else {
+          return NextResponse.json({ ok: true, enqueued: true, job_id: created.id, message: 'Generation enqueued for background processing' });
+        }
+      }
+    } catch (e) {
+      console.warn('Enqueue attempt failed, continuing with synchronous flow', e);
+    }
+    // --- end enqueue ---
+
   if (useSocialTwin) {
       try {
         if (mode === 'image') {

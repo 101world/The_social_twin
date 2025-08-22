@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- MEDIA GENERATIONS: Images or videos generated per topic
 CREATE TABLE IF NOT EXISTS public.media_generations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     topic_id UUID NOT NULL REFERENCES public.chat_topics(id) ON DELETE CASCADE,
@@ -27,6 +26,11 @@ CREATE TABLE IF NOT EXISTS public.media_generations (
     type TEXT NOT NULL, -- 'image' or 'video'
     prompt TEXT,
     result_url TEXT,
+    thumbnail_url TEXT,
+    generation_params JSONB,
+    status TEXT NOT NULL DEFAULT 'pending', -- pending / processing / completed / failed
+    completed_at TIMESTAMPTZ,
+    error_message TEXT,
     credits_used INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
