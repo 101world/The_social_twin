@@ -325,6 +325,62 @@
 /* composer height var, default */
 :root { --composer-h: 64px; }
 
+/* Enhanced mobile input handling */
+@media (max-width: 640px) {
+  /* Prevent zoom on input focus for iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    transform: scale(1);
+  }
+  
+  /* Better touch targets */
+  button, 
+  select,
+  input[type="file"] + label {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Smooth scrolling for mobile */
+  * {
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent text selection on UI elements */
+  button,
+  .mode-button,
+  .touch-target {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Better mobile scrolling */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Enhanced tap targets for mobile */
+  .mobile-tap-target {
+    padding: 12px;
+    margin: 4px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+  
+  .mobile-tap-target:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
 /* iOS momentum scroll */
 .ios-smooth-scroll { -webkit-overflow-scrolling: touch; }
 
