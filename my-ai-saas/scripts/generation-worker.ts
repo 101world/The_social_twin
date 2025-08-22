@@ -61,21 +61,32 @@ async function processJob(job: any, supabase: any, runFn: any) {
     const body = params.requestBody || {};
     const runpodUrl = params.runpodUrl || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL;
 
-  const out = await runFn({
-      mode: params.mode || body.mode || 'image',
-      prompt: params.prompt || body.prompt || '',
-      imageUrl: body.imageUrl || body.attachment?.dataUrl || undefined,
-      runpodUrl,
-      apiKey: process.env.RUNPOD_API_KEY,
-      userId: job.user_id,
-      batch_size: body.batch_size || 1,
-      width: body.width,
-      height: body.height,
-      steps: body.steps,
-      cfg: body.cfg,
-      seed: params.seed || body.seed,
-      workflow_settings: body.workflow_settings || undefined
-    });
+    let out: any = { images: [], videos: [], urls: [] };
+    if (String(process.env.RUNPOD_ENABLED || 'false').toLowerCase() === 'true') {
+      out = await runFn({
+        mode: params.mode || body.mode || 'image',
+        prompt: params.prompt || body.prompt || '',
+        imageUrl: body.imageUrl || body.attachment?.dataUrl || undefined,
+        runpodUrl,
+        apiKey: process.env.RUNPOD_API_KEY,
+        userId: job.user_id,
+        batch_size: body.batch_size || 1,
+        width: body.width,
+        height: body.height,
+        steps: body.steps,
+        cfg: body.cfg,
+        seed: params.seed || body.seed,
+        workflow_settings: body.workflow_settings || undefined
+      });
+    } else {
+      console.log('RUNPOD_ENABLED != true — skipping RunPod call for job', id);
+      // Mark job back to pending so it can be retried later, and annotate generation_params
+      try {
+        const paramsUpdate = { ...(job.generation_params || {}), runpod_skipped: true };
+        await supabase.from('media_generations').update({ generation_params: paramsUpdate, status: 'pending' }).eq('id', id).catch(()=>{});
+      } catch (e) { /* ignore */ }
+      return;
+    }
 
     // Persist outputs to Supabase storage and update media_generations ONLY if user opted in.
     const sourceUrls = (out.urls && out.urls.length) ? out.urls : (out.images && out.images.length ? out.images : []);
