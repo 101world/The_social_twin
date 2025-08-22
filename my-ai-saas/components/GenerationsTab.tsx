@@ -51,23 +51,59 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
       setLoading(true);
       setError(null);
 
+      // Use the same API endpoint as social-twin history for consistency
+      // This ensures we get all generations from media_generations table
       const params = new URLSearchParams({
         limit: '20',
-        page: pageNum.toString(),
+        ...(pageNum > 0 ? { page: pageNum.toString() } : {})
       });
 
-      const response = await fetch(`/api/generations?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch generations');
+      // Try social-twin history API first (uses media_generations table)
+      let response = await fetch(`/api/social-twin/history?${params}`, { 
+        headers: { 'X-User-Id': userId || '' } 
+      });
+      
+      let data: any = {};
+      let items: any[] = [];
+      
+      if (response.ok) {
+        data = await response.json();
+        items = data.items || [];
+        
+        // Transform social-twin history format to generations format
+        items = items.map((item: any) => ({
+          id: item.id,
+          user_id: item.user_id || userId,
+          type: item.type,
+          prompt: item.prompt,
+          result_url: item.display_url || item.result_url,
+          content: item.type === 'text' ? (item.generation_params?.generated_text || item.generation_params?.text) : null,
+          posted: false,
+          metadata: {
+            status: item.status,
+            error_message: item.error_message,
+            generation_params: item.generation_params,
+            original_result_url: item.result_url,
+            thumbnail_url: item.thumbnail_url,
+            display_url: item.display_url
+          },
+          created_at: item.created_at,
+          posted_at: null
+        }));
+      } else {
+        // Fallback to generations API if history fails
+        response = await fetch(`/api/generations?${params}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch generations');
+        }
+        data = await response.json();
+        items = data.items || [];
       }
-
-      const data = await response.json();
-      const items = data.items || [];
 
       // Apply client-side filtering if needed
       const filteredItems = filter === 'all' 
         ? items 
-        : items.filter((gen: Generation) => gen.type === filter);
+        : items.filter((gen: any) => gen.type === filter);
 
       if (reset) {
         setGenerations(filteredItems);
@@ -75,7 +111,14 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
         setGenerations(prev => [...prev, ...filteredItems]);
       }
 
-      setHasMore(items.length === 20);
+      // For social-twin history API, use cursor-based pagination
+      if (data.nextCursor) {
+        setHasMore(true);
+        // Store cursor for next page
+      } else {
+        setHasMore(items.length === 20);
+      }
+      
       setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load generations');
@@ -86,7 +129,11 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
 
   const calculateStats = async () => {
     try {
-      const response = await fetch('/api/generations?limit=1000');
+      // Use social-twin history API to get all generations for stats
+      const response = await fetch('/api/social-twin/history?limit=1000', { 
+        headers: { 'X-User-Id': userId || '' } 
+      });
+      
       if (response.ok) {
         const data = await response.json();
         const items = data.items || [];
@@ -96,19 +143,19 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        const todayCount = items.filter((gen: Generation) => 
+        const todayCount = items.filter((gen: any) => 
           new Date(gen.created_at) >= today
         ).length;
 
-        const weekCount = items.filter((gen: Generation) => 
+        const weekCount = items.filter((gen: any) => 
           new Date(gen.created_at) >= weekAgo
         ).length;
 
-        const monthCount = items.filter((gen: Generation) => 
+        const monthCount = items.filter((gen: any) => 
           new Date(gen.created_at) >= monthAgo
         ).length;
 
-        const byType = items.reduce((acc: any, gen: Generation) => {
+        const byType = items.reduce((acc: any, gen: any) => {
           acc[gen.type] = (acc[gen.type] || 0) + 1;
           return acc;
         }, { text: 0, image: 0, video: 0 });
@@ -120,6 +167,43 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
           thisMonth: monthCount,
           byType
         });
+      } else {
+        // Fallback to generations API
+        const fallbackResponse = await fetch('/api/generations?limit=1000');
+        if (fallbackResponse.ok) {
+          const data = await fallbackResponse.json();
+          const items = data.items || [];
+
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+          const todayCount = items.filter((gen: any) => 
+            new Date(gen.created_at) >= today
+          ).length;
+
+          const weekCount = items.filter((gen: any) => 
+            new Date(gen.created_at) >= weekAgo
+          ).length;
+
+          const monthCount = items.filter((gen: any) => 
+            new Date(gen.created_at) >= monthAgo
+          ).length;
+
+          const byType = items.reduce((acc: any, gen: any) => {
+            acc[gen.type] = (acc[gen.type] || 0) + 1;
+            return acc;
+          }, { text: 0, image: 0, video: 0 });
+
+          setStats({
+            total: items.length,
+            today: todayCount,
+            thisWeek: weekCount,
+            thisMonth: monthCount,
+            byType
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to calculate stats:', err);

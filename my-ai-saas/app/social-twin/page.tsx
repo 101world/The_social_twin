@@ -623,8 +623,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }, [dashProjectsOpen, userId]);
 
   useEffect(() => {
-    if (activeTab === 'generated' && binItems.length === 0) {
-      // Load generated items when switching to Generated tab
+    if (activeTab === 'generated') {
+      // Always load generated items when switching to Generated tab (to show latest data)
       fetch('/api/social-twin/history?limit=24', { headers: { 'X-User-Id': userId || '' } })
         .then(r => r.json())
         .then(j => {
@@ -633,7 +633,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         })
         .catch(() => {});
     }
-  }, [activeTab, userId, binItems.length]);
+  }, [activeTab, userId]);
 
   // Load project from URL if projectId is provided
   useEffect(() => {
