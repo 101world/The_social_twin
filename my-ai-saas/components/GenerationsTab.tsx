@@ -283,6 +283,26 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
                     <div className="text-xs opacity-70">
                       {getCostByType(generation.type)} credits
                     </div>
+                    {/* Status indicator */}
+                    {generation.metadata && (generation.metadata as any).status && (
+                      <div className={`px-2 py-1 rounded text-xs ${
+                        (generation.metadata as any).status === 'completed'
+                          ? 'bg-green-50 text-green-600 border border-green-200'
+                          : (generation.metadata as any).status === 'pending'
+                          ? 'bg-yellow-50 text-yellow-600 border border-yellow-200'
+                          : (generation.metadata as any).status === 'processing'
+                          ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                          : 'bg-red-50 text-red-600 border border-red-200'
+                      }`}>
+                        {((generation.metadata as any).status || '').charAt(0).toUpperCase() + ((generation.metadata as any).status || '').slice(1)}
+                      </div>
+                    )}
+                    {/* Saved to library indicator */}
+                    {generation.metadata && (generation.metadata as any).generation_params?.saved_to_library && (
+                      <div className="px-2 py-1 rounded text-xs bg-emerald-50 text-emerald-600 border border-emerald-200">
+                        💾 Saved
+                      </div>
+                    )}
                   </div>
                   <div className="text-xs opacity-70">
                     {formatDate(generation.created_at)}
@@ -307,6 +327,25 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
                   </div>
                 )}
 
+                {!generation.result_url && (generation.type === 'image' || generation.type === 'video') && (
+                  <div className={`mb-3 p-4 rounded border-2 border-dashed ${darkMode ? 'border-gray-600 bg-gray-800' : 'border-gray-300 bg-gray-50'}`}>
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{generation.type === 'image' ? '🎨' : '🎥'}</div>
+                      <div className="text-sm font-medium mb-1">
+                        {generation.type === 'image' ? 'Image Generated' : 'Video Generated'}
+                      </div>
+                      <div className="text-xs opacity-60">
+                        {generation.metadata && (generation.metadata as any).status === 'completed' 
+                          ? 'Preview URL has expired (RunPod URLs are temporary)'
+                          : generation.metadata && (generation.metadata as any).status
+                          ? `Status: ${(generation.metadata as any).status}`
+                          : 'Processing or preview not available'}
+                      </div>
+                      <div className="text-xs opacity-40 mt-1">ID: {generation.id.slice(0, 12)}...</div>
+                    </div>
+                  </div>
+                )}
+
                 {generation.result_url && (generation.type === 'image' || generation.type === 'video') && (
                   <div className="mb-3">
                     {generation.type === 'image' ? (
@@ -314,12 +353,50 @@ export default function GenerationsTab({ darkMode = false, onAddToCanvas }: Gene
                         src={getDisplayUrl(generation.result_url)}
                         alt="Generated content"
                         className="max-w-full h-auto rounded border max-h-64 object-contain"
+                        onError={(e) => {
+                          // Show meaningful placeholder when image fails to load
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.error-placeholder')) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = `error-placeholder max-w-full h-64 rounded border flex flex-col items-center justify-center text-center ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`;
+                            const status = (generation.metadata as any)?.status || 'completed';
+                            const isCompleted = status === 'completed';
+                            placeholder.innerHTML = `
+                              <div class="text-4xl mb-2">${isCompleted ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌'}</div>
+                              <div class="text-sm font-medium">${isCompleted ? 'Generated Image' : status.charAt(0).toUpperCase() + status.slice(1)}</div>
+                              ${isCompleted ? '<div class="text-xs opacity-60 mt-1">Preview unavailable (RunPod URL expired)</div>' : ''}
+                              <div class="text-xs opacity-50 mt-2">Generation ID: ${generation.id.slice(0, 8)}...</div>
+                            `;
+                            parent.appendChild(placeholder);
+                          }
+                        }}
                       />
                     ) : (
                       <video
                         src={getDisplayUrl(generation.result_url)}
                         controls
                         className="max-w-full h-auto rounded border max-h-64"
+                        onError={(e) => {
+                          // Show meaningful placeholder when video fails to load
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.error-placeholder')) {
+                            const placeholder = document.createElement('div');
+                            placeholder.className = `error-placeholder max-w-full h-64 rounded border flex flex-col items-center justify-center text-center ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-300'}`;
+                            const status = (generation.metadata as any)?.status || 'completed';
+                            const isCompleted = status === 'completed';
+                            placeholder.innerHTML = `
+                              <div class="text-4xl mb-2">${isCompleted ? '🎥' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌'}</div>
+                              <div class="text-sm font-medium">${isCompleted ? 'Generated Video' : status.charAt(0).toUpperCase() + status.slice(1)}</div>
+                              ${isCompleted ? '<div class="text-xs opacity-60 mt-1">Preview unavailable (RunPod URL expired)</div>' : ''}
+                              <div class="text-xs opacity-50 mt-2">Generation ID: ${generation.id.slice(0, 8)}...</div>
+                            `;
+                            parent.appendChild(placeholder);
+                          }
+                        }}
                       />
                     )}
                   </div>

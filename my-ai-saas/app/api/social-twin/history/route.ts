@@ -71,16 +71,30 @@ export async function GET(req: NextRequest) {
       } catch (e) {
         // ignore display URL building errors
       }
-      // Final fallback: if there's still no display_url, return a small SVG data URL
-      // that indicates the item's status (pending/processing) so the UI can show
-      // a meaningful placeholder regardless of RunPod availability.
+      // Final fallback: if there's still no display_url, return a meaningful placeholder
+      // that shows the generation exists regardless of RunPod availability.
       if (!display_url) {
         try {
           const statusText = (it.status || 'pending').toString().toUpperCase();
-          const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='512' height='320'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='22' fill='%23666'>${statusText}</text></svg>`;
+          const isCompleted = it.status === 'completed';
+          const isPending = it.status === 'pending' || it.status === 'processing';
+          const isFailed = it.status === 'failed';
+          
+          // Different colors based on status
+          const bgColor = isCompleted ? '%23e3f2fd' : isPending ? '%23fff3e0' : '%23ffebee';
+          const textColor = isCompleted ? '%234fc3f7' : isPending ? '%23ff9800' : '%23f44336';
+          const icon = isCompleted ? '🎨' : isPending ? '⏳' : '❌';
+          
+          let displayText = statusText;
+          if (isCompleted && !it.result_url && !it.thumbnail_url) {
+            displayText = 'GENERATED\\A(RunPod URL expired)';
+          }
+          
+          const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='512' height='320'><rect width='100%' height='100%' fill='${bgColor}'/><text x='50%' y='40%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='32'>${icon}</text><text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-size='16' fill='${textColor}'>${displayText}</text></svg>`;
           display_url = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
         } catch (e) {
-          // if encoding fails, leave display_url null
+          // if encoding fails, create a minimal fallback
+          display_url = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='320'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%23666'>Generation Record</text></svg>`;
         }
       }
       return { ...it, display_url };

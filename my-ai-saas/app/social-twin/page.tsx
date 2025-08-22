@@ -2848,12 +2848,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 </div>
                               ))
                             ) : (
-                              <img 
-                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
-                                className="h-full w-full object-cover" 
-                                loading="lazy" 
-                                alt="Generated content" 
-                              />
+                              url ? (
+                                <img 
+                                  src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                  className="h-full w-full object-cover" 
+                                  loading="lazy" 
+                                  alt="Generated content"
+                                  onError={(e) => {
+                                    // Replace broken image with status-based placeholder
+                                    const status = it.status || 'completed';
+                                    const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
+                                    const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);
+                                    
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent && !parent.querySelector('.fallback-placeholder')) {
+                                      const placeholder = document.createElement('div');
+                                      placeholder.className = `fallback-placeholder h-full w-full flex flex-col items-center justify-center text-center ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-600'}`;
+                                      placeholder.innerHTML = `
+                                        <div class="text-2xl mb-1">${statusEmoji}</div>
+                                        <div class="text-xs opacity-70">${statusText}</div>
+                                        ${status === 'completed' ? '<div class="text-xs opacity-50 mt-1">URL expired</div>' : ''}
+                                      `;
+                                      parent.appendChild(placeholder);
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div className={`h-full w-full flex flex-col items-center justify-center text-center ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                  <div className="text-2xl mb-1">{it.status === 'pending' ? '⏳' : it.status === 'processing' ? '⚙️' : it.status === 'failed' ? '❌' : '🎨'}</div>
+                                  <div className="text-xs opacity-70">{it.status ? it.status.charAt(0).toUpperCase() + it.status.slice(1) : 'Generated'}</div>
+                                  {it.status === 'completed' && <div className="text-xs opacity-50 mt-1">No preview</div>}
+                                </div>
+                              )
                             )}
                           </div>
                           

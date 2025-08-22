@@ -20,6 +20,79 @@ export async function GET(req: NextRequest) {
     const limit = Number(q.get('limit') || '50');
     const page = Number(q.get('page') || '0');
 
+    // Try media_generations table first (newer, more complete data)
+    const { data: mediaGens, error: mediaError } = await supabase
+      .from('media_generations')
+      .select('id,type,prompt,result_url,thumbnail_url,generation_params,created_at,status,error_message,user_id')
+      .eq('user_id', userId as string)
+      .order('created_at', { ascending: false })
+      .range(page * limit, page * limit + limit - 1);
+
+    if (!mediaError && mediaGens && mediaGens.length > 0) {
+      // Transform media_generations data to match expected generations format
+      const transformedData = await Promise.all(mediaGens.map(async (item) => {
+        let display_url: string | null = null;
+        let content: string | null = null;
+        
+        // Get display URL (prioritize thumbnail, then result_url)
+        try {
+          if (item.thumbnail_url && item.thumbnail_url.startsWith('storage:')) {
+            const parts = item.thumbnail_url.replace('storage:', '').split('/');
+            const bucket = parts.shift() as string;
+            const path = parts.join('/');
+            const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+            if (!signed.error) display_url = signed.data.signedUrl;
+          }
+          
+          if (!display_url && item.result_url && item.result_url.startsWith('storage:')) {
+            const parts = item.result_url.replace('storage:', '').split('/');
+            const bucket = parts.shift() as string;
+            const path = parts.join('/');
+            const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+            if (!signed.error) display_url = signed.data.signedUrl;
+          }
+          
+          // Check generation_params for transient URLs
+          if (!display_url && item.generation_params && Array.isArray(item.generation_params.result_urls)) {
+            display_url = item.generation_params.result_urls[0];
+          }
+          
+          if (!display_url && item.result_url && !item.result_url.startsWith('storage:')) {
+            display_url = item.result_url;
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // For text generations, extract content from generation_params if available
+        if (item.type === 'text' && item.generation_params) {
+          content = item.generation_params.generated_text || item.generation_params.text || null;
+        }
+
+        return {
+          id: item.id,
+          user_id: item.user_id,
+          type: item.type,
+          prompt: item.prompt,
+          result_url: display_url,
+          content: content,
+          posted: false, // media_generations doesn't track this
+          metadata: {
+            status: item.status,
+            error_message: item.error_message,
+            generation_params: item.generation_params,
+            original_result_url: item.result_url,
+            thumbnail_url: item.thumbnail_url
+          },
+          created_at: item.created_at,
+          posted_at: null
+        };
+      }));
+      
+      return NextResponse.json({ items: transformedData });
+    }
+
+    // Fallback to generations table if media_generations is empty or has error
     const { data, error } = await supabase
       .from('generations')
       .select('*')
