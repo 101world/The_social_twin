@@ -23,21 +23,14 @@ export async function GET(req: NextRequest) {
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
     const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
 
-    // By default return recent generations (so the Generations tab shows items immediately).
-    // If the client requests only saved/library items, pass ?saved=true.
-    const savedOnly = String(searchParams.get('saved') || '').toLowerCase() === 'true';
-
-    let query = supabase
+    // Return recent generations for the user (no saved-only filter).
+    // Include status and error_message so the UI can show processing/failed items.
+  let query = supabase
       .from('media_generations')
-      .select('id,type,prompt,result_url,generation_params,created_at,topic_id')
+      .select('id,type,prompt,result_url,generation_params,created_at,topic_id,status,error_message')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit);
-
-    if (savedOnly) {
-      // saved items: storage-backed result_url or generation_params.saved_to_library = true
-      query = query.or("result_url.ilike.storage:%,generation_params->>saved_to_library.eq.true");
-    }
 
     if (cursor) {
       query = query.lt('created_at', cursor);
