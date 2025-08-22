@@ -2671,18 +2671,47 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {/* Mode buttons row (above prompt) */}
                 <div className="mb-3 flex items-center gap-2 justify-between">
                   <div className="flex items-center gap-2">
-                    <IconButton title="Text mode" onClick={() => setMode('text')}> 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 6h12M6 12h10M6 18h8" stroke={darkMode? '#fff':'#111'} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </IconButton>
-                    <IconButton title="Image mode" onClick={() => setMode('image')}> 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4"/><path d="M7 13l3-3 5 5" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </IconButton>
-                    <IconButton title="Modify image" onClick={() => setMode('image-modify')}> 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 10-10a2.5 2.5 0 013.5 0l1.5 1.5a2.5 2.5 0 010 3.5L17.5 21 3 21z" stroke={darkMode? '#fff':'#111'} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </IconButton>
-                    <IconButton title="Video mode" onClick={() => setMode('video')}> 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke={darkMode? '#fff':'#111'} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </IconButton>
+                    <button 
+                      title="Text mode" 
+                      onClick={() => setMode('text')}
+                      className="group p-2 rounded-lg transition-all hover:bg-blue-500/10"
+                    > 
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M4 8h16M4 16h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M4 12h12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Image mode" 
+                      onClick={() => setMode('image')}
+                      className="group p-2 rounded-lg transition-all hover:bg-green-500/10"
+                    > 
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-green-500">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" stroke="#fff" strokeWidth="2"/>
+                        <path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Modify image" 
+                      onClick={() => setMode('image-modify')}
+                      className="group p-2 rounded-lg transition-all hover:bg-purple-500/10"
+                    > 
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-purple-500">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke="#fff" strokeWidth="2"/>
+                        <path d="M15 5l4 4" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Video mode" 
+                      onClick={() => setMode('video')}
+                      className="group p-2 rounded-lg transition-all hover:bg-red-500/10"
+                    > 
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-red-500">
+                        <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
                   </div>
                   <div className="flex items-center gap-2">
                     {(messages.length > 0 || canvasItems.length > 0) && (
@@ -2703,28 +2732,27 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your prompt..."
-          className={`min-h-[36px] max-h-[120px] flex-1 resize-none rounded-lg border p-3 text-sm transition-all focus:ring-2 focus:ring-blue-500/50 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400 focus:border-neutral-600' : 'bg-gray-50 border-neutral-300 focus:border-blue-400'}`}
+          className={`min-h-[32px] max-h-[80px] flex-1 resize-none rounded-lg p-3 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
           ref={bottomInputRef}
                   />
                    <div className="flex items-center gap-2">
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`relative h-11 w-11 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' : 'bg-gray-400 text-white cursor-not-allowed opacity-70'}`}
+                      className={`group relative h-10 w-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-2 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                        <path d="M5 12h14" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M13 5l7 7-7 7" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-white text-black'} border border-black/10`}>~{generationCost}</span>
+                      <span className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[10px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`cursor-pointer rounded-lg p-2.5 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'bg-neutral-700 hover:bg-neutral-600' : 'bg-gray-100 hover:bg-gray-200'}`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none">
-                        <path d="M16.5 6.5l-7.79 7.79a3 3 0 104.24 4.24l6.01-6.01a4.5 4.5 0 10-6.36-6.36L6.59 8.93" stroke={darkMode ? '#fff' : '#000'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M12 17a1 1 0 01-1-1l.01-.12a1 1 0 01.29-.58l6.01-6.01a2.5 2.5 0 113.54 3.54l-6.01 6.01A3 3 0 119 15" stroke={darkMode ? '#fff' : '#000'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <label className={`group cursor-pointer rounded-lg p-2.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
                         type="file"
