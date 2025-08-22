@@ -49,14 +49,26 @@ export async function GET(req: NextRequest) {
     // Create signed URLs for storage-backed items
     const items = await Promise.all((data || []).map(async (it) => {
       let display_url: string | null = null;
-      if (typeof it.result_url === 'string' && it.result_url.startsWith('storage:')) {
-        try {
+      try {
+        // Priority 1: explicit result_url pointing to storage (create signed URL)
+        if (typeof it.result_url === 'string' && it.result_url.startsWith('storage:')) {
           const parts = it.result_url.replace('storage:', '').split('/');
           const bucket = parts.shift() as string;
           const path = parts.join('/');
           const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
           if (!signed.error) display_url = signed.data.signedUrl;
-        } catch {}
+        }
+        // Priority 2: generation_params.result_urls (transient runpod URLs or data: URIs)
+        if (!display_url && it.generation_params && Array.isArray(it.generation_params.result_urls) && it.generation_params.result_urls.length) {
+          const candidate = it.generation_params.result_urls[0];
+          if (typeof candidate === 'string') display_url = candidate;
+        }
+        // Priority 3: if result_url is a plain URL (not storage:), use it directly
+        if (!display_url && typeof it.result_url === 'string' && !it.result_url.startsWith('storage:')) {
+          display_url = it.result_url;
+        }
+      } catch (e) {
+        // ignore display URL building errors
       }
       return { ...it, display_url };
     }));
