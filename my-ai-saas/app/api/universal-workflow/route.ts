@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { runpodUrl, prompt, mode = 'image', ...params } = body;
-    
+    const { runpodUrl: runpodUrlRaw, prompt, mode = 'image', ...params } = body;
+    // Resolve runpodUrl from DB config -> env fallbacks if not provided
+    const cfg = await getRunpodConfig();
+    const runpodUrl = pickRunpodUrlFromConfig({ provided: runpodUrlRaw, mode, config: cfg });
+     
     if (!runpodUrl || !prompt) {
       return NextResponse.json({ error: 'runpodUrl and prompt required' }, { status: 400 });
     }
@@ -101,17 +105,17 @@ export async function POST(req: NextRequest) {
       
       // Look for any output with images or videos
       for (const nodeId of Object.keys(outputs)) {
-        const output = outputs[nodeId];
+        const output = outputs[nodeId] as any;
         if (output.images && output.images.length > 0) {
           const image = output.images[0];
           const imageUrl = `${base}/view?filename=${encodeURIComponent(image.filename)}&type=${encodeURIComponent(image.type || 'output')}&subfolder=${encodeURIComponent(image.subfolder || '')}`;
-          result = { imageUrl, images: output.images.map(img => `${base}/view?filename=${encodeURIComponent(img.filename)}&type=${encodeURIComponent(img.type || 'output')}&subfolder=${encodeURIComponent(img.subfolder || '')}`) };
+          result = { imageUrl, images: (output.images as any[]).map((img: any) => `${base}/view?filename=${encodeURIComponent(img.filename)}&type=${encodeURIComponent(img.type || 'output')}&subfolder=${encodeURIComponent(img.subfolder || '')}`) };
           break;
         }
         if (output.videos && output.videos.length > 0) {
           const video = output.videos[0];
           const videoUrl = `${base}/view?filename=${encodeURIComponent(video.filename)}&type=${encodeURIComponent(video.type || 'output')}&subfolder=${encodeURIComponent(video.subfolder || '')}`;
-          result = { videoUrl, videos: output.videos.map(vid => `${base}/view?filename=${encodeURIComponent(vid.filename)}&type=${encodeURIComponent(vid.type || 'output')}&subfolder=${encodeURIComponent(vid.subfolder || '')}`) };
+          result = { videoUrl, videos: (output.videos as any[]).map((vid: any) => `${base}/view?filename=${encodeURIComponent(vid.filename)}&type=${encodeURIComponent(vid.type || 'output')}&subfolder=${encodeURIComponent(vid.subfolder || '')}`) };
           break;
         }
       }

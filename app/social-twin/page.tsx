@@ -1159,7 +1159,9 @@ export default function SocialTwinPage() {
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
                   touchAction: 'pan-y',
-                  paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + 8px)'
+                  paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + 8px)',
+                  position: 'relative',
+                  zIndex: 1
                 }}
               >
                 {messages.length === 0 ? (
@@ -1545,7 +1547,7 @@ export default function SocialTwinPage() {
                       padding: '8px',
                       borderTop: darkMode ? '1px solid #262626' : '1px solid #e5e7eb'
                     }
-                  : undefined
+                  : { position: 'relative', zIndex: 10 }
               }
             >
               <textarea
@@ -1616,25 +1618,31 @@ export default function SocialTwinPage() {
                 </div>
               ) : null}
             </div>
-            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}>
-          {/* Controls header: mode selector above the prompt box */}
-            <div className="mb-2 flex flex-wrap items-end gap-3">
-            {!(mode==='image' || mode==='image-modify') && (
-              <div className="grid gap-1">
-                <label className="text-xs opacity-70">Mode</label>
-                <select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as Mode)}
-                  className={`w-[170px] cursor-pointer rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : 'bg-white'}`}
-                  title="Mode"
-                >
-                  <option value="text">Text</option>
-                  <option value="image">Image</option>
-                  <option value="image-modify">Image Modify</option>
-                  <option value="video">Video</option>
-                </select>
+            <div className={`border-t p-2 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`} style={{ position: 'relative', zIndex: 10, background: darkMode ? '#000000' : '#ffffff' }}>
+          {/* Mode buttons and controls above text box */}
+            <div className="mb-3">
+              {/* Mode buttons row */}
+              <div className="mb-2 flex gap-2">
+                {(['text', 'image', 'image-modify', 'video'] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                      mode === m
+                        ? darkMode
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-blue-600 border-blue-600 text-white'
+                        : darkMode
+                          ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {m === 'text' ? 'Text' : m === 'image' ? 'Image' : m === 'image-modify' ? 'Image Modify' : 'Video'}
+                  </button>
+                ))}
               </div>
-            )}
+              {/* Dropdowns row */}
+              <div className="flex flex-wrap items-end gap-3">
             {mode === 'text' ? (
               <div className="grid gap-1">
                 <label className="text-xs opacity-70">Provider</label>

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
 import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
+import { getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
 
 const CREDIT_COSTS = {
   text: 1,
@@ -51,8 +52,8 @@ export async function POST(req: NextRequest) {
       ...otherParams
     } = body;
 
-    const DEFAULT_IMAGE_RUNPOD = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://64e5p2jm3e5r3k-3001.proxy.runpod.net/';
-    const runpodUrl = (typeof runpodUrlRaw === 'string' && runpodUrlRaw) ? runpodUrlRaw : DEFAULT_IMAGE_RUNPOD;
+    const cfg = await getRunpodConfig().catch(()=>null);
+    const runpodUrl = pickRunpodUrlFromConfig({ provided: (typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg }) || '';
 
     // Validate mode and calculate costs
     if (!mode || !['text', 'image', 'image-modify', 'video'].includes(mode)) {

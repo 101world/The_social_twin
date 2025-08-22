@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSupabaseClient, createSupabaseAdminClient, getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
 import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
     
   const mode: Mode = body?.mode;
   const prompt: string = body?.prompt ?? '';
-  const DEFAULT_IMAGE_RUNPOD = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://64e5p2jm3e5r3k-3001.proxy.runpod.net/';
-  const runpodUrl: string = body?.runpodUrl ?? DEFAULT_IMAGE_RUNPOD ?? '';
+  const cfg = await getRunpodConfig().catch(()=>null);
+  const runpodUrl: string = pickRunpodUrlFromConfig({ provided: body?.runpodUrl, mode, config: cfg }) || '';
     const referenceImageUrl: string | undefined = body?.imageUrl; // for image-modify
     const apiKey = process.env.RUNPOD_API_KEY;
     

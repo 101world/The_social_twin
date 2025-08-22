@@ -19,3 +19,37 @@ export function createSupabaseAdminClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createClient(url, key);
 }
+
+// Fetch RunPod config from DB (admin client required to bypass RLS reliably)
+export async function getRunpodConfig() {
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data, error } = await admin.from('runpod_config').select('*').eq('scope', 'global').maybeSingle();
+    if (error) throw error;
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
+export function pickRunpodUrlFromConfig(opts: {
+  provided?: string | null;
+  mode?: 'text' | 'image' | 'image-modify' | 'video';
+  config?: any | null;
+}): string | undefined {
+  const { provided, mode = 'image', config } = opts || {};
+  if (provided && typeof provided === 'string' && provided.trim()) return provided;
+  const envByMode = {
+    text: process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL,
+    image: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
+    'image-modify': process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
+    video: process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL,
+  } as Record<string, string | undefined>;
+  const cfgByMode = config ? {
+    text: config.text_url,
+    image: config.image_url,
+    'image-modify': config.image_modify_url || config.image_url,
+    video: config.video_url,
+  } : {} as any;
+  return (cfgByMode as any)[mode] || envByMode[mode];
+}

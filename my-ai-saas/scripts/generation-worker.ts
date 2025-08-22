@@ -1,6 +1,8 @@
 // We'll dynamically import project modules inside main() to avoid module format issues
 let runSocialTwinGeneration: any = null;
 let createSupabaseAdminClient: any = null;
+let getRunpodConfig: any = null;
+let pickRunpodUrlFromConfig: any = null;
 
 // Simple worker: poll for pending media_generations and process them one by one.
 // Run with: node ./scripts/generation-worker.ts (ts-node recommended in dev)
@@ -59,7 +61,15 @@ async function processJob(job: any, supabase: any, runFn: any) {
 
     const params = job.generation_params || {};
     const body = params.requestBody || {};
-    const runpodUrl = params.runpodUrl || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL;
+    // Resolve runpod URL from job params -> DB config -> env
+    let runpodUrl = params.runpodUrl as string | undefined;
+    if (!runpodUrl) {
+      try {
+        const cfg = await getRunpodConfig();
+        runpodUrl = pickRunpodUrlFromConfig({ provided: undefined, mode: params.mode || body.mode || 'image', config: cfg });
+      } catch {}
+    }
+    runpodUrl = runpodUrl || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL;
 
     let out: any = { images: [], videos: [], urls: [] };
     if (String(process.env.RUNPOD_ENABLED || 'false').toLowerCase() === 'true') {
@@ -227,6 +237,8 @@ async function main() {
   const supmod = require('../lib/supabase');
   runSocialTwinGeneration = runmod.runSocialTwinGeneration || runmod.default?.runSocialTwinGeneration || runmod.default;
   createSupabaseAdminClient = supmod.createSupabaseAdminClient || supmod.default?.createSupabaseAdminClient || supmod.default;
+  getRunpodConfig = supmod.getRunpodConfig;
+  pickRunpodUrlFromConfig = supmod.pickRunpodUrlFromConfig;
 
   // Ensure required env vars are present before creating admin client
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
