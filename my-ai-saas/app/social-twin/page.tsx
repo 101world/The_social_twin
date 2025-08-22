@@ -1809,12 +1809,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Save Project moved to bottom next to More */}
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
         <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
-          style={{ paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + 8px)' }}>
+          style={{ paddingBottom: '8px' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
