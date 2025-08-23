@@ -211,39 +211,7 @@ export default function NewsPage() {
     return publishedDate.toLocaleDateString();
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-              <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
-              <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
-              <span className="ml-3 text-gray-400 text-lg">Loading latest stories...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
-            <div className="text-gray-400 text-center max-w-md">
-              {error}
-            </div>
-            <div className="text-xs text-gray-500">Auto retrying in 30s…</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Derived data (must be computed before any early return to keep hooks order stable)
   const articles = newsData?.articles || [];
   const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
   const selectedArticles = categorizedArticles[selectedCategory] || [];
@@ -302,6 +270,39 @@ export default function NewsPage() {
       </div>
     </a>
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
+              <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
+              <span className="ml-3 text-gray-400 text-lg">Loading latest stories...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center h-64 space-y-4">
+            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
+            <div className="text-gray-400 text-center max-w-md">
+              {error}
+            </div>
+            <div className="text-xs text-gray-500">Auto retrying in 30s…</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
