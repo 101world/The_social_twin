@@ -1,8 +1,8 @@
-name: News Sync Every 30 Minutes
+name: News Sync Every 10 Minutes
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/10 * * * *'  # Every 10 minutes
   workflow_dispatch:
 
 jobs:
@@ -11,21 +11,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies for scraper
-        working-directory: my-ai-saas/scripts
-        run: |
-          python -m pip install --upgrade pip
-          pip install aiohttp requests feedparser beautifulsoup4 lxml yt_dlp newspaper3k fake-useragent snscrape apscheduler
-
-      - name: Run enhanced news scraper (populate SQLite cache)
-        working-directory: my-ai-saas/scripts
-        run: python enhanced_news_scraper.py
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
