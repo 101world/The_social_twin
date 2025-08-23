@@ -41,6 +41,7 @@ export default function NewsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isLoading, setIsLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load daily briefing on mount
   useEffect(() => {
@@ -49,16 +50,41 @@ export default function NewsPage() {
 
   const loadDailyBrief = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await fetch('/api/news/daily-brief');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const data = await response.json();
-      setDailyBrief(data);
-      setSearchResults(data.articles || []);
+      
+      // Ensure data has the expected structure
+      const briefData = {
+        date: data.date || new Date().toISOString().split('T')[0],
+        articles: Array.isArray(data.articles) ? data.articles : [],
+        categories: Array.isArray(data.categories) ? data.categories : [],
+        total_articles: data.total_articles || 0,
+        sources: Array.isArray(data.sources) ? data.sources : [],
+        last_updated: data.last_updated || new Date().toISOString(),
+        multimedia_count: data.multimedia_count || { with_images: 0, with_videos: 0 }
+      };
+      
+      setDailyBrief(briefData);
+      setSearchResults(briefData.articles);
     } catch (err: any) {
       console.error('Failed to load daily brief:', err);
+      setError('Failed to load news. Please try again later.');
+      // Set fallback empty data
+      setDailyBrief({
+        date: new Date().toISOString().split('T')[0],
+        articles: [],
+        categories: [],
+        total_articles: 0,
+        sources: [],
+        last_updated: new Date().toISOString(),
+        multimedia_count: { with_images: 0, with_videos: 0 }
+      });
+      setSearchResults([]);
     } finally {
       setIsLoading(false);
     }
@@ -72,15 +98,20 @@ export default function NewsPage() {
 
     try {
       setIsSearching(true);
+      setError(null);
       const params = new URLSearchParams();
       if (searchQuery.trim()) params.append('q', searchQuery.trim());
       if (selectedCategory !== 'All') params.append('category', selectedCategory);
 
       const response = await fetch(`/api/news/search?${params}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
-      setSearchResults(data.articles || []);
+      setSearchResults(Array.isArray(data.articles) ? data.articles : []);
     } catch (error) {
       console.error('Error searching articles:', error);
+      setError('Search failed. Please try again.');
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -145,15 +176,15 @@ export default function NewsPage() {
               <span className="flex items-center gap-1">
                 📅 {dailyBrief.date}
               </span>
-              <span>{dailyBrief.total_articles} articles</span>
-              <span>{dailyBrief.sources.length} sources</span>
+              <span>{dailyBrief.total_articles || 0} articles</span>
+              <span>{(dailyBrief.sources || []).length} sources</span>
               {dailyBrief.multimedia_count && (
                 <>
                   <span className="flex items-center gap-1">
-                    🖼️ {dailyBrief.multimedia_count.with_images} with images
+                    🖼️ {dailyBrief.multimedia_count.with_images || 0} with images
                   </span>
                   <span className="flex items-center gap-1">
-                    🎬 {dailyBrief.multimedia_count.with_videos} with videos
+                    🎬 {dailyBrief.multimedia_count.with_videos || 0} with videos
                   </span>
                 </>
               )}
@@ -210,9 +241,21 @@ export default function NewsPage() {
           </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-red-400">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Articles Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {searchResults.map((article) => (
+          {(searchResults || []).map((article) => (
             <div key={article.id} className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:shadow-xl transition-shadow">
               {/* Image */}
               {article.image_url && (
@@ -249,7 +292,7 @@ export default function NewsPage() {
                 {/* Tags */}
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {article.tags.slice(0, 3).map((tag, index) => (
+                    {(article.tags || []).slice(0, 3).map((tag, index) => (
                       <span key={index} className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded border border-gray-600">
                         {tag}
                       </span>
@@ -265,7 +308,7 @@ export default function NewsPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-1">
-                    📅 <span>{formatDate(article.publish_date)}</span>
+                    📅 <span>{formatDate(article.publish_date || new Date().toISOString())}</span>
                   </div>
                 </div>
 
@@ -281,7 +324,7 @@ export default function NewsPage() {
           ))}
         </div>
 
-        {searchResults.length === 0 && !isLoading && (
+        {(searchResults || []).length === 0 && !isLoading && (
           <div className="text-center py-12">
             <p className="text-gray-400 text-lg">
               No articles found matching your criteria.
@@ -293,7 +336,7 @@ export default function NewsPage() {
         )}
 
         {/* Last Updated */}
-        {dailyBrief && (
+        {dailyBrief?.last_updated && (
           <div className="text-center mt-12 text-sm text-gray-400">
             Last updated: {formatDate(dailyBrief.last_updated)}
           </div>
