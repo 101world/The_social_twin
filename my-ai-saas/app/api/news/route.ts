@@ -91,10 +91,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get articles from last 30 days by default (extended for more content)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    query = query.gte('published_at', thirtyDaysAgo.toISOString());
+  // Get articles from last 30 minutes by default for ultra-fresh feed
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  query = query.gte('published_at', thirtyMinutesAgo.toISOString());
 
     const { data: articles, error } = await query;
 
@@ -107,13 +106,13 @@ export async function GET(request: NextRequest) {
     const { count } = await supabase
       .from('news_articles')
       .select('*', { count: 'exact', head: true })
-      .gte('published_at', thirtyDaysAgo.toISOString());
+      .gte('published_at', thirtyMinutesAgo.toISOString());
 
     // Get category statistics
     const { data: categories } = await supabase
       .from('news_articles')
       .select('category')
-      .gte('published_at', thirtyDaysAgo.toISOString());
+      .gte('published_at', thirtyMinutesAgo.toISOString());
 
     // Process categories
     const categoryStats = categories?.reduce((acc: any[], article: any) => {

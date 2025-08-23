@@ -1,28 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Filter, TrendingUp, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Clock, Eye, Share2, Bookmark, ChevronRight, Play, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Globe, Rocket, Heart, DollarSign, Palette, Leaf, RefreshCw, Play, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-
-// Simple inline components to avoid import issues
-const Badge = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
-  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${className}`} {...props}>
-    {children}
-  </span>
-);
-
-const Card = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
-  <div className={`rounded-lg border shadow-sm ${className}`} {...props}>
-    {children}
-  </div>
-);
-
-const CardContent = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
-  <div className={`p-6 pt-0 ${className}`} {...props}>
-    {children}
-  </div>
-);
 
 interface NewsArticle {
   id: string;
@@ -128,8 +108,7 @@ const categoryConfig: Record<string, {
 
 export default function NewsPage() {
   const [newsData, setNewsData] = useState<NewsData | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('World News');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -253,172 +232,89 @@ export default function NewsPage() {
   }
 
   const articles = newsData?.articles || [];
-  const categorizedArticles = categorizeArticles(articles);
+  const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
+  const selectedArticles = categorizedArticles[selectedCategory] || [];
   
-  // Get hero article (highest quality with image from any category)
-  const heroArticle = articles
+  // Hero prefers current category; fallback to global best
+  const categoryHero = selectedArticles
+    .filter(a => a.image_url)
+    .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
+  const generalHero = articles
     .filter(article => article.image_url)
     .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
-
-  const NewsCard = ({ article, isHero = false, categoryColor }: { 
-    article: NewsArticle; 
-    isHero?: boolean; 
-    categoryColor?: string;
-  }) => (
-    <Card className={`group cursor-pointer transition-all duration-500 bg-gray-900/80 backdrop-blur-sm border-gray-800 hover:border-gray-600 hover:shadow-2xl hover:shadow-gray-800/30 hover:-translate-y-1 ${isHero ? 'col-span-full' : ''}`}>
-      <CardContent className="p-0 overflow-hidden">
-        {article.image_url && (
-          <div className={`relative overflow-hidden ${isHero ? 'h-96 lg:h-[500px]' : 'h-56'}`}>
-            <img
-              src={article.image_url}
-              alt={article.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <div className={`absolute inset-0 bg-gradient-to-t ${isHero ? 'from-gray-950 via-gray-950/50 to-transparent' : 'from-gray-900 via-transparent to-transparent'}`} />
-            
-            {/* Media indicators */}
-            <div className="absolute top-4 right-4 flex space-x-2">
-              {article.image_url && (
-                <div className="p-2 bg-gray-900/80 backdrop-blur-sm rounded-lg">
-                  <ImageIcon className="w-4 h-4 text-blue-400" />
-                </div>
-              )}
-              {article.video_url && (
-                <div className="p-2 bg-gray-900/80 backdrop-blur-sm rounded-lg">
-                  <Play className="w-4 h-4 text-green-400" />
-                </div>
-              )}
-              {article.youtube_url && (
-                <div className="p-2 bg-gray-900/80 backdrop-blur-sm rounded-lg">
-                  <Play className="w-4 h-4 text-red-400" />
-                </div>
-              )}
-            </div>
-            
-            <div className={`absolute ${isHero ? 'bottom-8 left-8 right-8' : 'bottom-4 left-4 right-4'}`}>
-              <Badge className={`mb-3 ${categoryColor || 'bg-red-500/90'} hover:bg-opacity-100 border-0 backdrop-blur-sm`}>
-                {article.source}
-              </Badge>
-              {isHero && (
-                <h1 className="text-white text-3xl lg:text-5xl font-bold leading-tight mb-4 line-clamp-3">
-                  {article.title}
-                </h1>
-              )}
-            </div>
-          </div>
-        )}
-        
-        <div className={`p-6 ${isHero ? 'lg:p-8' : ''}`}>
-          {!isHero && (
-            <h3 className="text-white text-xl font-bold mb-4 line-clamp-2 group-hover:text-blue-400 transition-colors duration-300">
-              {article.title}
-            </h3>
-          )}
-          
-          <p className={`text-gray-400 line-clamp-3 mb-6 ${isHero ? 'text-lg leading-relaxed' : 'text-base'}`}>
+  const heroArticle = categoryHero || generalHero;
+  const StoryRow = ({ article }: { article: NewsArticle }) => (
+    <a
+      href={article.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block py-6 border-b border-gray-900 hover:bg-gray-900/30 transition-colors"
+    >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-center">
+        <div className="md:col-span-8">
+          <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-white group-hover:text-blue-300 transition-colors line-clamp-2">
+            {article.title}
+          </h3>
+          <p className="mt-2 text-gray-400 line-clamp-2 md:line-clamp-3">
             {article.snippet || article.summary}
           </p>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <span className="flex items-center space-x-2">
-                <Clock className="w-4 h-4" />
-                <span>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</span>
-              </span>
-              {article.quality_score && (
-                <span className="flex items-center space-x-2">
-                  <Eye className="w-4 h-4" />
-                  <span>{article.quality_score}/10</span>
-                </span>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Button size="sm" variant="ghost" className="h-8 px-3 text-gray-500 hover:text-white transition-colors">
-                <Bookmark className="w-4 h-4" />
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8 px-3 text-gray-500 hover:text-white transition-colors">
-                <Share2 className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="mt-3 flex items-center text-sm text-gray-500 gap-3">
+            <span className="truncate max-w-[40ch]">{article.source}</span>
+            <span>•</span>
+            <span>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</span>
+            {article.image_url && (
+              <span className="flex items-center gap-1 text-gray-500"><ImageIcon className="w-4 h-4" /> Image</span>
+            )}
+            {article.video_url && (
+              <span className="flex items-center gap-1 text-gray-500"><Play className="w-4 h-4" /> Video</span>
+            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <div className="md:col-span-4">
+          {article.image_url && (
+            <div className="relative overflow-hidden rounded-md aspect-video bg-gray-900/50">
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10" />
+            </div>
+          )}
+        </div>
+      </div>
+    </a>
   );
-
-  const CategorySection = ({ categoryName, articles }: { categoryName: string; articles: NewsArticle[] }) => {
-    const config = categoryConfig[categoryName];
-    const Icon = config.icon;
-    
-    if (articles.length === 0) return null;
-
-    return (
-      <section className="mb-16">
-        <div className="flex items-center space-x-4 mb-8">
-          <div className={`p-3 rounded-xl bg-gradient-to-r ${config.gradient} shadow-lg`}>
-            <Icon className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-3xl font-bold text-white mb-1">{categoryName}</h2>
-            <p className="text-gray-400">{config.description}</p>
-          </div>
-          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white transition-colors">
-            View All <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {articles.slice(0, 6).map((article) => (
-            <NewsCard 
-              key={article.id} 
-              article={article} 
-              categoryColor={config.color}
-            />
-          ))}
-        </div>
-      </section>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Animated Header */}
-      <div className="border-b border-gray-800 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-950 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+      {/* Header with category dropdown and manual refresh */}
+      <div className="border-b border-gray-900/80 bg-gray-950/70 backdrop-blur sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-                <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                  101World News
-                </span>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight">
+                <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">101World News</span>
               </h1>
-              <p className="text-gray-400">
-                Real-time global coverage • {newsData?.metadata?.total_articles || 0} stories • 
-                <span className="text-green-400 ml-1">
-                  Live
-                </span>
+              <p className="text-gray-500 text-sm">
+                Ultra-fresh • {newsData?.metadata?.total_articles || 0} stories in last 30 min
               </p>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  type="text"
-                  placeholder="Search breaking news..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 w-80 bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 backdrop-blur-sm"
-                />
-              </div>
-              
-              <Button variant="outline" size="sm" className="border-gray-700 hover:border-gray-600 backdrop-blur-sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Filter
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="bg-gray-900/70 border border-gray-800 text-white rounded-md px-3 py-2 text-sm"
+              >
+                {Object.keys(categoryConfig).map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <Button onClick={fetchNews} variant="outline" size="sm" className="border-gray-800 hover:border-gray-700">
+                <RefreshCw className="w-4 h-4 mr-2" /> Refresh
               </Button>
             </div>
           </div>
@@ -426,59 +322,36 @@ export default function NewsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-12">
-        {/* Hero Section */}
+        {/* Hero Section (simple, no blocks) */}
         {heroArticle && (
-          <section className="mb-16">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Breaking Story</h2>
-              <p className="text-gray-400">The most important story right now</p>
-            </div>
-            <NewsCard article={heroArticle} isHero={true} />
+          <section className="mb-12">
+            <a href={heroArticle.url} target="_blank" rel="noopener noreferrer" className="group block">
+              <div className="relative overflow-hidden rounded-lg aspect-video bg-gray-900/60">
+                <img
+                  src={heroArticle.image_url!}
+                  alt={heroArticle.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{heroArticle.title}</h2>
+                  <p className="text-gray-300 line-clamp-2">{heroArticle.snippet || heroArticle.summary}</p>
+                </div>
+              </div>
+            </a>
           </section>
         )}
 
-        {/* Category Sections in Psychology-Driven Order */}
-        {Object.entries(categoryConfig).map(([categoryName]) => (
-          <CategorySection
-            key={categoryName}
-            categoryName={categoryName}
-            articles={categorizedArticles[categoryName] || []}
-          />
-        ))}
-
-        {/* Statistics Footer */}
-        <div className="mt-20 py-12 border-t border-gray-800 bg-gradient-to-r from-gray-900/50 to-gray-950/50 rounded-2xl backdrop-blur-sm">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div className="space-y-2">
-              <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-500 bg-clip-text text-transparent">
-                {newsData?.metadata?.total_articles || 0}
-              </div>
-              <div className="text-gray-400">Total Stories</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
-                {newsData?.metadata?.with_images || 0}
-              </div>
-              <div className="text-gray-400">With Images</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-purple-500 bg-clip-text text-transparent">
-                {newsData?.metadata?.with_videos || 0}
-              </div>
-              <div className="text-gray-400">With Videos</div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-3xl font-bold bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">
-                {newsData?.metadata?.with_youtube || 0}
-              </div>
-              <div className="text-gray-400">YouTube Content</div>
-            </div>
-          </div>
-          
-          <div className="text-center mt-8 text-gray-500">
-            Last updated: {newsData?.metadata?.last_updated ? new Date(newsData.metadata.last_updated).toLocaleString() : 'Just now'}
-          </div>
-        </div>
+        {/* Stream list for selected category */}
+        <section className="mt-6">
+          {(selectedArticles || []).slice(0, 50).map((a) => (
+            <StoryRow key={a.id} article={a} />
+          ))}
+          {selectedArticles.length === 0 && (
+            <div className="text-center text-gray-500 py-12">No stories in this category in the last 30 minutes.</div>
+          )}
+        </section>
       </div>
     </div>
   );

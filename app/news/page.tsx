@@ -1,139 +1,99 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Search, ExternalLink, Calendar, User, Play, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, Play, Image as ImageIcon, Globe, Rocket, Heart, DollarSign, Palette, Leaf } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
   title: string;
   snippet: string;
+  summary?: string;
   url: string;
-  source: string;
-  category: string;
-  publish_date: string;
   image_url?: string;
   video_url?: string;
-  video_thumbnail?: string;
-  video_platform?: string;
-  content_full?: string;
+  youtube_url?: string;
+  category: string;
+  source: string;
+  publish_date?: string;
+  published_at?: string;
+  quality_score?: number;
   author?: string;
   tags?: string[];
 }
 
-interface DailyBrief {
-  date: string;
+interface NewsData {
   articles: NewsArticle[];
-  categories: string[];
-  total_articles: number;
-  sources: string[];
-  last_updated: string;
-  multimedia_count?: {
+  total: number;
+  metadata?: {
+    total_articles: number;
     with_images: number;
     with_videos: number;
+    with_youtube: number;
+    last_updated: string;
   };
 }
 
+const categoryConfig: Record<string, { icon: ComponentType<any>; color: string; accent: string; gradient: string; keywords: string[]; description: string; bgColor: string; textColor: string; }> = {
+  'World News': { icon: Globe, color: 'bg-red-500', accent: 'border-red-200 hover:border-red-300', gradient: 'from-red-500 to-red-600', keywords: ['world','international','global','war','peace','disaster','breaking','government','politics'], description: 'Global headlines and breaking news', bgColor: 'bg-red-50', textColor: 'text-red-900' },
+  'Future & Innovation': { icon: Rocket, color: 'bg-purple-500', accent: 'border-purple-200 hover:border-purple-300', gradient: 'from-purple-500 to-purple-600', keywords: ['technology','ai','space','innovation','breakthrough','discover','nasa','tech','startup','crypto'], description: 'Technology, AI, space exploration and scientific breakthroughs', bgColor: 'bg-purple-50', textColor: 'text-purple-900' },
+  'Human Stories': { icon: Heart, color: 'bg-pink-500', accent: 'border-pink-200 hover:border-pink-300', gradient: 'from-pink-500 to-pink-600', keywords: ['human','survivor','hero','inspiring','culture','community','life','story','people'], description: 'Inspiring human interest stories and cultural highlights', bgColor: 'bg-pink-50', textColor: 'text-pink-900' },
+  'Money & Power': { icon: DollarSign, color: 'bg-green-500', accent: 'border-green-200 hover:border-green-300', gradient: 'from-green-500 to-green-600', keywords: ['business','finance','economy','market','trading','investment','money','power','corporate'], description: 'Finance, economics, markets and power dynamics', bgColor: 'bg-green-50', textColor: 'text-green-900' },
+  'Culture & Lifestyle': { icon: Palette, color: 'bg-orange-500', accent: 'border-orange-200 hover:border-orange-300', gradient: 'from-orange-500 to-orange-600', keywords: ['culture','lifestyle','entertainment','sports','music','art','fashion','celebrity','travel'], description: 'Entertainment, sports, arts and lifestyle trends', bgColor: 'bg-orange-50', textColor: 'text-orange-900' },
+  'Planet & Society': { icon: Leaf, color: 'bg-emerald-500', accent: 'border-emerald-200 hover:border-emerald-300', gradient: 'from-emerald-500 to-emerald-600', keywords: ['climate','environment','health','science','society','sustainability','medical','research'], description: 'Climate, environment, health and social change', bgColor: 'bg-emerald-50', textColor: 'text-emerald-900' },
+};
+
 export default function NewsPage() {
-  const [dailyBrief, setDailyBrief] = useState<DailyBrief | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchResults, setSearchResults] = useState<NewsArticle[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [newsData, setNewsData] = useState<NewsData | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('World News');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDailyBrief();
-  }, []);
+  useEffect(() => { fetchNews(); }, []);
 
-  const fetchDailyBrief = async () => {
+  const fetchNews = async () => {
     try {
-      setIsLoading(true);
-      const response = await fetch('/api/news/daily-brief');
-      const data = await response.json();
-      setDailyBrief(data);
-      setSearchResults(data.articles || []);
-    } catch (error) {
-      console.error('Error fetching daily brief:', error);
-    } finally {
-      setIsLoading(false);
-    }
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/news?limit=100');
+      const result = await res.json();
+      if (result.success) setNewsData(result.data); else throw new Error(result.error || 'Failed to fetch news');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load news');
+      setNewsData({ articles: [], total: 0, metadata: { total_articles: 0, with_images: 0, with_videos: 0, with_youtube: 0, last_updated: new Date().toISOString() } });
+    } finally { setLoading(false); }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim() && selectedCategory === 'All') {
-      setSearchResults(dailyBrief?.articles || []);
-      return;
-    }
-
-    try {
-      setIsSearching(true);
-      const params = new URLSearchParams();
-      if (searchQuery.trim()) params.append('q', searchQuery.trim());
-      if (selectedCategory !== 'All') params.append('category', selectedCategory);
-
-      const response = await fetch(`/api/news/search?${params}`);
-      const data = await response.json();
-      setSearchResults(data.articles || []);
-    } catch (error) {
-      console.error('Error searching articles:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    setSelectedCategory('All');
-    setSearchResults(dailyBrief?.articles || []);
-  };
-
-  const getYouTubeEmbedUrl = (url: string) => {
-    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
-    return videoId ? `https://www.youtube.com/embed/${videoId[1]}` : null;
-  };
-
-  const getVimeoEmbedUrl = (url: string) => {
-    const videoId = url.match(/vimeo\.com\/(\d+)/);
-    return videoId ? `https://player.vimeo.com/video/${videoId[1]}` : null;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  const categorizeArticles = (articles: NewsArticle[]) => {
+    const categorized: Record<string, NewsArticle[]> = {};
+    Object.keys(categoryConfig).forEach((c) => (categorized[c] = []));
+    articles.forEach((article) => {
+      const content = `${article.title} ${article.snippet || article.summary || ''} ${article.category}`.toLowerCase();
+      const match = Object.entries(categoryConfig).find(([_, cfg]) => cfg.keywords.some((k) => content.includes(k)));
+      categorized[match ? match[0] : 'World News'].push(article);
     });
+    return categorized;
   };
 
-  if (isLoading) {
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const publishedDate = new Date(dateString);
+    const diffInHours = Math.floor((now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60));
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return publishedDate.toLocaleDateString();
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 py-8">
-        <div className="container mx-auto px-4">
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-64 bg-gray-800" />
-            <Skeleton className="h-8 w-full max-w-md bg-gray-800" />
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i} className="bg-gray-800 border-gray-700">
-                  <Skeleton className="h-48 w-full bg-gray-700" />
-                  <CardHeader>
-                    <Skeleton className="h-6 w-full bg-gray-700" />
-                    <Skeleton className="h-4 w-3/4 bg-gray-700" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-4 w-full bg-gray-700" />
-                    <Skeleton className="h-4 w-2/3 bg-gray-700" />
-                  </CardContent>
-                </Card>
-              ))}
+      <div className="min-h-screen bg-gray-950 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
+              <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
+              <span className="ml-3 text-gray-400 text-lg">Loading latest stories...</span>
             </div>
           </div>
         </div>
@@ -141,240 +101,92 @@ export default function NewsPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-900 py-8">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">
-            📰 Daily News Briefing
-          </h1>
-          <p className="text-gray-300 text-lg">
-            Stay informed with the latest news from around the world
-          </p>
-          {dailyBrief && (
-            <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-gray-400">
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {dailyBrief.date}
-              </span>
-              <span>{dailyBrief.total_articles} articles</span>
-              <span>{dailyBrief.sources.length} sources</span>
-              {dailyBrief.multimedia_count && (
-                <>
-                  <span className="flex items-center gap-1">
-                    <ImageIcon className="w-4 h-4" />
-                    {dailyBrief.multimedia_count.with_images} with images
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Play className="w-4 h-4" />
-                    {dailyBrief.multimedia_count.with_videos} with videos
-                  </span>
-                </>
-              )}
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex flex-col items-center justify-center h-64 space-y-4">
+            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
+            <div className="text-gray-400 text-center max-w-md">{error}</div>
+            <Button onClick={fetchNews} variant="outline" className="border-gray-700 hover:border-gray-600">Reload News</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const articles = newsData?.articles || [];
+  const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
+  const selectedArticles = categorizedArticles[selectedCategory] || [];
+  const categoryHero = selectedArticles.filter((a) => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
+  const generalHero = articles.filter((a) => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
+  const heroArticle = categoryHero || generalHero;
+
+  const StoryRow = ({ article }: { article: NewsArticle }) => (
+    <a href={article.url} target="_blank" rel="noopener noreferrer" className="group block py-6 border-b border-gray-900 hover:bg-gray-900/30 transition-colors">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-center">
+        <div className="md:col-span-8">
+          <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-white group-hover:text-blue-300 transition-colors line-clamp-2">{article.title}</h3>
+          <p className="mt-2 text-gray-400 line-clamp-2 md:line-clamp-3">{article.snippet || article.summary}</p>
+          <div className="mt-3 flex items-center text-sm text-gray-500 gap-3">
+            <span className="truncate max-w-[40ch]">{article.source}</span>
+            <span>•</span>
+            <span>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</span>
+            {article.image_url && (<span className="flex items-center gap-1 text-gray-500"><ImageIcon className="w-4 h-4" /> Image</span>)}
+            {article.video_url && (<span className="flex items-center gap-1 text-gray-500"><Play className="w-4 h-4" /> Video</span>)}
+          </div>
+        </div>
+        <div className="md:col-span-4">
+          {article.image_url && (
+            <div className="relative overflow-hidden rounded-md aspect-video bg-gray-900/50">
+              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10" />
             </div>
           )}
         </div>
+      </div>
+    </a>
+  );
 
-        {/* Search and Filter */}
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search articles, topics, or authors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
-              />
+  return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="border-b border-gray-900/80 bg-gray-950/70 backdrop-blur sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight"><span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">101World News</span></h1>
+              <p className="text-gray-500 text-sm">Ultra-fresh • {newsData?.metadata?.total_articles || 0} stories in last 30 min</p>
             </div>
-            <Button 
-              onClick={handleSearch} 
-              disabled={isSearching}
-              className="md:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </Button>
-            <Button 
-              onClick={clearSearch} 
-              variant="outline"
-              className="md:w-auto border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
-            >
-              Clear
-            </Button>
-          </div>
-
-          {/* Category Filter */}
-          <div className="flex flex-wrap gap-2">
-            {['All', ...(dailyBrief?.categories || [])].map((category) => (
-              <Button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
-                className={selectedCategory === category 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                  : 'border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'
-                }
-              >
-                {category}
-              </Button>
-            ))}
+            <div className="flex items-center gap-3">
+              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="bg-gray-900/70 border border-gray-800 text-white rounded-md px-3 py-2 text-sm">
+                {Object.keys(categoryConfig).map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
+              </select>
+              <Button onClick={fetchNews} variant="outline" size="sm" className="border-gray-800 hover:border-gray-700"><RefreshCw className="w-4 h-4 mr-2" /> Refresh</Button>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Articles Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {searchResults.map((article) => (
-            <Card key={article.id} className="flex flex-col h-full hover:shadow-xl transition-shadow bg-gray-800 border-gray-700">
-              {/* Media Content */}
-              {article.video_url && (
-                <div className="relative h-48 bg-gray-800">
-                  {article.video_platform === 'youtube' && getYouTubeEmbedUrl(article.video_url) && (
-                    <iframe
-                      src={getYouTubeEmbedUrl(article.video_url)}
-                      className="w-full h-full rounded-t-lg"
-                      frameBorder="0"
-                      allowFullScreen
-                      title={article.title}
-                    />
-                  )}
-                  {article.video_platform === 'vimeo' && getVimeoEmbedUrl(article.video_url) && (
-                    <iframe
-                      src={getVimeoEmbedUrl(article.video_url)}
-                      className="w-full h-full rounded-t-lg"
-                      frameBorder="0"
-                      allowFullScreen
-                      title={article.title}
-                    />
-                  )}
-                  {!article.video_platform && article.video_thumbnail && (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={article.video_thumbnail}
-                        alt={article.title}
-                        className="w-full h-full object-cover rounded-t-lg"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-t-lg">
-                        <Play className="w-12 h-12 text-white" />
-                      </div>
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-red-900 text-red-200 border-red-800">
-                      <Play className="w-3 h-3 mr-1" />
-                      Video
-                    </Badge>
-                  </div>
+      <div className="container mx-auto px-4 py-12">
+        {heroArticle && (
+          <section className="mb-12">
+            <a href={heroArticle.url} target="_blank" rel="noopener noreferrer" className="group block">
+              <div className="relative overflow-hidden rounded-lg aspect-video bg-gray-900/60">
+                <img src={heroArticle.image_url!} alt={heroArticle.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{heroArticle.title}</h2>
+                  <p className="text-gray-300 line-clamp-2">{heroArticle.snippet || heroArticle.summary}</p>
                 </div>
-              )}
-
-              {!article.video_url && article.image_url && (
-                <div className="relative h-48 bg-gray-800">
-                  <img
-                    src={article.image_url}
-                    alt={article.title}
-                    className="w-full h-full object-cover rounded-t-lg"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/400x200?text=Image+Not+Available';
-                    }}
-                  />
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-blue-900 text-blue-200 border-blue-800">
-                      <ImageIcon className="w-3 h-3 mr-1" />
-                      Photo
-                    </Badge>
-                  </div>
-                </div>
-              )}
-
-              <CardHeader className="flex-1">
-                <div className="flex justify-between items-start gap-2 mb-2">
-                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-                    {article.category}
-                  </Badge>
-                  <span className="text-xs text-gray-400">
-                    {article.source}
-                  </span>
-                </div>
-                <CardTitle className="text-lg leading-tight line-clamp-2 text-white">
-                  {article.title}
-                </CardTitle>
-                <CardDescription className="line-clamp-3 text-gray-300">
-                  {article.snippet}
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="pt-0">
-                {/* Tags */}
-                {article.tags && article.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {article.tags.slice(0, 3).map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs bg-gray-700 text-gray-300 border-gray-600">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                {/* Article Meta */}
-                <div className="flex flex-col gap-2 text-sm text-gray-400 mb-4">
-                  {article.author && (
-                    <div className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      <span>{article.author}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{formatDate(article.publish_date)}</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => window.open(article.url, '_blank')}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-1" />
-                    Read More
-                  </Button>
-                  {article.video_url && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-                      onClick={() => window.open(article.video_url, '_blank')}
-                    >
-                      <Play className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {searchResults.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">
-              No articles found matching your criteria.
-            </p>
-            <Button onClick={clearSearch} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">
-              Show All Articles
-            </Button>
-          </div>
+              </div>
+            </a>
+          </section>
         )}
 
-        {/* Last Updated */}
-        {dailyBrief && (
-          <div className="text-center mt-12 text-sm text-gray-400">
-            Last updated: {formatDate(dailyBrief.last_updated)}
-          </div>
-        )}
+        <section className="mt-6">
+          {(selectedArticles || []).slice(0, 50).map((a) => (<StoryRow key={a.id} article={a} />))}
+          {selectedArticles.length === 0 && (<div className="text-center text-gray-500 py-12">No stories in this category in the last 30 minutes.</div>)}
+        </section>
       </div>
     </div>
   );
