@@ -137,6 +137,30 @@ export async function GET(request: NextRequest) {
           if (results.length >= 50) break;
         }
         fallbackArticles = results;
+
+        // Best-effort: persist fallback items into Supabase so DB remains the source of truth
+        if (fallbackArticles.length) {
+          try {
+            const upsertPayload = fallbackArticles.map((a) => ({
+              title: a.title,
+              summary: a.summary,
+              url: a.url,
+              image_url: a.image_url,
+              video_url: a.video_url,
+              youtube_url: a.youtube_url,
+              category: a.category,
+              source: a.source,
+              published_at: a.published_at,
+              quality_score: a.quality_score,
+              content_hash: null
+            }));
+            await supabase
+              .from('news_articles')
+              .upsert(upsertPayload, { onConflict: 'url', ignoreDuplicates: true });
+          } catch (uErr) {
+            console.warn('Supabase upsert of fallback articles failed:', (uErr as Error).message);
+          }
+        }
       } catch (e) {
         console.warn('RSS fallback failed:', (e as Error).message);
       }
