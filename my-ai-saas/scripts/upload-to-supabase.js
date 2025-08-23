@@ -1,135 +1,127 @@
 const { createClient } = require('@supabase/supabase-js');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-// Supabase configuration
+// Safe Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing Supabase env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+}
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-async function uploadNewsToSupabase() {
+async function fallbackRssFetch(limit = 50) {
+  const Parser = require('rss-parser');
+  const parser = new Parser();
+  const feeds = [
+    'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+    'http://feeds.bbci.co.uk/news/world/rss.xml',
+    'https://feeds.reuters.com/reuters/worldNews',
+    'https://www.theguardian.com/world/rss',
+  ];
+  const items = [];
+  for (const url of feeds) {
     try {
-        console.log('🔄 Starting news upload to Supabase...');
-        
-        // First, let's test the connection
-        const { data: testData, error: testError } = await supabase
-            .from('news_articles')
-            .select('count', { count: 'exact', head: true });
-            
-        if (testError) {
-            console.error('❌ Supabase connection test failed:', testError);
-            console.log('📝 This likely means the news_articles table doesn\'t exist yet.');
-            console.log('📝 Please run the SQL schema in your Supabase dashboard first.');
-            return;
-        }
-        
-        console.log('✅ Supabase connection successful');
-        console.log(`📊 Current articles in Supabase: ${testData || 0}`);
-        
-        // Read from SQLite database
-        const dbPath = path.join(__dirname, 'data', 'enhanced_news.db');
-        console.log(`📂 Reading from SQLite: ${dbPath}`);
-        
-        const db = new sqlite3.Database(dbPath);
-        
-        const articles = await new Promise((resolve, reject) => {
-            db.all(`
-                SELECT 
-                    title,
-                    summary,
-                    url,
-                    image_url,
-                    video_url,
-                    youtube_url,
-                    category,
-                    source,
-                    published_at,
-                    quality_score,
-                    content_hash
-                FROM news_articles 
-                ORDER BY published_at DESC
-                LIMIT 100
-            `, (err, rows) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(rows);
-                }
-            });
+      const feed = await parser.parseURL(url);
+      for (const entry of (feed.items || []).slice(0, 10)) {
+        items.push({
+          title: entry.title || 'Untitled',
+          summary: (entry.contentSnippet || entry.content || '').slice(0, 300),
+          url: entry.link,
+          image_url: null,
+          video_url: null,
+          youtube_url: null,
+          category: 'General',
+          source: feed.title || 'RSS',
+          published_at: entry.isoDate || new Date().toISOString(),
+          quality_score: 1,
+          content_hash: null,
         });
-        
-        db.close();
-        
-        console.log(`📰 Found ${articles.length} articles in SQLite`);
-        
-        if (articles.length === 0) {
-            console.log('⚠️ No articles found in SQLite database');
-            return;
-        }
-        
-        // Transform data for Supabase
-        const transformedArticles = articles.map(article => ({
-            title: article.title,
-            summary: article.summary,
-            url: article.url,
-            image_url: article.image_url,
-            video_url: article.video_url,
-            youtube_url: article.youtube_url,
-            category: article.category || 'General',
-            source: article.source,
-            published_at: article.published_at,
-            quality_score: article.quality_score || 0,
-            content_hash: article.content_hash
-        }));
-        
-        // Upload in batches to avoid timeout
-    const batchSize = 5;
-        let uploaded = 0;
-        let skipped = 0;
-        
-        for (let i = 0; i < transformedArticles.length; i += batchSize) {
-            const batch = transformedArticles.slice(i, i + batchSize);
-            
-            try {
-                const { data, error } = await supabase
-                    .from('news_articles')
-                    .upsert(batch, { 
-                        onConflict: 'url',
-                        ignoreDuplicates: true 
-                    })
-                    .select();
-                
-                if (error) {
-                    console.error(`❌ Error uploading batch ${i / batchSize + 1}:`, error);
-                    skipped += batch.length;
-                } else {
-                    uploaded += data?.length || 0;
-                    console.log(`✅ Uploaded batch ${i / batchSize + 1}/${Math.ceil(transformedArticles.length / batchSize)} (${data?.length || 0} articles)`);
-                }
-            } catch (err) {
-                console.error(`❌ Exception in batch ${i / batchSize + 1}:`, err);
-                skipped += batch.length;
-            }
-        }
-        
-        console.log('\n🎉 Upload Summary:');
-        console.log(`✅ Successfully uploaded: ${uploaded} articles`);
-        console.log(`⚠️ Skipped/Failed: ${skipped} articles`);
-        console.log(`📊 Total processed: ${uploaded + skipped} articles`);
-        
-        // Verify the upload
-        const { data: finalCount, error: countError } = await supabase
-            .from('news_articles')
-            .select('count', { count: 'exact', head: true });
-            
-        if (!countError) {
-            console.log(`📈 Total articles now in Supabase: ${finalCount}`);
-        }
-        
-    } catch (error) {
-        console.error('❌ Upload failed:', error);
+        if (items.length >= limit) break;
+      }
+      if (items.length >= limit) break;
+    } catch (e) {
+      console.warn('RSS fallback failed for', url, e.message);
     }
+  }
+  return items;
+}
+
+async function uploadNewsToSupabase() {
+  try {
+    console.log('🔄 Starting news upload to Supabase...');
+
+    // Test connection
+    const { error: testError } = await supabase
+      .from('news_articles')
+      .select('id', { head: true, count: 'exact' });
+    if (testError) {
+      console.log('Table may not exist yet; continuing.');
+    }
+
+    // Prefer SQLite cache generated by Python scraper
+    const dbPath = path.join(__dirname, 'data', 'enhanced_news.db');
+    let articles = [];
+    if (fs.existsSync(dbPath)) {
+      console.log(`📂 Reading from SQLite: ${dbPath}`);
+      const db = new sqlite3.Database(dbPath);
+      articles = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT title, summary, url, image_url, video_url, youtube_url, category, source, published_at, quality_score, content_hash FROM news_articles ORDER BY published_at DESC LIMIT 200`,
+          (err, rows) => (err ? reject(err) : resolve(rows || []))
+        );
+      });
+      db.close();
+    } else {
+      console.log('ℹ️ SQLite cache not found.');
+    }
+
+    if (!articles.length) {
+      console.log('⚠️ No articles in SQLite. Falling back to direct RSS fetch...');
+      articles = await fallbackRssFetch(80);
+    }
+
+    if (!articles.length) {
+      console.log('❌ No articles to upload.');
+      return;
+    }
+
+    const transformed = articles.map((a) => ({
+      title: a.title,
+      summary: a.summary,
+      url: a.url,
+      image_url: a.image_url || null,
+      video_url: a.video_url || null,
+      youtube_url: a.youtube_url || null,
+      category: a.category || 'General',
+      source: a.source || 'Unknown',
+      published_at: a.published_at || new Date().toISOString(),
+      quality_score: a.quality_score || 0,
+      content_hash: a.content_hash || null,
+    }));
+
+    const batchSize = 50;
+    let uploaded = 0;
+    for (let i = 0; i < transformed.length; i += batchSize) {
+      const batch = transformed.slice(i, i + batchSize);
+      const { data, error } = await supabase
+        .from('news_articles')
+        .upsert(batch, { onConflict: 'url', ignoreDuplicates: true })
+        .select();
+      if (error) {
+        console.error('Batch upsert error', error);
+        continue;
+      }
+      uploaded += data?.length || 0;
+      console.log(`✅ Uploaded ${uploaded}/${transformed.length}`);
+    }
+
+    console.log('🎉 Upload complete');
+  } catch (e) {
+    console.error('❌ Upload failed:', e);
+    process.exitCode = 1;
+  }
 }
 
 // Run the upload

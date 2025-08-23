@@ -22,7 +22,11 @@ from urllib.parse import urljoin, urlparse
 import yt_dlp
 from newspaper import Article
 import hashlib
-from playwright.async_api import async_playwright
+try:
+    from playwright.async_api import async_playwright  # optional
+    PLAYWRIGHT_AVAILABLE = True
+except Exception:
+    PLAYWRIGHT_AVAILABLE = False
 from fake_useragent import UserAgent
 import snscrape.modules.twitter as sntwitter
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -258,6 +262,8 @@ class EnhancedNewsScraper:
     
     async def fetch_with_playwright(self, url: str) -> Optional[str]:
         """Fetch content from JavaScript-heavy sites using Playwright"""
+        if not PLAYWRIGHT_AVAILABLE:
+            return None
         try:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
