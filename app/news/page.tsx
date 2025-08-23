@@ -115,22 +115,22 @@ export default function NewsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+      <div className="min-h-screen bg-gray-900 py-8">
         <div className="container mx-auto px-4">
           <div className="space-y-4">
-            <Skeleton className="h-12 w-64" />
-            <Skeleton className="h-8 w-full max-w-md" />
+            <Skeleton className="h-12 w-64 bg-gray-800" />
+            <Skeleton className="h-8 w-full max-w-md bg-gray-800" />
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Card key={i}>
-                  <Skeleton className="h-48 w-full" />
+                <Card key={i} className="bg-gray-800 border-gray-700">
+                  <Skeleton className="h-48 w-full bg-gray-700" />
                   <CardHeader>
-                    <Skeleton className="h-6 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-full bg-gray-700" />
+                    <Skeleton className="h-4 w-3/4 bg-gray-700" />
                   </CardHeader>
                   <CardContent>
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-full bg-gray-700" />
+                    <Skeleton className="h-4 w-2/3 bg-gray-700" />
                   </CardContent>
                 </Card>
               ))}
@@ -142,18 +142,18 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-900 py-8">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-4xl font-bold text-white mb-4">
             📰 Daily News Briefing
           </h1>
-          <p className="text-gray-600 dark:text-gray-300 text-lg">
+          <p className="text-gray-300 text-lg">
             Stay informed with the latest news from around the world
           </p>
           {dailyBrief && (
-            <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-gray-400">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
                 {dailyBrief.date}
@@ -186,20 +186,20 @@ export default function NewsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-10"
+                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
               />
             </div>
             <Button 
               onClick={handleSearch} 
               disabled={isSearching}
-              className="md:w-auto"
+              className="md:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isSearching ? 'Searching...' : 'Search'}
             </Button>
             <Button 
               onClick={clearSearch} 
               variant="outline"
-              className="md:w-auto"
+              className="md:w-auto border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
             >
               Clear
             </Button>
@@ -213,6 +213,10 @@ export default function NewsPage() {
                 onClick={() => setSelectedCategory(category)}
                 variant={selectedCategory === category ? 'default' : 'outline'}
                 size="sm"
+                className={selectedCategory === category 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white'
+                }
               >
                 {category}
               </Button>
@@ -223,10 +227,10 @@ export default function NewsPage() {
         {/* Articles Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {searchResults.map((article) => (
-            <Card key={article.id} className="flex flex-col h-full hover:shadow-lg transition-shadow">
+            <Card key={article.id} className="flex flex-col h-full hover:shadow-xl transition-shadow bg-gray-800 border-gray-700">
               {/* Media Content */}
               {article.video_url && (
-                <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
+                <div className="relative h-48 bg-gray-800">
                   {article.video_platform === 'youtube' && getYouTubeEmbedUrl(article.video_url) && (
                     <iframe
                       src={getYouTubeEmbedUrl(article.video_url)}
@@ -258,7 +262,7 @@ export default function NewsPage() {
                     </div>
                   )}
                   <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-red-100 text-red-800">
+                    <Badge variant="secondary" className="bg-red-900 text-red-200 border-red-800">
                       <Play className="w-3 h-3 mr-1" />
                       Video
                     </Badge>
@@ -267,7 +271,7 @@ export default function NewsPage() {
               )}
 
               {!article.video_url && article.image_url && (
-                <div className="relative h-48 bg-gray-100 dark:bg-gray-800">
+                <div className="relative h-48 bg-gray-800">
                   <img
                     src={article.image_url}
                     alt={article.title}
@@ -277,7 +281,7 @@ export default function NewsPage() {
                     }}
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Badge variant="secondary" className="bg-blue-900 text-blue-200 border-blue-800">
                       <ImageIcon className="w-3 h-3 mr-1" />
                       Photo
                     </Badge>
@@ -287,17 +291,17 @@ export default function NewsPage() {
 
               <CardHeader className="flex-1">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
                     {article.category}
                   </Badge>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-xs text-gray-400">
                     {article.source}
                   </span>
                 </div>
-                <CardTitle className="text-lg leading-tight line-clamp-2">
+                <CardTitle className="text-lg leading-tight line-clamp-2 text-white">
                   {article.title}
                 </CardTitle>
-                <CardDescription className="line-clamp-3">
+                <CardDescription className="line-clamp-3 text-gray-300">
                   {article.snippet}
                 </CardDescription>
               </CardHeader>
@@ -307,7 +311,7 @@ export default function NewsPage() {
                 {article.tags && article.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {article.tags.slice(0, 3).map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
+                      <Badge key={index} variant="secondary" className="text-xs bg-gray-700 text-gray-300 border-gray-600">
                         {tag}
                       </Badge>
                     ))}
@@ -315,7 +319,7 @@ export default function NewsPage() {
                 )}
 
                 {/* Article Meta */}
-                <div className="flex flex-col gap-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                <div className="flex flex-col gap-2 text-sm text-gray-400 mb-4">
                   {article.author && (
                     <div className="flex items-center gap-1">
                       <User className="w-3 h-3" />
@@ -332,7 +336,7 @@ export default function NewsPage() {
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
-                    className="flex-1"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => window.open(article.url, '_blank')}
                   >
                     <ExternalLink className="w-4 h-4 mr-1" />
@@ -342,6 +346,7 @@ export default function NewsPage() {
                     <Button 
                       size="sm" 
                       variant="outline"
+                      className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
                       onClick={() => window.open(article.video_url, '_blank')}
                     >
                       <Play className="w-4 h-4" />
@@ -355,10 +360,10 @@ export default function NewsPage() {
 
         {searchResults.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400 text-lg">
+            <p className="text-gray-400 text-lg">
               No articles found matching your criteria.
             </p>
-            <Button onClick={clearSearch} className="mt-4">
+            <Button onClick={clearSearch} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">
               Show All Articles
             </Button>
           </div>
@@ -366,7 +371,7 @@ export default function NewsPage() {
 
         {/* Last Updated */}
         {dailyBrief && (
-          <div className="text-center mt-12 text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-center mt-12 text-sm text-gray-400">
             Last updated: {formatDate(dailyBrief.last_updated)}
           </div>
         )}
