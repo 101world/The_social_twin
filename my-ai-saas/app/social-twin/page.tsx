@@ -2060,177 +2060,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0' : 'absolute left-0 right-0 border-t'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-300 ease-out' : 'p-2'}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 border-t p-2'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''}`}
           style={{ 
-            display: (simpleMode && messages.length===0 && !composerShown && !isMobile) ? 'none' : undefined, 
-            bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))',
-            transform: isMobile && simpleMode && messages.length === 0 && !composerShown ? 'translateY(100%)' : 'translateY(0)',
-            transition: isMobile ? 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' : undefined
+            bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))'
           }}>
                 
-                {/* Mobile-optimized compact layout */}
-                {isMobile ? (
-                  <div className="px-3 pt-2 pb-1 space-y-2">
-                    {/* Compact mode selection row */}
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
-                        title="Text mode" 
-                        onClick={() => setMode('text')}
-                        className={`group p-2 rounded-lg transition-all ${mode === 'text' ? 'bg-blue-500 text-white shadow-lg' : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-blue-50 dark:hover:bg-neutral-700'}`}
-                      > 
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors">
-                          <path d="M4 8h16M4 16h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M4 12h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <button 
-                        title="Image mode" 
-                        onClick={() => setMode('image')}
-                        className={`group p-2 rounded-lg transition-all ${mode === 'image' ? 'bg-green-500 text-white shadow-lg' : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-green-50 dark:hover:bg-neutral-700'}`}
-                      > 
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M21 15l-5-5L5 21" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                      <button 
-                        title="Modify image" 
-                        onClick={() => setMode('image-modify')}
-                        className={`group p-2 rounded-lg transition-all ${mode === 'image-modify' ? 'bg-purple-500 text-white shadow-lg' : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-purple-50 dark:hover:bg-neutral-700'}`}
-                      > 
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors">
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M15 5l4 4" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                      <button 
-                        title="Video mode" 
-                        onClick={() => setMode('video')}
-                        className={`group p-2 rounded-lg transition-all ${mode === 'video' ? 'bg-red-500 text-white shadow-lg' : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-red-50 dark:hover:bg-neutral-700'}`}
-                      > 
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="transition-colors">
-                          <polygon points="23 7 16 12 23 17 23 7" stroke="currentColor" strokeWidth="2"/>
-                          <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Compact mode-specific controls - minimal space */}
-                    {mode === 'text' && (
-                      <div className="flex gap-1">
-                        <select
-                          value={textProvider}
-                          onChange={(e)=> setTextProvider(e.target.value as any)}
-                          className={`flex-1 rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="social">Social</option>
-                          <option value="openai">OpenAI</option>
-                          <option value="deepseek">DeepSeek</option>
-                        </select>
-                      </div>
-                    )}
-                    
-                    {mode === 'image' && (
-                      <div className="grid grid-cols-2 gap-1">
-                        <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="off">No FX</option>
-                          <option value="subtle">Subtle</option>
-                          <option value="cinematic">Cinema</option>
-                          <option value="stylized">Style</option>
-                        </select>
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="">1x</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}x</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    
-                    {mode === 'image-modify' && (
-                      <div className="grid grid-cols-2 gap-1">
-                        <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="off">No FX</option>
-                          <option value="subtle">Subtle</option>
-                          <option value="cinematic">Cinema</option>
-                          <option value="stylized">Style</option>
-                        </select>
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="">1x</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}x</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    
-                    {mode === 'video' && (
-                      <div className="grid grid-cols-2 gap-1">
-                        <select
-                          value={videoModel}
-                          onChange={(e)=> setVideoModel(e.target.value as any)}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="ltxv">LTXV</option>
-                          <option value="wan">WAN</option>
-                        </select>
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        >
-                          <option value="">1x</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}x</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Compact character input for mobile */}
-                    {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
-                      <input
-                        type="text"
-                        placeholder="character.safetensors"
-                        value={loraName}
-                        onChange={(e) => setLoraName(e.target.value)}
-                        className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 placeholder-neutral-400' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
-                      />
-                    )}
+                {/* Character input row (only when needed) - same for mobile and desktop */}
+                {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
+                  <div className="mb-2 flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="character.safetensors"
+                      value={loraName}
+                      onChange={(e) => setLoraName(e.target.value)}
+                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
+                    />
                   </div>
-                ) : (
-                  /* Desktop layout - keep existing */
-                  <>
-                    {/* Character input row (only when needed) */}
-                    {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
-                      <div className="mb-2 flex items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="character.safetensors"
-                          value={loraName}
-                          onChange={(e) => setLoraName(e.target.value)}
-                          className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
-                        />
-                      </div>
-                    )}
-                  </>
                 )}
 
                 {/* Advanced Options - Comprehensive Creator Studio Integration */}
@@ -2737,58 +2582,61 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right */}
+                {/* Mode buttons row with Save Project on right - UNIFIED FOR MOBILE AND DESKTOP */}
                 <div className="mb-2 flex items-center gap-2 justify-between">
                   <div className="flex items-center gap-1 flex-wrap">
-                    {/* Mode buttons */}
+                    {/* Mode buttons - same styling for both */}
                     <button 
                       title="Text mode" 
                       onClick={() => setMode('text')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-blue-500/10"
+                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
+                        mode === 'text'
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                      }`}
                     > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M4 8h16M4 16h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M4 12h12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      text
                     </button>
                     <button 
                       title="Image mode" 
                       onClick={() => setMode('image')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-green-500/10"
+                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
+                        mode === 'image'
+                          ? 'bg-green-500 text-white shadow-md'
+                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                      }`}
                     > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-green-500">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5" stroke="#fff" strokeWidth="2"/>
-                        <path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth="2"/>
-                      </svg>
+                      image
                     </button>
                     <button 
                       title="Modify image" 
                       onClick={() => setMode('image-modify')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-purple-500/10"
+                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
+                        mode === 'image-modify'
+                          ? 'bg-purple-500 text-white shadow-md'
+                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                      }`}
                     > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-purple-500">
-                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke="#fff" strokeWidth="2"/>
-                        <path d="M15 5l4 4" stroke="#fff" strokeWidth="2"/>
-                      </svg>
+                      Modify
                     </button>
                     <button 
                       title="Video mode" 
                       onClick={() => setMode('video')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-red-500/10"
+                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
+                        mode === 'video'
+                          ? 'bg-red-500 text-white shadow-md'
+                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                      }`}
                     > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-red-500">
-                        <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
-                      </svg>
+                      video
                     </button>
                     
-                    {/* Quick dropdowns */}
+                    {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
                       <select
                         value={textProvider}
                         onChange={(e)=> setTextProvider(e.target.value as any)}
-                        className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                        className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
                         title="Provider"
                       >
                         <option value="social">Social</option>
@@ -2797,108 +2645,76 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </select>
                     )}
                     
-                    {mode === 'image' && (
+                    {(mode === 'image' || mode === 'image-modify') && (
                       <>
                         <select
                           value={effectsPreset}
                           onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Effects"
                         >
-                          <option value="off">Effects: Off</option>
-                          <option value="subtle">Effects: Subtle</option>
-                          <option value="cinematic">Effects: Cinematic</option>
-                          <option value="stylized">Effects: Stylized</option>
+                          <option value="off">{isMobile ? 'No FX' : 'No effects'}</option>
+                          <option value="subtle">{isMobile ? 'Subtle' : 'Subtle effects'}</option>
+                          <option value="cinematic">{isMobile ? 'Cinema' : 'Cinematic'}</option>
+                          <option value="stylized">{isMobile ? 'Style' : 'Stylized'}</option>
                         </select>
+
                         <select
                           value={batchSize === '' ? '' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Quantity"
+                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Batch size"
                         >
-                          <option value="">Qty: 1</option>
+                          <option value="">{isMobile ? '1x' : 'Single'}</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
+                            <option key={n} value={n}>{isMobile ? `${n}x` : `Batch ${n}`}</option>
                           ))}
                         </select>
-                        <select
-                          value={aspectRatio}
-                          onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Aspect Ratio"
-                        >
-                          <option value="">1:1</option>
-                          {AR_CHOICES.map((ar) => (
-                            <option key={ar} value={ar}>{ar}</option>
-                          ))}
-                        </select>
+
+                        {(mode === 'image' || mode === 'image-modify') && (
+                          <select
+                            value={aspectRatio}
+                            onChange={(e) => setAspectRatio(e.target.value)}
+                            className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            title="Aspect Ratio"
+                          >
+                            <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                            {AR_CHOICES.map((ar) => (
+                              <option key={ar} value={ar}>{ar}</option>
+                            ))}
+                          </select>
+                        )}
                       </>
                     )}
-                    
-                    {mode === 'image-modify' && (
-                      <>
-                        <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Effects"
-                        >
-                          <option value="off">Effects: Off</option>
-                          <option value="subtle">Effects: Subtle</option>
-                          <option value="cinematic">Effects: Cinematic</option>
-                          <option value="stylized">Effects: Stylized</option>
-                        </select>
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Quantity"
-                        >
-                          <option value="">Qty: 1</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={aspectRatio}
-                          onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Aspect Ratio"
-                        >
-                          <option value="">1:1</option>
-                          {AR_CHOICES.map((ar) => (
-                            <option key={ar} value={ar}>{ar}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-                    
+
                     {mode === 'video' && (
                       <>
                         <select
                           value={videoModel}
-                          onChange={(e)=> setVideoModel(e.target.value as any)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Model"
+                          onChange={(e) => setVideoModel(e.target.value as any)}
+                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Video model"
                         >
-                          <option value="ltxv">LTXV</option>
-                          <option value="wan">WAN</option>
+                          <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
+                          <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
                         </select>
+
                         <select
                           value={batchSize === '' ? '' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Quantity"
+                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Batch size"
                         >
-                          <option value="">Qty: 1</option>
+                          <option value="">{isMobile ? '1x' : 'Single'}</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
+                            <option key={n} value={n}>{isMobile ? `${n}x` : `Batch ${n}`}</option>
                           ))}
                         </select>
+
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -2908,9 +2724,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </select>
                       </>
                     )}
+
+                    {mode === 'image' && (
+                      <>
+                        <button
+                          onClick={() => setLoraModalOpen(true)}
+                          className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        >
+                          Character
+                        </button>
+                        {loraName && (
+                          <span className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
+                            {loraName}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {(messages.length > 0 || canvasItems.length > 0) && (
+                    {(messages.length > 0 || canvasItems.length > 0) && !isMobile && (
                       <button
                         onClick={() => setProjectModalOpen(true)}
                         className={`rounded-lg border px-2 py-1 text-xs font-medium transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
@@ -2922,21 +2754,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
-                {/* Prompt input area - compact mobile design matching desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'mx-3 mb-2' : (simpleMode ? 'sticky bottom-2' : '')} rounded-xl ${isMobile ? 'p-2' : 'p-2'} shadow-lg ${darkMode ? 'bg-neutral-900/90 border border-neutral-700 shadow-black/20' : 'bg-white border border-neutral-200 shadow-gray-200/60'} backdrop-blur-sm`}>
+                {/* Prompt input area - unified desktop feel */}
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
                   <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={isMobile ? "Type your message..." : "Type your prompt..."}
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px]' : 'min-h-[28px] max-h-[60px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-2 text-sm' : 'p-2 text-sm'} transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
-                    ref={bottomInputRef}
-                    style={{ fontSize: isMobile ? '16px' : '14px' }} // Prevent zoom on iOS
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={isMobile ? "" : "Hey, what's on your mind? ..."}
+                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
+                    ref={textareaRef}
+                    style={{ 
+                      fontSize: isMobile ? '16px' : '14px',
+                      height: textareaHeight
+                    }}
+                    disabled={isGenerating}
                   />
                   <div className="flex items-center gap-1">
                     <button
                       onClick={handleSend}
-                      disabled={!canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${isMobile ? 'p-1.5' : 'p-1'} ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      disabled={isGenerating || !prompt.trim() || !canAffordGeneration}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && prompt.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -2944,10 +2781,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 ${isMobile ? 'text-[10px]' : 'text-[9px]'} leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg ${isMobile ? 'p-1.5' : 'p-1.5'} flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -2968,20 +2803,28 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Compact Save Project button for mobile */}
-                    {isMobile && (
-                      <button
-                        onClick={() => setShowProjectModal(true)}
-                        className={`rounded-lg p-1.5 transition-all hover:scale-105 ${darkMode ? 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                        title="Save project"
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                          <polyline points="17,21 17,13 7,13 7,21"/>
-                          <polyline points="7,3 7,8 15,8"/>
-                        </svg>
-                      </button>
-                    )}
+                    {/* Folder & save actions - same for both */}
+                    <button
+                      onClick={() => setFolderModalOpen(true)}
+                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                      title="Organize in folder"
+                    >
+                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                    </button>
+                    <button
+                      onClick={handleSaveAsRecipe}
+                      disabled={!messages.length}
+                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                      title="Save as recipe"
+                    >
+                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
+                        <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
+                        <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 {attached ? (
