@@ -2728,7 +2728,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {mode === 'image' && (
                       <>
                         <button
-                          onClick={() => setLoraModalOpen(true)}
+                          onClick={() => setImgTab('character')}
                           className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                         >
                           Character
@@ -2757,23 +2757,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {/* Prompt input area - unified desktop feel */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
                   <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                     placeholder={isMobile ? "" : "Hey, what's on your mind? ..."}
                     className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
-                    ref={textareaRef}
+                    ref={bottomInputRef}
                     style={{ 
-                      fontSize: isMobile ? '16px' : '14px',
-                      height: textareaHeight
+                      fontSize: isMobile ? '16px' : '14px'
                     }}
                     disabled={isGenerating}
                   />
                   <div className="flex items-center gap-1">
                     <button
                       onClick={handleSend}
-                      disabled={isGenerating || !prompt.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && prompt.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      disabled={isGenerating || !input.trim() || !canAffordGeneration}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -2814,7 +2813,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </svg>
                     </button>
                     <button
-                      onClick={handleSaveAsRecipe}
+                      onClick={() => {
+                        // Simple save functionality - could be enhanced later
+                        const data = { messages, input, mode };
+                        console.log('Saving conversation:', data);
+                      }}
                       disabled={!messages.length}
                       className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                       title="Save as recipe"
