@@ -92,10 +92,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-  // Get articles from last 30 minutes by default for ultra-fresh feed
-  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-  query = query.gte('published_at', thirtyMinutesAgo.toISOString());
-
     const { data: articles, error } = await query;
 
     if (error) {
@@ -166,17 +162,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total count (based on Supabase fresh window)
+    // Get total count
     const { count } = await supabase
       .from('news_articles')
-      .select('*', { count: 'exact', head: true })
-      .gte('published_at', thirtyMinutesAgo.toISOString());
+      .select('*', { count: 'exact', head: true });
 
     // Get category statistics
     const { data: categories } = await supabase
       .from('news_articles')
-      .select('category')
-      .gte('published_at', thirtyMinutesAgo.toISOString());
+      .select('category');
 
     // Process categories
     const categoryStats = categories?.reduce((acc: any[], article: any) => {
