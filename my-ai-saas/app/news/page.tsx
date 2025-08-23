@@ -2,10 +2,27 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Filter, TrendingUp, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Clock, Eye, Share2, Bookmark, ChevronRight, Play, Image as ImageIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+
+// Simple inline components to avoid import issues
+const Badge = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${className}`} {...props}>
+    {children}
+  </span>
+);
+
+const Card = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <div className={`rounded-lg border shadow-sm ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+const CardContent = ({ children, className = "", ...props }: { children: React.ReactNode; className?: string; [key: string]: any }) => (
+  <div className={`p-6 pt-0 ${className}`} {...props}>
+    {children}
+  </div>
+);
 
 interface NewsArticle {
   id: string;
@@ -37,7 +54,16 @@ interface NewsData {
   };
 }
 
-const categoryConfig = {
+const categoryConfig: Record<string, {
+  icon: React.ComponentType<any>;
+  color: string;
+  accent: string;
+  gradient: string;
+  keywords: string[];
+  description: string;
+  bgColor: string;
+  textColor: string;
+}> = {
   'World News': {
     icon: Globe,
     color: 'bg-red-500',
