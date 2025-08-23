@@ -2,15 +2,9 @@
 
 ## IMPORTANT: Supabase Key Configuration
 
-⚠️ **Current Issue**: The provided key is an `anon` key (for client-side use). For the automated news scraper to work, we need the `service_role` key.
+✅ **RESOLVED**: Service role key provided and ready to use!
 
-### Get the Service Role Key:
-1. Go to: https://supabase.com/dashboard/project/tnlftxudmiryrgkajfun/settings/api
-2. Copy the **service_role** key (starts with `eyJ...` and is longer than anon key)
-3. Use that key in Step 1 below
-
-### Alternative: Fix Database Permissions
-If you want to use the current anon key, run the SQL in `fix-supabase-policies.sql` in your Supabase SQL editor first.
+The correct service_role key is now available for the automated news scraper.
 
 ## Step 1: Add Secrets to GitHub Repository
 
@@ -25,8 +19,7 @@ If you want to use the current anon key, run the SQL in `fix-supabase-policies.s
 
 ### Secret 2: SUPABASE_SERVICE_ROLE_KEY
 - **Name**: `SUPABASE_SERVICE_ROLE_KEY`
-- **Value**: `[YOUR_SERVICE_ROLE_KEY_HERE]` (get from Supabase dashboard)
-- **Current anon key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubGZ0eHVkbWlyeXJna2FqZnVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5OTQxODEsImV4cCI6MjA3MDU3MDE4MX0.VEiU7iBh9LdjkT3fVvkfNJcT2haw4iQijj-rAxjqobc`
+- **Value**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRubGZ0eHVkbWlyeXJna2FqZnVuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDk5NDE4MSwiZXhwIjoyMDcwNTcwMTgxfQ.80sKPr0NTPuGCwKhm3VZisadRdU1aQLkHFgfokyQcIk`
 
 ## Step 2: Test the Automation
 
