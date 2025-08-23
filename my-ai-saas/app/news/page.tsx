@@ -16,18 +16,7 @@ interface NewsArticle {
   source: string;
   publish_date?: string;
   published_at?: string;
-  quality_score?: num  return (
-    <div className="min-h-screen bg-black relative pb-24 overflow-hidden">
-      {/* 3D Starfield Background */}
-      <Starfield />
-      
-      {/* Dark gradient overlay for depth */}
-      <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-black/70 to-purple-900/30 pointer-events-none z-10"></div>
-      
-      {/* Weather Widget */}
-      <WeatherWidget />
-      
-      <main className="container mx-auto px-4 py-8 relative z-20":;
+  quality_score?: number;
   author?: string;
   tags?: string[];
 }
