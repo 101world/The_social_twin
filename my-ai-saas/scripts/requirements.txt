@@ -1,21 +1,19 @@
-# News Scraper Dependencies
+# Enhanced News Scraper Dependencies
 requests>=2.31.0
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
 feedparser>=6.0.10
-APScheduler>=3.10.0
-
-# Optional: Advanced scraping
 newspaper3k>=0.2.8
-selenium>=4.15.0  # For JavaScript-heavy sites
+yt-dlp>=2023.7.6
+Pillow>=10.0.0
+APScheduler>=3.10.0
 python-dateutil>=2.8.0
 
-# Database (choose one)
-# For SQLite (lightweight)
-# sqlite3 (built into Python)
+# Database support
+sqlite3  # Built into Python
+# For PostgreSQL: psycopg2-binary>=2.9.0
+# For MySQL: PyMySQL>=1.1.0
 
-# For PostgreSQL
-# psycopg2-binary>=2.9.0
-
-# For MySQL
-# PyMySQL>=1.1.0
+# Optional: Advanced scraping
+selenium>=4.15.0  # For JavaScript-heavy sites
+fake-useragent>=1.4.0  # Rotating user agents

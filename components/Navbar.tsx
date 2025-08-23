@@ -190,6 +190,13 @@ const Navbar = () => {
                     <path d="M8 6L12 2L16 6" />
                   </svg>
                 </Link>
+                <Link href="/news" className={linkClass} title="News" onClick={triggerNavAnimation}>
+                  <span className="sr-only">News</span>
+                  <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
+                    <path d="M7 3h10v2H7z" />
+                  </svg>
+                </Link>
                 {/* Thunder toggle next to icons - hidden on mobile */}
                 {isTwin && (() => {
                   const darkCtx = isTwin ? twinDark : (isDashboard || globalDark);
