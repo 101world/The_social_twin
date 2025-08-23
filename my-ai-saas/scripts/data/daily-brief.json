@@ -2,6 +2,51 @@
   "date": "2025-08-23",
   "articles": [
     {
+      "id": "11a5d804-4315-4ce7-b6ef-8ac977082efc",
+      "title": "TikTok denies India comeback after reports of website going live",
+      "snippet": "",
+      "url": "https://techcrunch.com/2025/08/22/tiktok-denies-india-comeback-after-reports-of-website-going-live/",
+      "source": "TechCrunch",
+      "category": "Technology",
+      "publish_date": "2025-08-22T00:00:00",
+      "image_url": "https://techcrunch.com/wp-content/uploads/2025/08/tiktok-india.jpg?resize=1200,800",
+      "video_url": null,
+      "video_thumbnail": null,
+      "video_platform": null,
+      "author": "Jagmeet Singh",
+      "tags": []
+    },
+    {
+      "id": "4a8e64f1-2fb3-4953-b2f3-5ad34934eca1",
+      "title": "Shepard's record-fast triple-double carries Lynx",
+      "snippet": "Jessica Shepard completed a triple-double in just 21:57, the fastest in WNBA history, and the Lynx beat the Fever 95-90.",
+      "url": "https://www.espn.com/wnba/story/_/id/46053576/shepard-lifts-lynx-fastest-triple-double-wnba-history",
+      "source": "ESPN",
+      "category": "Sports",
+      "publish_date": "2025-08-23T04:04:28",
+      "image_url": null,
+      "video_url": null,
+      "video_thumbnail": null,
+      "video_platform": null,
+      "author": null,
+      "tags": []
+    },
+    {
+      "id": "abe184fa-5506-47d0-a533-cdc68972726e",
+      "title": "Lyle Menendez joins brother and is denied parole in parents' LA murder",
+      "snippet": "The hearing stretched for more than 10 hours and examined his violations in prison and the 1989 killings of his parents in their Beverly Hills mansion.",
+      "url": "https://www.bbc.com/news/articles/c4gq55evnlyo?at_medium=RSS&at_campaign=rss",
+      "source": "BBC",
+      "category": "General",
+      "publish_date": "2025-08-23T03:16:16",
+      "image_url": null,
+      "video_url": null,
+      "video_thumbnail": null,
+      "video_platform": null,
+      "author": null,
+      "tags": []
+    },
+    {
       "id": "eedf9a27-1f59-4a80-9a56-6878e021654f",
       "title": "Kemp sentenced to home monitoring for shooting",
       "snippet": "Former NBA star Shawn Kemp was sentenced to 30 days of electronic home monitoring for shooting at two men inside a vehicle in a Washington state mall parking lot.",
@@ -594,7 +639,7 @@
     "Sports",
     "Technology"
   ],
-  "total_articles": 39,
+  "total_articles": 42,
   "sources": [
     "BBC",
     "BBC Business",
@@ -604,9 +649,9 @@
     "ESPN",
     "TechCrunch"
   ],
-  "last_updated": "2025-08-23T08:26:18.271383",
+  "last_updated": "2025-08-23T08:55:11.980530",
   "multimedia_count": {
-    "with_images": 0,
+    "with_images": 1,
     "with_videos": 0
   }
 }

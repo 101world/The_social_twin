@@ -265,7 +265,6 @@ class EnhancedNewsScraper:
         try:
             # Use newspaper3k for better content extraction
             article = Article(url)
-            article.set_config(headers=self.headers)
             article.download()
             article.parse()
             

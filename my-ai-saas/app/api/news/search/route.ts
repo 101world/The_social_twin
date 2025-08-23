@@ -1,95 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-interface NewsArticle {
-  id: string;
-  title: string;
-  snippet: string;
-  url: string;
-  source: string;
-  category: string;
-  publishDate: string;
-  imageUrl?: string;
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('query') || '';
-    const category = searchParams.get('category') || 'all';
-    
-    if (!query.trim()) {
-      return NextResponse.json({ articles: [] });
+    const query = searchParams.get('q') || searchParams.get('query') || '';
+    const category = searchParams.get('category');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    if (!query || query.trim().length < 2) {
+      return NextResponse.json({
+        success: false,
+        error: 'Search query must be at least 2 characters long'
+      }, { status: 400 });
     }
-    
-    // Path to cached articles
-    const cacheFile = join(process.cwd(), 'data', 'daily-brief.json');
-    
-    let articles: NewsArticle[] = [];
-    
-    if (existsSync(cacheFile)) {
-      const cacheData = readFileSync(cacheFile, 'utf-8');
-      const briefing = JSON.parse(cacheData);
-      articles = briefing.articles || [];
-    }
-    
-    // Filter articles based on search query and category
-    const filteredArticles = articles.filter(article => {
-      const matchesQuery = 
-        article.title.toLowerCase().includes(query.toLowerCase()) ||
-        article.snippet.toLowerCase().includes(query.toLowerCase()) ||
-        article.source.toLowerCase().includes(query.toLowerCase());
-      
-      const matchesCategory = 
-        category === 'all' || 
-        article.category.toLowerCase() === category.toLowerCase();
-      
-      return matchesQuery && matchesCategory;
-    });
-    
-    // If no cached results found, perform real-time search (mock for now)
-    if (filteredArticles.length === 0) {
-      // In production, this would call external news APIs or perform web scraping
-      const mockResults: NewsArticle[] = [
-        {
-          id: `search-${Date.now()}`,
-          title: `Real-time search results for "${query}"`,
-          snippet: `This would contain live search results from news APIs for the query "${query}". Implement external API calls here for real-time news search.`,
-          url: 'https://101world.io',
-          source: 'LiveSearch',
-          category: category === 'all' ? 'General' : category,
-          publishDate: new Date().toISOString()
-        }
-      ];
-      
-      return NextResponse.json({ 
-        articles: mockResults,
-        cached: false,
-        query,
-        category
+
+    // Use the Supabase search function
+    const { data: articles, error } = await supabase
+      .rpc('search_news', {
+        search_query: query.trim(),
+        category_filter: category,
+        limit_count: limit
       });
+
+    if (error) {
+      console.error('Supabase search error:', error);
+      throw error;
     }
-    
-    // Sort by relevance (title matches first, then snippet matches)
-    const sortedArticles = filteredArticles.sort((a, b) => {
-      const aScore = a.title.toLowerCase().includes(query.toLowerCase()) ? 2 : 1;
-      const bScore = b.title.toLowerCase().includes(query.toLowerCase()) ? 2 : 1;
-      return bScore - aScore;
+
+    // Calculate search relevance scores
+    const scoredArticles = articles?.map(article => {
+      let relevanceScore = 0;
+      const queryLower = query.toLowerCase();
+      const titleLower = (article.title || '').toLowerCase();
+      const summaryLower = (article.summary || '').toLowerCase();
+
+      // Title matches get higher score
+      if (titleLower.includes(queryLower)) {
+        relevanceScore += 10;
+      }
+
+      // Summary matches
+      if (summaryLower.includes(queryLower)) {
+        relevanceScore += 5;
+      }
+
+      // Exact word matches get bonus
+      const queryWords = queryLower.split(' ');
+      queryWords.forEach(word => {
+        if (titleLower.includes(word)) relevanceScore += 3;
+        if (summaryLower.includes(word)) relevanceScore += 1;
+      });
+
+      return {
+        ...article,
+        relevance_score: relevanceScore
+      };
+    }).sort((a, b) => b.relevance_score - a.relevance_score) || [];
+
+    // Get related categories for this search
+    const relatedCategories = {};
+    scoredArticles.forEach(article => {
+      const cat = article.category || 'General';
+      relatedCategories[cat] = (relatedCategories[cat] || 0) + 1;
     });
-    
+
     return NextResponse.json({
-      articles: sortedArticles.slice(0, 20), // Limit to 20 results
-      cached: true,
-      query,
-      category
+      success: true,
+      data: {
+        articles: scoredArticles,
+        total: scoredArticles.length,
+        query,
+        related_categories: Object.entries(relatedCategories)
+          .map(([category, count]) => ({ category, count }))
+          .sort((a, b) => b.count - a.count),
+        filters: {
+          query,
+          category,
+          limit
+        },
+        metadata: {
+          search_time: new Date().toISOString(),
+          total_results: scoredArticles.length,
+          with_multimedia: scoredArticles.filter(a => 
+            a.image_url || a.video_url || a.youtube_url
+          ).length
+        }
+      },
+      // Backward compatibility
+      articles: scoredArticles,
+      cached: false
     });
-    
+
   } catch (error) {
-    console.error('Error searching news:', error);
-    return NextResponse.json(
-      { error: 'Search failed', articles: [] },
-      { status: 500 }
-    );
+    console.error('News search API error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to search news articles',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      articles: []
+    }, { status: 500 });
   }
 }
