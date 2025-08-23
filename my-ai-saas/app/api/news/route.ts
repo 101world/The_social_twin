@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('news_articles')
       .select('*')
-      .order('quality_score', { ascending: false })
-      .order('published_at', { ascending: false })
+      .order('published_at', { ascending: false })  // Most recent first (PRIMARY)
+      .order('quality_score', { ascending: false }) // Then by quality
       .limit(limit);
 
     // Apply filters

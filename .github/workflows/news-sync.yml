@@ -1,12 +1,12 @@
-name: News Sync Every 10 Minutes
+name: Fresh News Sync Every 10 Minutes
 
 on:
   schedule:
     - cron: '*/10 * * * *'  # Every 10 minutes
-  workflow_dispatch:
+  workflow_dispatch:        # Allow manual trigger
 
 jobs:
-  sync-news:
+  sync-fresh-news:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -21,9 +21,9 @@ jobs:
         working-directory: my-ai-saas
         run: npm ci
 
-      - name: Upload latest news to Supabase
+      - name: Scrape and upload fresh news to Supabase
         working-directory: my-ai-saas/scripts
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node upload-to-supabase.js
+        run: node fresh-news-scraper.js
