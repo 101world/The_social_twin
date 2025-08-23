@@ -110,29 +110,38 @@ export async function POST(request: NextRequest) {
       return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
     });
 
-    // Save search results to Supabase for future reference
+    // Save search results to Supabase for future reference and "Your Feed" access
     if (searchResults.length > 0) {
       try {
         const articlesToSave = searchResults.slice(0, 20).map(article => ({
           title: article.title,
           summary: article.summary,
+          snippet: article.snippet,
           url: article.url,
           image_url: article.image_url,
           video_url: article.video_url,
           youtube_url: article.youtube_url,
-          category: article.category,
+          category: 'Your Feed', // Make search results available in "Your Feed"
           source: article.source,
           published_at: article.published_at,
           quality_score: article.quality_score,
-          content_hash: article.content_hash
+          content_hash: article.content_hash,
+          search_query: searchTerm, // Tag with search query for future reference
+          cached_at: new Date().toISOString()
         }));
 
-        await supabase
+        const { error: saveError } = await supabase
           .from('news_articles')
           .upsert(articlesToSave, { 
             onConflict: 'url',
-            ignoreDuplicates: true 
+            ignoreDuplicates: false 
           });
+
+        if (saveError) {
+          console.warn('Failed to save search results:', saveError);
+        } else {
+          console.log(`Successfully cached ${articlesToSave.length} search results for "${searchTerm}" in Your Feed`);
+        }
       } catch (saveError) {
         console.warn('Failed to save search results:', saveError);
       }

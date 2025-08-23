@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Send, Search, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Play, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Send, Search, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Play, Image as ImageIcon, Loader2, MapPin, Cloud, Sun } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
@@ -16,7 +16,18 @@ interface NewsArticle {
   source: string;
   publish_date?: string;
   published_at?: string;
-  quality_score?: number;
+  quality_score?: num  return (
+    <div className="min-h-screen bg-black relative pb-24 overflow-hidden">
+      {/* 3D Starfield Background */}
+      <Starfield />
+      
+      {/* Dark gradient overlay for depth */}
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-black/70 to-purple-900/30 pointer-events-none z-10"></div>
+      
+      {/* Weather Widget */}
+      <WeatherWidget />
+      
+      <main className="container mx-auto px-4 py-8 relative z-20":;
   author?: string;
   tags?: string[];
 }
@@ -31,6 +42,23 @@ interface NewsData {
     with_youtube: number;
     last_updated: string;
   };
+}
+
+interface WeatherData {
+  location: string;
+  temperature: number;
+  condition: string;
+  humidity: number;
+  windSpeed: number;
+  icon: string;
+}
+
+interface StarProps {
+  x: number;
+  y: number;
+  z: number;
+  opacity: number;
+  size: number;
 }
 
 const categoryConfig: Record<string, {
@@ -103,6 +131,261 @@ const categoryConfig: Record<string, {
     bgColor: 'bg-emerald-50',
     textColor: 'text-emerald-900'
   }
+};
+
+// Starfield background component
+const Starfield = () => {
+  const [stars, setStars] = useState<StarProps[]>([]);
+
+  useEffect(() => {
+    const generateStars = () => {
+      const newStars: StarProps[] = [];
+      for (let i = 0; i < 200; i++) {
+        newStars.push({
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          z: Math.random(),
+          opacity: Math.random() * 0.8 + 0.2,
+          size: Math.random() * 2 + 0.5,
+        });
+      }
+      setStars(newStars);
+    };
+
+    generateStars();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {stars.map((star, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-white animate-pulse"
+          style={{
+            left: `${star.x}%`,
+            top: `${star.y}%`,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            opacity: star.opacity,
+            transform: `translateZ(${star.z * 100}px)`,
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${2 + Math.random() * 4}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Weather Widget Component
+const WeatherWidget = () => {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [location, setLocation] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      try {
+        // Get user's location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // Mock weather data for now - you can replace with actual API
+            const mockWeather: WeatherData = {
+              location: 'Your Location',
+              temperature: Math.round(Math.random() * 30 + 5),
+              condition: ['Sunny', 'Cloudy', 'Rainy', 'Partly Cloudy'][Math.floor(Math.random() * 4)],
+              humidity: Math.round(Math.random() * 50 + 30),
+              windSpeed: Math.round(Math.random() * 20 + 5),
+              icon: '☀️'
+            };
+            
+            setWeather(mockWeather);
+            setLocation('Current Location');
+            setLoading(false);
+          });
+        }
+      } catch (error) {
+        console.error('Weather fetch error:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchWeatherData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="fixed top-4 left-4 bg-gray-900/80 backdrop-blur-md rounded-xl p-4 border border-gray-700 z-40">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+          <span className="text-gray-300 text-sm">Loading weather...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!weather) return null;
+
+  return (
+    <div className="fixed top-4 left-4 bg-gray-900/90 backdrop-blur-md rounded-xl p-4 border border-gray-700 z-40 min-w-[200px]">
+      <div className="flex items-center space-x-2 mb-2">
+        <MapPin className="w-4 h-4 text-blue-400" />
+        <span className="text-gray-300 text-sm font-medium">{location}</span>
+      </div>
+      
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">{weather.icon}</span>
+          <span className="text-2xl font-bold text-white">{weather.temperature}°C</span>
+        </div>
+        <div className="text-right">
+          <div className="text-gray-300 text-sm">{weather.condition}</div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="flex items-center space-x-1">
+          <Cloud className="w-3 h-3 text-blue-400" />
+          <span className="text-gray-400">{weather.humidity}% humidity</span>
+        </div>
+        <div className="flex items-center space-x-1">
+          <span className="text-gray-400">💨 {weather.windSpeed} km/h</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Smart Grid Layout Component
+const SmartGrid = ({ articles, startIndex = 0 }: { articles: NewsArticle[], startIndex?: number }) => {
+  const getGridLayout = (index: number) => {
+    const patterns = [
+      { cols: 'md:col-span-2 lg:col-span-2', rows: 'md:row-span-1', size: 'large' },
+      { cols: 'md:col-span-1', rows: 'md:row-span-1', size: 'medium' },
+      { cols: 'md:col-span-1', rows: 'md:row-span-1', size: 'medium' },
+      { cols: 'md:col-span-1', rows: 'md:row-span-2', size: 'tall' },
+      { cols: 'md:col-span-2', rows: 'md:row-span-1', size: 'wide' },
+      { cols: 'md:col-span-1', rows: 'md:row-span-1', size: 'medium' },
+    ];
+    return patterns[index % patterns.length];
+  };
+
+  return (
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 auto-rows-auto">
+      {articles.slice(startIndex).map((article, index) => {
+        const layout = getGridLayout(index);
+        return (
+          <div key={article.id} className={`${layout.cols} ${layout.rows}`}>
+            <SmartStoryCard article={article} size={layout.size} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Enhanced Story Card with Size Variations
+const SmartStoryCard = ({ article, size }: { article: NewsArticle, size: string }) => {
+  const getSizeClasses = (size: string) => {
+    switch (size) {
+      case 'large':
+        return {
+          container: 'h-64 md:h-48',
+          title: 'text-lg font-bold line-clamp-3',
+          description: 'text-sm line-clamp-3',
+          image: 'h-32'
+        };
+      case 'tall':
+        return {
+          container: 'h-80',
+          title: 'text-base font-bold line-clamp-4',
+          description: 'text-sm line-clamp-4',
+          image: 'h-40'
+        };
+      case 'wide':
+        return {
+          container: 'h-48',
+          title: 'text-lg font-bold line-clamp-2',
+          description: 'text-sm line-clamp-2',
+          image: 'h-24'
+        };
+      default: // medium
+        return {
+          container: 'h-56',
+          title: 'text-base font-semibold line-clamp-3',
+          description: 'text-sm line-clamp-2',
+          image: 'h-28'
+        };
+    }
+  };
+
+  const classes = getSizeClasses(size);
+  const categoryInfo = Object.values(categoryConfig).find(cat => 
+    cat.keywords.some(keyword => 
+      article.title.toLowerCase().includes(keyword) || 
+      (article.snippet && article.snippet.toLowerCase().includes(keyword))
+    )
+  ) || categoryConfig['World News'];
+
+  return (
+    <article className={`bg-gray-800/80 backdrop-blur-sm rounded-lg overflow-hidden shadow-lg border border-gray-700/50 hover:shadow-xl hover:shadow-purple-500/10 transition-all duration-300 hover:border-gray-600 ${classes.container} group`}>
+      {article.image_url && (
+        <div className={`relative ${classes.image} overflow-hidden`}>
+          <img
+            src={article.image_url}
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
+        </div>
+      )}
+      
+      <div className="p-3 h-full flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${categoryInfo.color} text-white`}>
+              {article.source}
+            </span>
+            {article.video_url && (
+              <span className="flex items-center space-x-1 bg-red-900/30 text-red-400 px-2 py-1 rounded-full text-xs">
+                <Play className="w-3 h-3" />
+              </span>
+            )}
+          </div>
+          
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block group-hover:text-blue-300 transition-colors"
+          >
+            <h3 className={`text-white mb-2 group-hover:text-blue-300 transition-colors ${classes.title}`}>
+              {article.title}
+            </h3>
+            
+            {(article.snippet || article.summary) && (
+              <p className={`text-gray-400 leading-relaxed ${classes.description}`}>
+                {article.snippet || article.summary}
+              </p>
+            )}
+          </a>
+        </div>
+        
+        <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+          <span>{new Date(article.published_at || article.publish_date || '').toLocaleDateString()}</span>
+          {article.quality_score && (
+            <span className="flex items-center space-x-1">
+              <Heart className="w-3 h-3" />
+              <span>{article.quality_score}</span>
+            </span>
+          )}
+        </div>
+      </div>
+    </article>
+  );
 };
 
 export default function NewsPage() {
@@ -350,12 +633,14 @@ export default function NewsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900">
-        <div className="container mx-auto px-4 py-12">
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <Starfield />
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-black/70 to-purple-900/30 pointer-events-none z-10"></div>
+        <div className="container mx-auto px-4 py-12 relative z-20">
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-200"></div>
+              <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-400"></div>
               <span className="ml-3 text-gray-300 text-lg">Loading latest stories...</span>
             </div>
@@ -367,8 +652,10 @@ export default function NewsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900">
-        <div className="container mx-auto px-4 py-12">
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <Starfield />
+        <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-black/70 to-purple-900/30 pointer-events-none z-10"></div>
+        <div className="container mx-auto px-4 py-12 relative z-20">
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
             <div className="text-gray-300 text-center max-w-md">{error}</div>
@@ -380,78 +667,17 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 relative pb-24">
-      <main className="container mx-auto px-4 py-8">
-        {/* Hero Section - Large Featured Story */}
-        {heroArticle && selectedCategory !== 'Search Results' && (
-          <section className="mb-12">
-            <article className="relative bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:shadow-xl hover:shadow-blue-500/10 transition-shadow">
-              <div className="md:flex">
-                <div className="md:w-1/2">
-                  <div className="relative aspect-[4/3] md:aspect-auto md:h-full">
-                    <img
-                      src={heroArticle.image_url!}
-                      alt={heroArticle.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  </div>
-                </div>
-                
-                <div className="md:w-1/2 p-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center text-sm text-gray-400 space-x-2">
-                      <span className="font-medium text-blue-400">{heroArticle.source}</span>
-                      <span>•</span>
-                      <time>{formatTimeAgo(heroArticle.published_at || heroArticle.publish_date || new Date().toISOString())}</time>
-                    </div>
-                    
-                    <button
-                      onClick={() => navigator.clipboard.writeText(heroArticle.url)}
-                      className="p-2 rounded-full hover:bg-gray-700 transition-colors"
-                      title="Share story"
-                    >
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <a
-                    href={heroArticle.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block group"
-                  >
-                    <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4 group-hover:text-blue-300 transition-colors">
-                      {heroArticle.title}
-                    </h2>
-                    
-                    <p className="text-gray-300 leading-relaxed text-lg mb-6 line-clamp-4">
-                      {heroArticle.snippet || heroArticle.summary}
-                    </p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {heroArticle.video_url && (
-                          <span className="flex items-center space-x-1 bg-red-900/30 text-red-400 px-3 py-1 rounded-full text-sm">
-                            <Play className="w-4 h-4" />
-                            <span>Video</span>
-                          </span>
-                        )}
-                      </div>
-                      
-                      <span className="text-blue-400 font-medium group-hover:underline">
-                        Read full story →
-                      </span>
-                    </div>
-                  </a>
-                </div>
-              </div>
-            </article>
-          </section>
-        )}
-
+    <div className="min-h-screen bg-black relative pb-24 overflow-hidden">
+      {/* 3D Starfield Background */}
+      <Starfield />
+      
+      {/* Dark gradient overlay for depth */}
+      <div className="fixed inset-0 bg-gradient-to-br from-gray-900/50 via-black/70 to-purple-900/30 pointer-events-none z-10"></div>
+      
+      {/* Weather Widget */}
+      <WeatherWidget />
+      
+      <main className="container mx-auto px-4 py-8 relative z-20">
         {/* Search Results Header */}
         {selectedCategory === 'Search Results' && (
           <div className="mb-8">
@@ -481,11 +707,9 @@ export default function NewsPage() {
           </div>
         )}
 
-        {/* News Grid */}
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {(selectedArticles || []).slice(heroArticle && selectedCategory !== 'Search Results' ? 1 : 0, 50).map((article) => (
-            <StoryCard key={article.id} article={article} />
-          ))}
+        {/* News Grid with Smart Layout */}
+        <section className="mb-12">
+          <SmartGrid articles={selectedArticles || []} />
         </section>
         
         {selectedArticles.length === 0 && !isSearching && (
@@ -504,13 +728,13 @@ export default function NewsPage() {
 
       {/* Floating Search Prompt */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-        <div className="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-4 min-w-[400px] max-w-[600px]">
+        <div className="bg-gray-900/95 backdrop-blur-xl border border-gray-600 rounded-2xl shadow-2xl shadow-purple-500/20 p-4 min-w-[400px] max-w-[600px]">
           <div className="flex items-center space-x-3">
             <div className="relative flex-1">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 text-sm border-none outline-none cursor-pointer z-10"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-300 text-sm border-none outline-none cursor-pointer z-10"
               >
                 <option value="Your Feed">Your Feed</option>
                 <option value="Search Results">Search</option>
@@ -526,7 +750,7 @@ export default function NewsPage() {
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder={selectedCategory === 'Search Results' ? "Search news worldwide..." : "Switch to Search to find specific news"}
                 disabled={selectedCategory !== 'Search Results'}
-                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-12 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                className="w-full bg-gray-800/80 border border-gray-500 rounded-xl px-12 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-400 disabled:opacity-50 backdrop-blur-sm"
               />
               
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -535,7 +759,7 @@ export default function NewsPage() {
             <button
               onClick={handleSearch}
               disabled={!searchQuery.trim() || isSearching || selectedCategory !== 'Search Results'}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl p-3 transition-colors"
+              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl p-3 transition-colors"
             >
               {isSearching ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -545,8 +769,8 @@ export default function NewsPage() {
             </button>
           </div>
           
-          <div className="flex items-center justify-center mt-2 text-xs text-gray-500">
-            Live updates every 10 minutes • Powered by AI scraping
+          <div className="flex items-center justify-center mt-2 text-xs text-gray-400">
+            Live updates every 10 minutes • Powered by <span className="text-purple-400 font-semibold">101World</span>
           </div>
         </div>
       </div>
