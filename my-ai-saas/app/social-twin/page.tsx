@@ -2766,12 +2766,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px'
                     }}
-                    disabled={isGenerating}
+                    disabled={isGeneratingBatch}
                   />
                   <div className="flex items-center gap-1">
                     <button
                       onClick={handleSend}
-                      disabled={isGenerating || !input.trim() || !canAffordGeneration}
+                      disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
                       className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
