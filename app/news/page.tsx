@@ -1,3 +1,4 @@
+"use client";
 import { useState, useEffect, useMemo, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Play, Image as ImageIcon, Globe, Rocket, Heart, DollarSign, Palette, Leaf } from 'lucide-react';

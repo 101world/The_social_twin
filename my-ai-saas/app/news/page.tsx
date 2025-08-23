@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Globe, Rocket, Heart, DollarSign, Palette, Leaf, RefreshCw, Play, Image as ImageIcon } from 'lucide-react';
-import { Button } from '../../components/ui/button';
+import { Globe, Rocket, Heart, DollarSign, Palette, Leaf, Play, Image as ImageIcon } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
@@ -111,9 +110,15 @@ export default function NewsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('World News');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     fetchNews();
+    // Auto-refresh every 20 minutes (no manual control)
+    const id = setInterval(() => {
+      fetchNews();
+    }, 20 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   const fetchNews = async () => {
@@ -126,6 +131,7 @@ export default function NewsPage() {
       
       if (result.success) {
         setNewsData(result.data);
+        setLastUpdated(new Date());
       } else {
         throw new Error(result.error || 'Failed to fetch news');
       }
@@ -149,6 +155,15 @@ export default function NewsPage() {
       setLoading(false);
     }
   };
+
+  // Gentle auto-retry when there is an error (no user button)
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => {
+      fetchNews();
+    }, 30 * 1000);
+    return () => clearTimeout(t);
+  }, [error]);
 
   const categorizeArticles = (articles: NewsArticle[]) => {
     const categorized: Record<string, NewsArticle[]> = {};
@@ -222,9 +237,7 @@ export default function NewsPage() {
             <div className="text-gray-400 text-center max-w-md">
               {error}
             </div>
-            <Button onClick={fetchNews} variant="outline" className="border-gray-700 hover:border-gray-600">
-              Reload News
-            </Button>
+            <div className="text-xs text-gray-500">Auto retrying in 30s…</div>
           </div>
         </div>
       </div>
@@ -234,6 +247,7 @@ export default function NewsPage() {
   const articles = newsData?.articles || [];
   const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
   const selectedArticles = categorizedArticles[selectedCategory] || [];
+  const SelectedIcon = categoryConfig[selectedCategory]?.icon || Globe;
   
   // Hero prefers current category; fallback to global best
   const categoryHero = selectedArticles
@@ -291,19 +305,30 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header with category dropdown and manual refresh */}
+      {/* Header with category dropdown and live auto-update info */}
       <div className="border-b border-gray-900/80 bg-gray-950/70 backdrop-blur sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight">
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight font-serif">
                 <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">101World News</span>
               </h1>
-              <p className="text-gray-500 text-sm">
-                Ultra-fresh • {newsData?.metadata?.total_articles || 0} stories in last 30 min
-              </p>
+              <div className="flex items-center gap-3 text-gray-500 text-sm">
+                <span className="relative inline-flex items-center">
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-hidden />
+                  Live • auto-updates every 20 min
+                </span>
+                <span className="hidden sm:inline">•</span>
+                <span className="hidden sm:inline">{newsData?.metadata?.total_articles || 0} stories in last 30 min</span>
+                {lastUpdated ? (
+                  <span className="ml-0 sm:ml-2">Updated {formatTimeAgo(lastUpdated.toISOString())}</span>
+                ) : null}
+              </div>
             </div>
             <div className="flex items-center gap-3">
+              <span className="hidden sm:inline-flex items-center justify-center rounded-md border border-gray-800 bg-gray-900/70 p-2">
+                <SelectedIcon className="w-4 h-4 text-gray-300" />
+              </span>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
@@ -313,9 +338,6 @@ export default function NewsPage() {
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
-              <Button onClick={fetchNews} variant="outline" size="sm" className="border-gray-800 hover:border-gray-700">
-                <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-              </Button>
             </div>
           </div>
         </div>
@@ -335,7 +357,7 @@ export default function NewsPage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{heroArticle.title}</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 font-serif">{heroArticle.title}</h2>
                   <p className="text-gray-300 line-clamp-2">{heroArticle.snippet || heroArticle.summary}</p>
                 </div>
               </div>
