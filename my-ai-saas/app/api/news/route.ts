@@ -1,11 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
+// Initialize Supabase client with service role for full access
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // Use service role for full access
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Function to ensure the news_articles table exists
+async function ensureTableExists() {
+  try {
+    // Try to create the table with all necessary columns
+    const { error } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS news_articles (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          title TEXT NOT NULL,
+          summary TEXT,
+          url TEXT NOT NULL UNIQUE,
+          image_url TEXT,
+          video_url TEXT,
+          youtube_url TEXT,
+          category TEXT DEFAULT 'General',
+          source TEXT,
+          published_at TIMESTAMPTZ DEFAULT NOW(),
+          quality_score INTEGER DEFAULT 0,
+          content_hash TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_news_category ON news_articles(category);
+        CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_news_quality ON news_articles(quality_score DESC);
+      `
+    });
+    
+    if (error) {
+      console.log('Table creation via RPC failed, trying direct approach');
+      // Fallback: just test if we can query the table
+      await supabase.from('news_articles').select('count', { count: 'exact', head: true });
+    }
+  } catch (error) {
+    console.log('Table check/creation failed:', error);
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +52,10 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const search = searchParams.get('search');
     const mediaType = searchParams.get('media');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '100');
+
+    // Ensure table exists
+    await ensureTableExists();
 
     let query = supabase
       .from('news_articles')
@@ -49,35 +91,50 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get articles from last 7 days by default
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    query = query.gte('published_at', sevenDaysAgo.toISOString());
+    // Get articles from last 30 days by default (extended for more content)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    query = query.gte('published_at', thirtyDaysAgo.toISOString());
 
     const { data: articles, error } = await query;
 
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('Supabase query error:', error);
       throw error;
     }
-
-    // Get category statistics
-    const { data: categoryStats } = await supabase
-      .from('news_by_category')
-      .select('*');
 
     // Get total count
     const { count } = await supabase
       .from('news_articles')
       .select('*', { count: 'exact', head: true })
-      .gte('published_at', sevenDaysAgo.toISOString());
+      .gte('published_at', thirtyDaysAgo.toISOString());
+
+    // Get category statistics
+    const { data: categories } = await supabase
+      .from('news_articles')
+      .select('category')
+      .gte('published_at', thirtyDaysAgo.toISOString());
+
+    // Process categories
+    const categoryStats = categories?.reduce((acc: any[], article: any) => {
+      const existing = acc.find(c => c.category === article.category);
+      if (existing) {
+        existing.article_count++;
+      } else {
+        acc.push({
+          category: article.category,
+          article_count: 1
+        });
+      }
+      return acc;
+    }, []) || [];
 
     return NextResponse.json({
       success: true,
       data: {
         articles: articles || [],
         total: count || 0,
-        categories: categoryStats || [],
+        categories: categoryStats,
         filters: {
           category,
           search,
@@ -86,9 +143,9 @@ export async function GET(request: NextRequest) {
         },
         metadata: {
           total_articles: count || 0,
-          with_images: articles?.filter(a => a.image_url).length || 0,
-          with_videos: articles?.filter(a => a.video_url).length || 0,
-          with_youtube: articles?.filter(a => a.youtube_url).length || 0,
+          with_images: articles?.filter((a: any) => a.image_url).length || 0,
+          with_videos: articles?.filter((a: any) => a.video_url).length || 0,
+          with_youtube: articles?.filter((a: any) => a.youtube_url).length || 0,
           last_updated: new Date().toISOString()
         }
       }
@@ -116,10 +173,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Insert articles into Supabase
+    // Ensure table exists before inserting
+    await ensureTableExists();
+
+    // Insert articles into Supabase with upsert to handle duplicates
     const { data, error } = await supabase
       .from('news_articles')
-      .insert(articles)
+      .upsert(articles, { 
+        onConflict: 'url',
+        ignoreDuplicates: false 
+      })
       .select();
 
     if (error) {
