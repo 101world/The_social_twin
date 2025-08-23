@@ -107,7 +107,7 @@ const categoryConfig: Record<string, {
 
 export default function NewsPage() {
   const [newsData, setNewsData] = useState<NewsData | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('World News');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -214,73 +214,109 @@ export default function NewsPage() {
   // Derived data (must be computed before any early return to keep hooks order stable)
   const articles = newsData?.articles || [];
   const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
-  const selectedArticles = categorizedArticles[selectedCategory] || [];
-  const SelectedIcon = categoryConfig[selectedCategory]?.icon || Globe;
+  const selectedArticles = selectedCategory === 'All' 
+    ? articles 
+    : categorizedArticles[selectedCategory] || [];
   
   // Hero prefers current category; fallback to global best
-  const categoryHero = selectedArticles
-    .filter(a => a.image_url)
-    .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
+  const categoryHero = selectedCategory === 'All'
+    ? articles.filter(a => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0]
+    : selectedArticles.filter(a => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
   const generalHero = articles
     .filter(article => article.image_url)
     .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
   const heroArticle = categoryHero || generalHero;
-  const StoryRow = ({ article }: { article: NewsArticle }) => (
-    <a
-      href={article.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group block py-6 border-b border-gray-900 hover:bg-gray-900/30 transition-colors"
-    >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-center">
-        <div className="md:col-span-8">
-          <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-white group-hover:text-blue-300 transition-colors line-clamp-2">
-            {article.title}
-          </h3>
-          <p className="mt-2 text-gray-400 line-clamp-2 md:line-clamp-3">
-            {article.snippet || article.summary}
-          </p>
-          <div className="mt-3 flex items-center text-sm text-gray-500 gap-3">
-            <span className="truncate max-w-[40ch]">{article.source}</span>
-            <span>•</span>
-            <span>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</span>
-            {article.image_url && (
-              <span className="flex items-center gap-1 text-gray-500"><ImageIcon className="w-4 h-4" /> Image</span>
-            )}
-            {article.video_url && (
-              <span className="flex items-center gap-1 text-gray-500"><Play className="w-4 h-4" /> Video</span>
-            )}
+  const StoryCard = ({ article }: { article: NewsArticle }) => (
+    <article className="group relative bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-gray-200">
+      <div className="relative">
+        {article.image_url && (
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <img
+              src={article.image_url}
+              alt={article.title}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-        </div>
-        <div className="md:col-span-4">
-          {article.image_url && (
-            <div className="relative overflow-hidden rounded-md aspect-video bg-gray-900/50">
-              <img
-                src={article.image_url}
-                alt={article.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10" />
+        )}
+        
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center text-xs text-gray-500 space-x-2">
+              <span className="font-medium text-blue-600 truncate max-w-[120px]">{article.source}</span>
+              <span>•</span>
+              <time>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</time>
             </div>
-          )}
+            
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigator.clipboard.writeText(article.url);
+                }}
+                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                title="Copy link"
+              >
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <h3 className="font-semibold text-gray-900 leading-tight mb-2 group-hover:text-blue-600 transition-colors line-clamp-3">
+              {article.title}
+            </h3>
+            
+            <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-3">
+              {article.snippet || article.summary}
+            </p>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                {article.video_url && (
+                  <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-2 py-1 rounded-full">
+                    <Play className="w-3 h-3" />
+                    <span>Video</span>
+                  </span>
+                )}
+                {article.youtube_url && (
+                  <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-2 py-1 rounded-full">
+                    <Play className="w-3 h-3" />
+                    <span>YouTube</span>
+                  </span>
+                )}
+              </div>
+              
+              <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                Read more →
+              </span>
+            </div>
+          </a>
         </div>
       </div>
-    </a>
+    </article>
   );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-12">
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-              <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
-              <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
-              <span className="ml-3 text-gray-400 text-lg">Loading latest stories...</span>
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-200"></div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-400"></div>
+              <span className="ml-3 text-gray-600 text-lg">Loading latest stories...</span>
             </div>
           </div>
         </div>
@@ -290,13 +326,11 @@ export default function NewsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-12">
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
-            <div className="text-gray-400 text-center max-w-md">
-              {error}
-            </div>
+            <div className="text-red-500 text-xl">⚠️ Unable to load news</div>
+            <div className="text-gray-600 text-center max-w-md">{error}</div>
             <div className="text-xs text-gray-500">Auto retrying in 30s…</div>
           </div>
         </div>
@@ -305,36 +339,37 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header with category dropdown and live auto-update info */}
-      <div className="border-b border-gray-900/80 bg-gray-950/70 backdrop-blur sticky top-0 z-50">
+    <div className="min-h-screen bg-gray-50">
+      {/* Clean Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/90">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight font-serif">
-                <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">101World News</span>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  101World News
+                </span>
               </h1>
               <div className="flex items-center gap-3 text-gray-500 text-sm">
-                <span className="relative inline-flex items-center">
-                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" aria-hidden />
-                  Live • auto-updates every 20 min
+                <span className="flex items-center">
+                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  Live • updates every 10 min
                 </span>
                 <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">{newsData?.metadata?.total_articles || 0} stories in last 30 min</span>
-                {lastUpdated ? (
+                <span className="hidden sm:inline">{newsData?.metadata?.total_articles || 0} stories</span>
+                {lastUpdated && (
                   <span className="ml-0 sm:ml-2">Updated {formatTimeAgo(lastUpdated.toISOString())}</span>
-                ) : null}
+                )}
               </div>
             </div>
+            
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-flex items-center justify-center rounded-md border border-gray-800 bg-gray-900/70 p-2">
-                <SelectedIcon className="w-4 h-4 text-gray-300" />
-              </span>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-gray-900/70 border border-gray-800 text-white rounded-md px-3 py-2 text-sm"
+                className="bg-white border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
+                <option value="All">All News</option>
                 {Object.keys(categoryConfig).map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
@@ -342,40 +377,95 @@ export default function NewsPage() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Hero Section (simple, no blocks) */}
+      <main className="container mx-auto px-4 py-8">
+        {/* Hero Section - Large Featured Story */}
         {heroArticle && (
           <section className="mb-12">
-            <a href={heroArticle.url} target="_blank" rel="noopener noreferrer" className="group block">
-              <div className="relative overflow-hidden rounded-lg aspect-video bg-gray-900/60">
-                <img
-                  src={heroArticle.image_url!}
-                  alt={heroArticle.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 font-serif">{heroArticle.title}</h2>
-                  <p className="text-gray-300 line-clamp-2">{heroArticle.snippet || heroArticle.summary}</p>
+            <article className="relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <div className="md:flex">
+                <div className="md:w-1/2">
+                  <div className="relative aspect-[4/3] md:aspect-auto md:h-full">
+                    <img
+                      src={heroArticle.image_url!}
+                      alt={heroArticle.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="md:w-1/2 p-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center text-sm text-gray-500 space-x-2">
+                      <span className="font-medium text-blue-600">{heroArticle.source}</span>
+                      <span>•</span>
+                      <time>{formatTimeAgo(heroArticle.published_at || heroArticle.publish_date || new Date().toISOString())}</time>
+                    </div>
+                    
+                    <button
+                      onClick={() => navigator.clipboard.writeText(heroArticle.url)}
+                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      title="Share story"
+                    >
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <a
+                    href={heroArticle.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group"
+                  >
+                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-4 group-hover:text-blue-600 transition-colors">
+                      {heroArticle.title}
+                    </h2>
+                    
+                    <p className="text-gray-600 leading-relaxed text-lg mb-6 line-clamp-4">
+                      {heroArticle.snippet || heroArticle.summary}
+                    </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {heroArticle.video_url && (
+                          <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-3 py-1 rounded-full text-sm">
+                            <Play className="w-4 h-4" />
+                            <span>Video</span>
+                          </span>
+                        )}
+                      </div>
+                      
+                      <span className="text-blue-600 font-medium group-hover:underline">
+                        Read full story →
+                      </span>
+                    </div>
+                  </a>
                 </div>
               </div>
-            </a>
+            </article>
           </section>
         )}
 
-        {/* Stream list for selected category */}
-        <section className="mt-6">
-          {(selectedArticles || []).slice(0, 50).map((a) => (
-            <StoryRow key={a.id} article={a} />
+        {/* News Grid */}
+        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {(selectedArticles || []).slice(heroArticle ? 1 : 0, 50).map((article) => (
+            <StoryCard key={article.id} article={article} />
           ))}
-          {selectedArticles.length === 0 && (
-            <div className="text-center text-gray-500 py-12">No stories in this category in the last 30 minutes.</div>
-          )}
         </section>
-      </div>
+        
+        {selectedArticles.length === 0 && (
+          <div className="text-center text-gray-500 py-16">
+            <div className="max-w-md mx-auto">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No stories found</h3>
+              <p className="text-gray-600">Try selecting a different category or check back in a few minutes for new stories.</p>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
