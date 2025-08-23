@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import Parser from 'rss-parser';
 
 // Initialize Supabase client with service role for full access
 const supabase = createClient(
@@ -102,7 +103,46 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // Get total count
+    // If no fresh articles found, fall back to direct RSS so page is never empty
+    let fallbackArticles: any[] = [];
+    if (!articles || articles.length === 0) {
+      try {
+        const parser = new Parser();
+        const feeds = [
+          'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+          'http://feeds.bbci.co.uk/news/world/rss.xml',
+          'https://feeds.reuters.com/reuters/worldNews',
+          'https://www.theguardian.com/world/rss'
+        ];
+        const results: any[] = [];
+        for (const url of feeds) {
+          const feed = await parser.parseURL(url);
+          for (const entry of (feed.items || []).slice(0, 10)) {
+            results.push({
+              id: entry.id || entry.link || Math.random().toString(36).slice(2),
+              title: entry.title || 'Untitled',
+              snippet: (entry.contentSnippet || entry.content || '').slice(0, 300),
+              summary: (entry.contentSnippet || entry.content || '').slice(0, 300),
+              url: entry.link,
+              image_url: null,
+              video_url: null,
+              youtube_url: null,
+              category: 'General',
+              source: feed.title || 'RSS',
+              published_at: entry.isoDate || new Date().toISOString(),
+              quality_score: 1
+            });
+            if (results.length >= 50) break;
+          }
+          if (results.length >= 50) break;
+        }
+        fallbackArticles = results;
+      } catch (e) {
+        console.warn('RSS fallback failed:', (e as Error).message);
+      }
+    }
+
+    // Get total count (based on Supabase fresh window)
     const { count } = await supabase
       .from('news_articles')
       .select('*', { count: 'exact', head: true })
@@ -131,8 +171,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        articles: articles || [],
-        total: count || 0,
+  articles: (articles && articles.length > 0) ? articles : fallbackArticles,
+  total: (articles && articles.length > 0) ? (count || articles.length) : fallbackArticles.length,
         categories: categoryStats,
         filters: {
           category,
@@ -141,10 +181,16 @@ export async function GET(request: NextRequest) {
           limit
         },
         metadata: {
-          total_articles: count || 0,
-          with_images: articles?.filter((a: any) => a.image_url).length || 0,
-          with_videos: articles?.filter((a: any) => a.video_url).length || 0,
-          with_youtube: articles?.filter((a: any) => a.youtube_url).length || 0,
+          total_articles: (articles && articles.length > 0) ? (count || 0) : fallbackArticles.length,
+          with_images: (articles && articles.length > 0)
+            ? (articles?.filter((a: any) => a.image_url).length || 0)
+            : 0,
+          with_videos: (articles && articles.length > 0)
+            ? (articles?.filter((a: any) => a.video_url).length || 0)
+            : 0,
+          with_youtube: (articles && articles.length > 0)
+            ? (articles?.filter((a: any) => a.youtube_url).length || 0)
+            : 0,
           last_updated: new Date().toISOString()
         }
       }
