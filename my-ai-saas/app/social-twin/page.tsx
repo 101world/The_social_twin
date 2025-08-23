@@ -1856,7 +1856,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
                       <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                        <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
                         <div className="rounded-lg border p-2">
                           <textarea
                             value={input}
@@ -2582,54 +2581,122 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right - UNIFIED FOR MOBILE AND DESKTOP */}
+                {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
                 <div className="mb-2 flex items-center gap-2 justify-between">
                   <div className="flex items-center gap-1 flex-wrap">
-                    {/* Mode buttons - same styling for both */}
-                    <button 
-                      title="Text mode" 
-                      onClick={() => setMode('text')}
-                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
-                        mode === 'text'
-                          ? 'bg-blue-500 text-white shadow-md'
-                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
-                      }`}
-                    > 
-                      text
-                    </button>
-                    <button 
-                      title="Image mode" 
-                      onClick={() => setMode('image')}
-                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
-                        mode === 'image'
-                          ? 'bg-green-500 text-white shadow-md'
-                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
-                      }`}
-                    > 
-                      image
-                    </button>
-                    <button 
-                      title="Modify image" 
-                      onClick={() => setMode('image-modify')}
-                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
-                        mode === 'image-modify'
-                          ? 'bg-purple-500 text-white shadow-md'
-                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
-                      }`}
-                    > 
-                      Modify
-                    </button>
-                    <button 
-                      title="Video mode" 
-                      onClick={() => setMode('video')}
-                      className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'} rounded font-medium transition-all ${
-                        mode === 'video'
-                          ? 'bg-red-500 text-white shadow-md'
-                          : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
-                      }`}
-                    > 
-                      video
-                    </button>
+                    {/* Mode buttons - SVG icons for mobile, text for desktop */}
+                    {isMobile ? (
+                      <>
+                        {/* Mobile: SVG icon buttons (no background) */}
+                        <button 
+                          title="Text mode" 
+                          onClick={() => setMode('text')}
+                          className={`p-2 transition-all ${
+                            mode === 'text'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Image mode" 
+                          onClick={() => setMode('image')}
+                          className={`p-2 transition-all ${
+                            mode === 'image'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Modify image" 
+                          onClick={() => setMode('image-modify')}
+                          className={`p-2 transition-all ${
+                            mode === 'image-modify'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Video mode" 
+                          onClick={() => setMode('video')}
+                          className={`p-2 transition-all ${
+                            mode === 'video'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
+                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Desktop: Text buttons */}
+                        <button 
+                          title="Text mode" 
+                          onClick={() => setMode('text')}
+                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                            mode === 'text'
+                              ? 'bg-blue-500 text-white shadow-md'
+                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                          }`}
+                        > 
+                          text
+                        </button>
+                        <button 
+                          title="Image mode" 
+                          onClick={() => setMode('image')}
+                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                            mode === 'image'
+                              ? 'bg-green-500 text-white shadow-md'
+                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                          }`}
+                        > 
+                          image
+                        </button>
+                        <button 
+                          title="Modify image" 
+                          onClick={() => setMode('image-modify')}
+                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                            mode === 'image-modify'
+                              ? 'bg-purple-500 text-white shadow-md'
+                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                          }`}
+                        > 
+                          Modify
+                        </button>
+                        <button 
+                          title="Video mode" 
+                          onClick={() => setMode('video')}
+                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                            mode === 'video'
+                              ? 'bg-red-500 text-white shadow-md'
+                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                          }`}
+                        > 
+                          video
+                        </button>
+                      </>
+                    )}
                     
                     {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
@@ -2760,7 +2827,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={isMobile ? "" : "Hey, what's on your mind? ..."}
+                    placeholder=""
                     className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
                     ref={bottomInputRef}
                     style={{ 
