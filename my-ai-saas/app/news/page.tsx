@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Globe, Rocket, Heart, DollarSign, Palette, Leaf, Play, Image as ImageIcon } from 'lucide-react';
+import { Send, Search, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Play, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
@@ -107,19 +107,54 @@ const categoryConfig: Record<string, {
 
 export default function NewsPage() {
   const [newsData, setNewsData] = useState<NewsData | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Your Feed');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<NewsArticle[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    setSearchError(null);
+    setSelectedCategory('Search Results');
+    
+    try {
+      const response = await fetch('/api/news/search-news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSearchResults(result.data.articles || []);
+      } else {
+        setSearchError(result.error || 'Search failed');
+      }
+    } catch (err) {
+      setSearchError('Failed to search news');
+      console.error('Search error:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     fetchNews();
-    // Auto-refresh every 20 minutes (no manual control)
+    // Auto-refresh every 10 minutes
     const id = setInterval(() => {
-      fetchNews();
-    }, 20 * 60 * 1000);
+      if (selectedCategory === 'Your Feed') {
+        fetchNews();
+      }
+    }, 10 * 60 * 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [selectedCategory]);
 
   const fetchNews = async () => {
     try {
@@ -214,12 +249,18 @@ export default function NewsPage() {
   // Derived data (must be computed before any early return to keep hooks order stable)
   const articles = newsData?.articles || [];
   const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
-  const selectedArticles = selectedCategory === 'All' 
-    ? articles 
-    : categorizedArticles[selectedCategory] || [];
+  
+  let selectedArticles: NewsArticle[] = [];
+  if (selectedCategory === 'Your Feed') {
+    selectedArticles = articles;
+  } else if (selectedCategory === 'Search Results') {
+    selectedArticles = searchResults;
+  } else {
+    selectedArticles = categorizedArticles[selectedCategory] || [];
+  }
   
   // Hero prefers current category; fallback to global best
-  const categoryHero = selectedCategory === 'All'
+  const categoryHero = selectedCategory === 'Your Feed'
     ? articles.filter(a => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0]
     : selectedArticles.filter(a => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
   const generalHero = articles
@@ -227,7 +268,7 @@ export default function NewsPage() {
     .sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
   const heroArticle = categoryHero || generalHero;
   const StoryCard = ({ article }: { article: NewsArticle }) => (
-    <article className="group relative bg-white rounded-lg border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-gray-200">
+    <article className="group relative bg-gray-800 rounded-lg border border-gray-700 overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 hover:border-gray-600">
       <div className="relative">
         {article.image_url && (
           <div className="relative aspect-[16/9] overflow-hidden">
@@ -239,14 +280,14 @@ export default function NewsPage() {
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
         )}
         
         <div className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center text-xs text-gray-500 space-x-2">
-              <span className="font-medium text-blue-600 truncate max-w-[120px]">{article.source}</span>
+            <div className="flex items-center text-xs text-gray-400 space-x-2">
+              <span className="font-medium text-blue-400 truncate max-w-[120px]">{article.source}</span>
               <span>•</span>
               <time>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</time>
             </div>
@@ -257,7 +298,7 @@ export default function NewsPage() {
                   e.preventDefault();
                   navigator.clipboard.writeText(article.url);
                 }}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                className="p-1.5 rounded-full hover:bg-gray-700 transition-colors"
                 title="Copy link"
               >
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,31 +314,31 @@ export default function NewsPage() {
             rel="noopener noreferrer"
             className="block"
           >
-            <h3 className="font-semibold text-gray-900 leading-tight mb-2 group-hover:text-blue-600 transition-colors line-clamp-3">
+            <h3 className="font-semibold text-white leading-tight mb-2 group-hover:text-blue-300 transition-colors line-clamp-3">
               {article.title}
             </h3>
             
-            <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-3">
+            <p className="text-sm text-gray-300 leading-relaxed line-clamp-3 mb-3">
               {article.snippet || article.summary}
             </p>
             
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <div className="flex items-center space-x-2 text-xs text-gray-400">
                 {article.video_url && (
-                  <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-2 py-1 rounded-full">
+                  <span className="flex items-center space-x-1 bg-red-900/30 text-red-400 px-2 py-1 rounded-full">
                     <Play className="w-3 h-3" />
                     <span>Video</span>
                   </span>
                 )}
                 {article.youtube_url && (
-                  <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-2 py-1 rounded-full">
+                  <span className="flex items-center space-x-1 bg-red-900/30 text-red-400 px-2 py-1 rounded-full">
                     <Play className="w-3 h-3" />
                     <span>YouTube</span>
                   </span>
                 )}
               </div>
               
-              <span className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
                 Read more →
               </span>
             </div>
@@ -309,14 +350,14 @@ export default function NewsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-900">
         <div className="container mx-auto px-4 py-12">
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-200"></div>
               <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-400"></div>
-              <span className="ml-3 text-gray-600 text-lg">Loading latest stories...</span>
+              <span className="ml-3 text-gray-300 text-lg">Loading latest stories...</span>
             </div>
           </div>
         </div>
@@ -326,11 +367,11 @@ export default function NewsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-900">
         <div className="container mx-auto px-4 py-12">
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="text-red-500 text-xl">⚠️ Unable to load news</div>
-            <div className="text-gray-600 text-center max-w-md">{error}</div>
+            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
+            <div className="text-gray-300 text-center max-w-md">{error}</div>
             <div className="text-xs text-gray-500">Auto retrying in 30s…</div>
           </div>
         </div>
@@ -339,51 +380,12 @@ export default function NewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Clean Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/90">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-1">
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  101World News
-                </span>
-              </h1>
-              <div className="flex items-center gap-3 text-gray-500 text-sm">
-                <span className="flex items-center">
-                  <span className="mr-2 inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  Live • updates every 10 min
-                </span>
-                <span className="hidden sm:inline">•</span>
-                <span className="hidden sm:inline">{newsData?.metadata?.total_articles || 0} stories</span>
-                {lastUpdated && (
-                  <span className="ml-0 sm:ml-2">Updated {formatTimeAgo(lastUpdated.toISOString())}</span>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-white border border-gray-200 text-gray-700 rounded-lg px-3 py-2 text-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="All">All News</option>
-                {Object.keys(categoryConfig).map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-gray-900 relative pb-24">
       <main className="container mx-auto px-4 py-8">
         {/* Hero Section - Large Featured Story */}
-        {heroArticle && (
+        {heroArticle && selectedCategory !== 'Search Results' && (
           <section className="mb-12">
-            <article className="relative bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <article className="relative bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-700 hover:shadow-xl hover:shadow-blue-500/10 transition-shadow">
               <div className="md:flex">
                 <div className="md:w-1/2">
                   <div className="relative aspect-[4/3] md:aspect-auto md:h-full">
@@ -398,15 +400,15 @@ export default function NewsPage() {
                 
                 <div className="md:w-1/2 p-8">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center text-sm text-gray-500 space-x-2">
-                      <span className="font-medium text-blue-600">{heroArticle.source}</span>
+                    <div className="flex items-center text-sm text-gray-400 space-x-2">
+                      <span className="font-medium text-blue-400">{heroArticle.source}</span>
                       <span>•</span>
                       <time>{formatTimeAgo(heroArticle.published_at || heroArticle.publish_date || new Date().toISOString())}</time>
                     </div>
                     
                     <button
                       onClick={() => navigator.clipboard.writeText(heroArticle.url)}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                      className="p-2 rounded-full hover:bg-gray-700 transition-colors"
                       title="Share story"
                     >
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,25 +423,25 @@ export default function NewsPage() {
                     rel="noopener noreferrer"
                     className="block group"
                   >
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight mb-4 group-hover:text-blue-600 transition-colors">
+                    <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-4 group-hover:text-blue-300 transition-colors">
                       {heroArticle.title}
                     </h2>
                     
-                    <p className="text-gray-600 leading-relaxed text-lg mb-6 line-clamp-4">
+                    <p className="text-gray-300 leading-relaxed text-lg mb-6 line-clamp-4">
                       {heroArticle.snippet || heroArticle.summary}
                     </p>
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         {heroArticle.video_url && (
-                          <span className="flex items-center space-x-1 bg-red-50 text-red-600 px-3 py-1 rounded-full text-sm">
+                          <span className="flex items-center space-x-1 bg-red-900/30 text-red-400 px-3 py-1 rounded-full text-sm">
                             <Play className="w-4 h-4" />
                             <span>Video</span>
                           </span>
                         )}
                       </div>
                       
-                      <span className="text-blue-600 font-medium group-hover:underline">
+                      <span className="text-blue-400 font-medium group-hover:underline">
                         Read full story →
                       </span>
                     </div>
@@ -450,22 +452,104 @@ export default function NewsPage() {
           </section>
         )}
 
+        {/* Search Results Header */}
+        {selectedCategory === 'Search Results' && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Search Results for "{searchQuery}"
+            </h2>
+            <p className="text-gray-400">
+              {isSearching ? 'Searching...' : `Found ${selectedArticles.length} articles`}
+            </p>
+          </div>
+        )}
+
+        {/* Loading state for search */}
+        {isSearching && (
+          <div className="flex items-center justify-center py-16">
+            <div className="flex items-center space-x-3">
+              <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+              <span className="text-gray-300 text-lg">Searching news worldwide...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Search Error */}
+        {searchError && selectedCategory === 'Search Results' && (
+          <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 mb-8">
+            <div className="text-red-400">Search failed: {searchError}</div>
+          </div>
+        )}
+
         {/* News Grid */}
         <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {(selectedArticles || []).slice(heroArticle ? 1 : 0, 50).map((article) => (
+          {(selectedArticles || []).slice(heroArticle && selectedCategory !== 'Search Results' ? 1 : 0, 50).map((article) => (
             <StoryCard key={article.id} article={article} />
           ))}
         </section>
         
-        {selectedArticles.length === 0 && (
-          <div className="text-center text-gray-500 py-16">
+        {selectedArticles.length === 0 && !isSearching && (
+          <div className="text-center text-gray-400 py-16">
             <div className="max-w-md mx-auto">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No stories found</h3>
-              <p className="text-gray-600">Try selecting a different category or check back in a few minutes for new stories.</p>
+              <h3 className="text-lg font-medium text-white mb-2">No stories found</h3>
+              <p className="text-gray-400">
+                {selectedCategory === 'Search Results' 
+                  ? 'Try a different search term' 
+                  : 'Try selecting a different category or check back in a few minutes for new stories.'}
+              </p>
             </div>
           </div>
         )}
       </main>
+
+      {/* Floating Search Prompt */}
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl p-4 min-w-[400px] max-w-[600px]">
+          <div className="flex items-center space-x-3">
+            <div className="relative flex-1">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 bg-transparent text-gray-400 text-sm border-none outline-none cursor-pointer z-10"
+              >
+                <option value="Your Feed">Your Feed</option>
+                <option value="Search Results">Search</option>
+                {Object.keys(categoryConfig).map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder={selectedCategory === 'Search Results' ? "Search news worldwide..." : "Switch to Search to find specific news"}
+                disabled={selectedCategory !== 'Search Results'}
+                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-12 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              />
+              
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            </div>
+            
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || isSearching || selectedCategory !== 'Search Results'}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-xl p-3 transition-colors"
+            >
+              {isSearching ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-center mt-2 text-xs text-gray-500">
+            Live updates every 10 minutes • Powered by AI scraping
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
