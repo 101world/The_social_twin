@@ -7,7 +7,7 @@ import schedule
 import time
 import logging
 from datetime import datetime
-from news_scraper import NewsScraper
+from news_scraper import EnhancedNewsScraper
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,7 +18,7 @@ def run_scheduled_scrape():
     logger.info("Starting scheduled news scrape...")
     
     try:
-        scraper = NewsScraper()
+        scraper = EnhancedNewsScraper()
         scraper.run_daily_scrape()
         logger.info("Scheduled scrape completed successfully")
         
