@@ -1,193 +1,428 @@
-"use client";
-import { useState, useEffect, useMemo, type ComponentType } from 'react';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Play, Image as ImageIcon, Globe, Rocket, Heart, DollarSign, Palette, Leaf } from 'lucide-react';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Search, MapPin, Cloud, Sun, CloudRain, Snowflake, TrendingUp, ExternalLink, Clock, Filter } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
   title: string;
-  snippet: string;
-  summary?: string;
-  url: string;
-  image_url?: string;
-  video_url?: string;
-  youtube_url?: string;
+  content: string;
+  published_at: string;
+  source_name: string;
+  source_url: string;
   category: string;
-  source: string;
-  publish_date?: string;
-  published_at?: string;
-  quality_score?: number;
-  author?: string;
-  tags?: string[];
+  quality_score: number;
+  image_url?: string;
+  summary?: string;
 }
 
-interface NewsData {
-  articles: NewsArticle[];
-  total: number;
-  metadata?: {
-    total_articles: number;
-    with_images: number;
-    with_videos: number;
-    with_youtube: number;
-    last_updated: string;
+interface WeatherData {
+  temperature: number;
+  condition: string;
+  location: string;
+}
+
+// Minimal weather-only header
+const MinimalWeatherHeader = () => {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [location, setLocation] = useState<string>('Getting location...');
+
+  useEffect(() => {
+    const getLocationAndWeather = async () => {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
+        const { latitude, longitude } = position.coords;
+        
+        setWeather({
+          temperature: 24,
+          condition: 'Clear',
+          location: 'Your City'
+        });
+        setLocation('Your City');
+      } catch (error) {
+        console.error('Location/Weather error:', error);
+        setLocation('Demo City');
+        setWeather({
+          temperature: 24,
+          condition: 'Clear',
+          location: 'Demo City'
+        });
+      }
+    };
+
+    getLocationAndWeather();
+  }, []);
+
+  const getWeatherIcon = (condition: string) => {
+    switch (condition.toLowerCase()) {
+      case 'clear':
+      case 'sunny':
+        return <Sun className="w-4 h-4 text-orange-500" />;
+      case 'clouds':
+      case 'cloudy':
+        return <Cloud className="w-4 h-4 text-gray-600" />;
+      case 'rain':
+      case 'drizzle':
+        return <CloudRain className="w-4 h-4 text-blue-500" />;
+      case 'snow':
+        return <Snowflake className="w-4 h-4 text-blue-300" />;
+      default:
+        return <Cloud className="w-4 h-4 text-gray-600" />;
+    }
   };
-}
 
-const categoryConfig: Record<string, { icon: ComponentType<any>; color: string; accent: string; gradient: string; keywords: string[]; description: string; bgColor: string; textColor: string; }> = {
-  'World News': { icon: Globe, color: 'bg-red-500', accent: 'border-red-200 hover:border-red-300', gradient: 'from-red-500 to-red-600', keywords: ['world','international','global','war','peace','disaster','breaking','government','politics'], description: 'Global headlines and breaking news', bgColor: 'bg-red-50', textColor: 'text-red-900' },
-  'Future & Innovation': { icon: Rocket, color: 'bg-purple-500', accent: 'border-purple-200 hover:border-purple-300', gradient: 'from-purple-500 to-purple-600', keywords: ['technology','ai','space','innovation','breakthrough','discover','nasa','tech','startup','crypto'], description: 'Technology, AI, space exploration and scientific breakthroughs', bgColor: 'bg-purple-50', textColor: 'text-purple-900' },
-  'Human Stories': { icon: Heart, color: 'bg-pink-500', accent: 'border-pink-200 hover:border-pink-300', gradient: 'from-pink-500 to-pink-600', keywords: ['human','survivor','hero','inspiring','culture','community','life','story','people'], description: 'Inspiring human interest stories and cultural highlights', bgColor: 'bg-pink-50', textColor: 'text-pink-900' },
-  'Money & Power': { icon: DollarSign, color: 'bg-green-500', accent: 'border-green-200 hover:border-green-300', gradient: 'from-green-500 to-green-600', keywords: ['business','finance','economy','market','trading','investment','money','power','corporate'], description: 'Finance, economics, markets and power dynamics', bgColor: 'bg-green-50', textColor: 'text-green-900' },
-  'Culture & Lifestyle': { icon: Palette, color: 'bg-orange-500', accent: 'border-orange-200 hover:border-orange-300', gradient: 'from-orange-500 to-orange-600', keywords: ['culture','lifestyle','entertainment','sports','music','art','fashion','celebrity','travel'], description: 'Entertainment, sports, arts and lifestyle trends', bgColor: 'bg-orange-50', textColor: 'text-orange-900' },
-  'Planet & Society': { icon: Leaf, color: 'bg-emerald-500', accent: 'border-emerald-200 hover:border-emerald-300', gradient: 'from-emerald-500 to-emerald-600', keywords: ['climate','environment','health','science','society','sustainability','medical','research'], description: 'Climate, environment, health and social change', bgColor: 'bg-emerald-50', textColor: 'text-emerald-900' },
+  return (
+    <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-end">
+          <div className="flex items-center gap-4 text-black">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-orange-500" />
+              <span className="text-sm font-medium text-gray-700">{location}</span>
+            </div>
+            {weather && (
+              <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
+                {getWeatherIcon(weather.condition)}
+                <span className="text-sm font-semibold text-black">{weather.temperature}°C</span>
+                <span className="text-xs text-gray-500">{weather.condition}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modern news card with image focus and trend button
+const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleTrend = () => {
+    console.log('Trending:', article.title);
+  };
+
+  const openSource = () => {
+    window.open(article.source_url, '_blank');
+  };
+
+  if (layout === "large") {
+    return (
+      <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-300">
+        {article.image_url && (
+          <div className="aspect-[16/9] overflow-hidden">
+            <img 
+              src={article.image_url} 
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="p-6">
+          <h2 className="font-bold text-black text-xl leading-tight mb-3 group-hover:text-orange-600 transition-colors">
+            {article.title}
+          </h2>
+          
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 text-sm text-gray-600">
+              <span className="font-semibold text-black">{article.source_name}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(article.published_at)}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleTrend}
+                className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
+              >
+                <TrendingUp className="w-3 h-3" />
+                Trend
+              </button>
+              <button 
+                onClick={openSource}
+                className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-300">
+      {article.image_url && (
+        <div className="aspect-video overflow-hidden">
+          <img 
+            src={article.image_url} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
+      
+      <div className="p-4">
+        <h3 className="font-semibold text-black text-base leading-tight mb-3 group-hover:text-orange-600 transition-colors line-clamp-2">
+          {article.title}
+        </h3>
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span className="font-semibold text-black">{article.source_name}</span>
+            <span className="text-gray-400">•</span>
+            <span>{formatDate(article.published_at)}</span>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleTrend}
+              className="flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-100 transition-colors"
+            >
+              <TrendingUp className="w-3 h-3" />
+              Trend
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Headlines section component
+const HeadlinesSection = ({ title, articles, layout }: { title: string; articles: NewsArticle[]; layout: 'hero' | 'two-col' | 'three-col' }) => {
+  if (layout === 'hero') {
+    return (
+      <section className="mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-black">{title}</h2>
+          <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-orange-600 transition-colors">
+            <Filter className="w-4 h-4" />
+            View All
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-6">
+          {articles.slice(0, 1).map(article => (
+            <ModernNewsCard key={article.id} article={article} layout="large" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (layout === 'two-col') {
+    return (
+      <section className="mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-black">{title}</h2>
+          <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-orange-600 transition-colors">
+            <Filter className="w-4 h-4" />
+            View All
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {articles.slice(0, 2).map(article => (
+            <ModernNewsCard key={article.id} article={article} />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mb-12">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-black">{title}</h2>
+        <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-orange-600 transition-colors">
+          <Filter className="w-4 h-4" />
+          View All
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {articles.slice(0, 3).map(article => (
+          <ModernNewsCard key={article.id} article={article} />
+        ))}
+      </div>
+    </section>
+  );
 };
 
 export default function NewsPage() {
-  const [newsData, setNewsData] = useState<NewsData | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('World News');
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  useEffect(() => { fetchNews(); }, []);
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
   const fetchNews = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const res = await fetch('/api/news?limit=100');
-      const result = await res.json();
-      if (result.success) setNewsData(result.data); else throw new Error(result.error || 'Failed to fetch news');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load news');
-      setNewsData({ articles: [], total: 0, metadata: { total_articles: 0, with_images: 0, with_videos: 0, with_youtube: 0, last_updated: new Date().toISOString() } });
-    } finally { setLoading(false); }
+      const response = await fetch('/api/news?limit=50');
+      const data = await response.json();
+      
+      if (data.success) {
+        // Sort by published date (newest first)
+        const sortedArticles = data.data.articles.sort((a: NewsArticle, b: NewsArticle) => 
+          new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+        );
+        setArticles(sortedArticles);
+      }
+    } catch (error) {
+      console.error('Error fetching news:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const categorizeArticles = (articles: NewsArticle[]) => {
-    const categorized: Record<string, NewsArticle[]> = {};
-    Object.keys(categoryConfig).forEach((c) => (categorized[c] = []));
-    articles.forEach((article) => {
-      const content = `${article.title} ${article.snippet || article.summary || ''} ${article.category}`.toLowerCase();
-      const match = Object.entries(categoryConfig).find(([_, cfg]) => cfg.keywords.some((k) => content.includes(k)));
-      categorized[match ? match[0] : 'World News'].push(article);
-    });
-    return categorized;
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const now = new Date();
-    const publishedDate = new Date(dateString);
-    const diffInHours = Math.floor((now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60));
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return publishedDate.toLocaleDateString();
-  };
+  const searchResults = articles.filter(article =>
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    article.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-              <div className="w-4 h-4 bg-purple-500 rounded-full animate-pulse animation-delay-200"></div>
-              <div className="w-4 h-4 bg-pink-500 rounded-full animate-pulse animation-delay-400"></div>
-              <span className="ml-3 text-gray-400 text-lg">Loading latest stories...</span>
-            </div>
+      <div className="min-h-screen bg-white">
+        <MinimalWeatherHeader />
+        <div className="pt-20 flex items-center justify-center h-96">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-black rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+            <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            <span className="ml-3 text-gray-600 font-medium">Loading latest news...</span>
           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center h-64 space-y-4">
-            <div className="text-red-400 text-xl">⚠️ Unable to load news</div>
-            <div className="text-gray-400 text-center max-w-md">{error}</div>
-            <Button onClick={fetchNews} variant="outline" className="border-gray-700 hover:border-gray-600">Reload News</Button>
+  return (
+    <div className="min-h-screen bg-white">
+      <MinimalWeatherHeader />
+      
+      {/* Main Content */}
+      <div className="pt-20 max-w-7xl mx-auto px-6 py-8">
+        
+        {/* Search Bar */}
+        <div className="mb-12">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search breaking news... Powered by 101World"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200"
+            />
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  const articles = newsData?.articles || [];
-  const categorizedArticles = useMemo(() => categorizeArticles(articles), [articles]);
-  const selectedArticles = categorizedArticles[selectedCategory] || [];
-  const categoryHero = selectedArticles.filter((a) => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
-  const generalHero = articles.filter((a) => a.image_url).sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0))[0];
-  const heroArticle = categoryHero || generalHero;
-
-  const StoryRow = ({ article }: { article: NewsArticle }) => (
-    <a href={article.url} target="_blank" rel="noopener noreferrer" className="group block py-6 border-b border-gray-900 hover:bg-gray-900/30 transition-colors">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-12 items-center">
-        <div className="md:col-span-8">
-          <h3 className="text-xl md:text-2xl font-semibold tracking-tight text-white group-hover:text-blue-300 transition-colors line-clamp-2">{article.title}</h3>
-          <p className="mt-2 text-gray-400 line-clamp-2 md:line-clamp-3">{article.snippet || article.summary}</p>
-          <div className="mt-3 flex items-center text-sm text-gray-500 gap-3">
-            <span className="truncate max-w-[40ch]">{article.source}</span>
-            <span>•</span>
-            <span>{formatTimeAgo(article.published_at || article.publish_date || new Date().toISOString())}</span>
-            {article.image_url && (<span className="flex items-center gap-1 text-gray-500"><ImageIcon className="w-4 h-4" /> Image</span>)}
-            {article.video_url && (<span className="flex items-center gap-1 text-gray-500"><Play className="w-4 h-4" /> Video</span>)}
-          </div>
-        </div>
-        <div className="md:col-span-4">
-          {article.image_url && (
-            <div className="relative overflow-hidden rounded-md aspect-video bg-gray-900/50">
-              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10" />
+          
+          {/* Search Dropdown */}
+          {isSearchOpen && searchQuery && (
+            <div className="relative max-w-2xl mx-auto mt-2">
+              <div className="absolute w-full bg-white border border-gray-200 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
+                <div className="p-4 border-b border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-600 mb-2">Search Results ({searchResults.length})</h3>
+                </div>
+                {searchResults.slice(0, 5).map(article => (
+                  <div key={article.id} className="p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0">
+                    <h4 className="font-medium text-black text-sm mb-1 line-clamp-2">{article.title}</h4>
+                    <p className="text-xs text-gray-600">{article.source_name} • {new Date(article.published_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+                <div className="p-3 text-center border-t border-gray-100">
+                  <span className="text-xs text-gray-500">Powered by 101World</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
-      </div>
-    </a>
-  );
 
-  return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="border-b border-gray-900/80 bg-gray-950/70 backdrop-blur sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1 tracking-tight"><span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">101World News</span></h1>
-              <p className="text-gray-500 text-sm">Ultra-fresh • {newsData?.metadata?.total_articles || 0} stories in last 30 min</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="bg-gray-900/70 border border-gray-800 text-white rounded-md px-3 py-2 text-sm">
-                {Object.keys(categoryConfig).map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
-              </select>
-              <Button onClick={fetchNews} variant="outline" size="sm" className="border-gray-800 hover:border-gray-700"><RefreshCw className="w-4 h-4 mr-2" /> Refresh</Button>
-            </div>
-          </div>
+        {/* Headlines Sections */}
+        <div onClick={() => setIsSearchOpen(false)}>
+          
+          {/* Breaking News - Hero Layout */}
+          <HeadlinesSection 
+            title="Breaking News" 
+            articles={articles.filter(a => a.image_url).slice(0, 1)} 
+            layout="hero" 
+          />
+          
+          {/* Top Stories - Two Column */}
+          <HeadlinesSection 
+            title="Top Stories" 
+            articles={articles.filter(a => a.image_url).slice(1, 3)} 
+            layout="two-col" 
+          />
+          
+          {/* World News - Three Column */}
+          <HeadlinesSection 
+            title="World News" 
+            articles={articles.filter(a => a.image_url).slice(3, 6)} 
+            layout="three-col" 
+          />
+          
+          {/* Technology - Two Column */}
+          <HeadlinesSection 
+            title="Technology" 
+            articles={articles.filter(a => 
+              a.image_url && (
+                a.title.toLowerCase().includes('tech') ||
+                a.title.toLowerCase().includes('ai') ||
+                a.category.toLowerCase().includes('tech')
+              )
+            ).slice(0, 2)} 
+            layout="two-col" 
+          />
+          
+          {/* Business - Three Column */}
+          <HeadlinesSection 
+            title="Business" 
+            articles={articles.filter(a => 
+              a.image_url && (
+                a.title.toLowerCase().includes('business') ||
+                a.title.toLowerCase().includes('market') ||
+                a.category.toLowerCase().includes('business')
+              )
+            ).slice(0, 3)} 
+            layout="three-col" 
+          />
+          
+          {/* Latest Updates - Two Column */}
+          <HeadlinesSection 
+            title="Latest Updates" 
+            articles={articles.filter(a => a.image_url).slice(6, 8)} 
+            layout="two-col" 
+          />
+          
         </div>
-      </div>
-
-      <div className="container mx-auto px-4 py-12">
-        {heroArticle && (
-          <section className="mb-12">
-            <a href={heroArticle.url} target="_blank" rel="noopener noreferrer" className="group block">
-              <div className="relative overflow-hidden rounded-lg aspect-video bg-gray-900/60">
-                <img src={heroArticle.image_url!} alt={heroArticle.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{heroArticle.title}</h2>
-                  <p className="text-gray-300 line-clamp-2">{heroArticle.snippet || heroArticle.summary}</p>
-                </div>
-              </div>
-            </a>
-          </section>
-        )}
-
-        <section className="mt-6">
-          {(selectedArticles || []).slice(0, 50).map((a) => (<StoryRow key={a.id} article={a} />))}
-          {selectedArticles.length === 0 && (<div className="text-center text-gray-500 py-12">No stories in this category in the last 30 minutes.</div>)}
-        </section>
       </div>
     </div>
   );
