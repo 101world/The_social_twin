@@ -2650,50 +2650,65 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </>
                     ) : (
                       <>
-                        {/* Desktop: Text buttons */}
+                        {/* Desktop: SVG icon buttons (same as mobile) */}
                         <button 
                           title="Text mode" 
                           onClick={() => setMode('text')}
-                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                          className={`p-2 rounded-lg transition-all ${
                             mode === 'text'
-                              ? 'bg-blue-500 text-white shadow-md'
-                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                              ? 'bg-blue-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
                           }`}
                         > 
-                          text
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         </button>
                         <button 
                           title="Image mode" 
                           onClick={() => setMode('image')}
-                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                          className={`p-2 rounded-lg transition-all ${
                             mode === 'image'
-                              ? 'bg-green-500 text-white shadow-md'
-                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                              ? 'bg-green-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
                           }`}
                         > 
-                          image
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         </button>
                         <button 
                           title="Modify image" 
                           onClick={() => setMode('image-modify')}
-                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                          className={`p-2 rounded-lg transition-all ${
                             mode === 'image-modify'
-                              ? 'bg-purple-500 text-white shadow-md'
-                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                              ? 'bg-purple-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
                           }`}
                         > 
-                          Modify
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         </button>
                         <button 
                           title="Video mode" 
                           onClick={() => setMode('video')}
-                          className={`px-3 py-1.5 text-sm rounded font-medium transition-all ${
+                          className={`p-2 rounded-lg transition-all ${
                             mode === 'video'
-                              ? 'bg-red-500 text-white shadow-md'
-                              : `${darkMode ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'}`
+                              ? 'bg-red-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
                           }`}
                         > 
-                          video
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
+                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
                         </button>
                       </>
                     )}
@@ -2835,7 +2850,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                     disabled={isGeneratingBatch}
                   />
-                  <div className="flex items-center gap-1">
+                  {/* Action buttons in 2x2 grid for more text box space */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
@@ -2869,7 +2886,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Folder & save actions - same for both */}
+                    {/* Bottom row: Folder + Save */}
                     <button
                       onClick={() => setFolderModalOpen(true)}
                       className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
