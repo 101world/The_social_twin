@@ -96,6 +96,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showFeatureControls, setShowFeatureControls] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -2715,6 +2716,42 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
+                
+                {/* Feature Controls Toggle - Only show if not in feature controls mode */}
+                {!showFeatureControls && (
+                  <div className="mb-2 flex justify-center">
+                    <button
+                      onClick={() => setShowFeatureControls(true)}
+                      className={`px-3 py-1.5 text-xs rounded-lg transition-all ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+                      title="Show feature controls"
+                    >
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                      </svg>
+                      Features
+                    </button>
+                  </div>
+                )}
+                
+                {/* Feature Controls - Hidden by default */}
+                {showFeatureControls && (
+                  <>
+                    {/* Close button for feature controls */}
+                    <div className="mb-2 flex justify-between items-center">
+                      <span className={`text-xs font-medium ${darkMode ? 'text-neutral-300' : 'text-gray-600'}`}>
+                        Generation Features
+                      </span>
+                      <button
+                        onClick={() => setShowFeatureControls(false)}
+                        className={`p-1 rounded transition-all ${darkMode ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                        title="Hide feature controls"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                
                 {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
                 <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
                   <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
@@ -2977,6 +3014,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     )}
                   </div>
                 </div>
+                  </>
+                )}
 
                 {/* Prompt input area - unified desktop feel */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
@@ -2985,31 +3024,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                     placeholder=""
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                    className={`${isMobile ? 'min-h-[28px] max-h-[60px] text-sm' : 'min-h-[32px] max-h-[80px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                     ref={bottomInputRef}
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
                     }}
                     disabled={isGeneratingBatch}
                   />
-                    {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5">
+                    {/* Action buttons in 2x2 grid - clean borderless design aligned with textarea */}
+                  <div className={`grid grid-cols-2 gap-1 ${isMobile ? 'h-[28px]' : 'h-[32px]'}`}>
                     {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative ${isMobile ? 'h-4 w-9' : 'h-5 w-8'} cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/20' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
-                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <label className={`group cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" className="transition-colors group-hover:stroke-gray-400">
+                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
                         type="file"
@@ -3028,13 +3067,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Folder + Debug (mobile only) */}
+                    {/* Bottom row: Folder + Debug/Save */}
                     <button
                       onClick={() => setFolderModalOpen(true)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                      className={`flex items-center justify-center rounded transition-all hover:scale-105 ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
                       title="Organize in folder"
                     >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                      <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </button>
@@ -3061,10 +3100,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
                           alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
                         }}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        className={`flex items-center justify-center rounded transition-all hover:scale-105 ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
                         title="Debug info"
                       >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
                           <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
@@ -3078,10 +3117,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           console.log('Saving conversation:', data);
                         }}
                         disabled={!messages.length}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        className={`flex items-center justify-center rounded transition-all hover:scale-105 ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
                         title="Save as recipe"
                       >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
                           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
