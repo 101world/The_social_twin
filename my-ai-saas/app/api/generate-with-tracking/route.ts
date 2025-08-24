@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       batch_size = 1,
       userId: bodyUserId,
       attachment,
-      saveToLibrary = true, // Default to true to save in library
+      saveToLibrary = true, // ALWAYS save to library - ignore frontend flag
       ...otherParams
     } = body;
 

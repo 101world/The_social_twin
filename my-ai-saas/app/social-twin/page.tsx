@@ -134,7 +134,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Quick Create enhanced state
   const [showQuickAdvanced, setShowQuickAdvanced] = useState<boolean>(false);
   const [sendToCanvas, setSendToCanvas] = useState<boolean>(true);
-  const [saveToLibrary, setSaveToLibrary] = useState<boolean>(false);
+  const [saveToLibrary, setSaveToLibrary] = useState<boolean>(true); // Default to TRUE - save all generations to library
   // Quick Create dropdown/tabs selections
   const [quickTemplateSel, setQuickTemplateSel] = useState<string>('');
   const [quickPresetSel, setQuickPresetSel] = useState<string>('');
@@ -175,12 +175,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     } catch {}
   }, []);
 
-  // Initialize saveToLibrary preference from localStorage
+  // Initialize saveToLibrary preference from localStorage - DEFAULT TO TRUE
   useEffect(() => {
     try {
       const v = localStorage.getItem('social_twin_save_to_library');
       if (v === '1') setSaveToLibrary(true);
       else if (v === '0') setSaveToLibrary(false);
+      else setSaveToLibrary(true); // Default to true if no preference saved
     } catch {}
   }, []);
 
