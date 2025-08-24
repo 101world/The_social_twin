@@ -1319,6 +1319,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     console.log('Mode:', mode);
     console.log('Input:', JSON.stringify(input));
     console.log('Active endpoint:', activeEndpoint);
+    console.log('User agent:', navigator.userAgent);
+    console.log('Is mobile detected:', isMobile);
+    console.log('Window width:', window.innerWidth);
+    console.log('Credits info:', creditInfo);
+    console.log('Can afford generation:', canAffordGeneration);
+    console.log('Generation cost:', generationCost);
     console.log('LoRA name:', loraName);
     console.log('LoRA scale:', loraScale);
     console.log('Batch size:', batchSize);
@@ -2865,43 +2871,74 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {(mode === 'image' || mode === 'image-modify') && (
                       <>
+                        {/* Effects LoRA (Power Loader) */}
                         <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Effects"
+                          value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === 'None') setEffectLora('');
+                            else if (v === 'Custom...') setEffectLora(effectLora || '');
+                            else setEffectLora(v);
+                          }}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Effects LoRA"
                         >
-                          <option value="off">{isMobile ? 'No FX' : 'No effects'}</option>
-                          <option value="subtle">{isMobile ? 'Subtle' : 'Subtle effects'}</option>
-                          <option value="cinematic">{isMobile ? 'Cinema' : 'Cinematic'}</option>
-                          <option value="stylized">{isMobile ? 'Style' : 'Stylized'}</option>
-                        </select>
-
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Batch size"
-                        >
-                          <option value="">{isMobile ? '1x' : 'Single'}</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{isMobile ? `${n}x` : `Batch ${n}`}</option>
+                          {(['None','Custom...'] as const).map((opt) => (
+                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                          ))}
+                          {availableLoras.map((lora) => (
+                            <option key={lora.filename} value={lora.filename}>
+                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                            </option>
                           ))}
                         </select>
 
-                        {(mode === 'image' || mode === 'image-modify') && (
-                          <select
-                            value={aspectRatio}
-                            onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                            title="Aspect Ratio"
-                          >
-                            <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
-                            {AR_CHOICES.map((ar) => (
-                              <option key={ar} value={ar}>{ar}</option>
-                            ))}
-                          </select>
-                        )}
+                        {/* Character LoRA */}
+                        <select
+                          value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === 'None') setLoraName('');
+                            else if (v === 'Custom...') setLoraName(loraName || '');
+                            else setLoraName(v);
+                          }}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Character LoRA"
+                        >
+                          {(['None','Custom...'] as const).map((opt) => (
+                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                          ))}
+                          {availableLoras.map((lora) => (
+                            <option key={lora.filename} value={lora.filename}>
+                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Batch size */}
+                        <select
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Quantity"
+                        >
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+
+                        {/* Aspect ratio */}
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Aspect Ratio"
+                        >
+                          <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
                       </>
                     )}
 
@@ -2918,14 +2955,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </select>
 
                         <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
                           className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Batch size"
+                          title="Quantity"
                         >
-                          <option value="">{isMobile ? '1x' : 'Single'}</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{isMobile ? `${n}x` : `Batch ${n}`}</option>
+                            <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
 
@@ -2986,7 +3022,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                     disabled={isGeneratingBatch}
                   />
-                  {/* Action buttons in 2x2 grid for more text box space */}
+                    {/* Action buttons in 2x2 grid for more text box space */}
                   <div className="grid grid-cols-2 gap-1.5">
                     {/* Top row: Send + Upload */}
                     <button
@@ -3022,7 +3058,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Folder + Save */}
+                    {/* Bottom row: Folder + Debug (mobile only) */}
                     <button
                       onClick={() => setFolderModalOpen(true)}
                       className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
@@ -3032,22 +3068,49 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </button>
-                    <button
-                      onClick={() => {
-                        // Simple save functionality - could be enhanced later
-                        const data = { messages, input, mode };
-                        console.log('Saving conversation:', data);
-                      }}
-                      disabled={!messages.length}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                      title="Save as recipe"
-                    >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                        <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
-                        <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
-                      </svg>
-                    </button>
+                    {isMobile ? (
+                      <button
+                        onClick={() => {
+                          console.log('=== MOBILE DEBUG INFO ===');
+                          console.log('User agent:', navigator.userAgent);
+                          console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
+                          console.log('isMobile state:', isMobile);
+                          console.log('Credits:', creditInfo?.credits);
+                          console.log('Can afford:', canAffordGeneration);
+                          console.log('Generation cost:', generationCost);
+                          console.log('Active endpoint:', activeEndpoint);
+                          console.log('Current mode:', mode);
+                          console.log('Input value:', input);
+                          console.log('Available LoRAs:', availableLoras.length);
+                          alert(`Debug: Credits=${creditInfo?.credits}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}`);
+                        }}
+                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        title="Debug info"
+                      >
+                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          // Simple save functionality - could be enhanced later
+                          const data = { messages, input, mode };
+                          console.log('Saving conversation:', data);
+                        }}
+                        disabled={!messages.length}
+                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        title="Save as recipe"
+                      >
+                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
+                          <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
+                          <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
                 {attached ? (
