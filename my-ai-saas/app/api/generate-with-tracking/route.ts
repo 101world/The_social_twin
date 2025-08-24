@@ -262,6 +262,11 @@ export async function POST(req: NextRequest) {
       }
 
       // Return the successful generation result with credit info
+      const timeoutWarning = out.runpod?.timeout_warning ? {
+        message: "Generation may have timed out - if no images were generated, please try again",
+        elapsed_ms: out.runpod.elapsed_ms
+      } : undefined;
+      
       return NextResponse.json({
   ok: true,
   urls,
@@ -273,7 +278,8 @@ export async function POST(req: NextRequest) {
           remainingCredits: didDeduct ? (newBalance as number) : availableCredits,
           generationId: generationRecord.id
         },
-        allowanceWarning
+        allowanceWarning,
+        timeoutWarning
       });
 
     } catch (generationError) {

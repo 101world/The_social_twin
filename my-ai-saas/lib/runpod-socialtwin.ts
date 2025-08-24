@@ -319,39 +319,83 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
 
   const images: string[] = [];
   const videos: string[] = [];
-  const maxTries = (mode as string) === 'video' ? 450 : 150;
+  
+  // More aggressive polling with timeout safety
+  const startTime = Date.now();
+  const maxTimeoutMs = 4 * 60 * 1000; // 4 minutes maximum
+  const maxTries = (mode as string) === 'video' ? 200 : 120; // Reduced max tries
+  
   for (let i = 0; i < maxTries; i++) {
-    const h = await fetch(`${base}/history/${encodeURIComponent(promptId)}`, { headers });
-    const ht = await h.text();
-    let hj: any = {};
-    try { hj = ht ? JSON.parse(ht) : {}; } catch {}
-    const bag: any = hj?.[promptId]?.outputs || hj?.outputs || {};
+    // Check if we're approaching timeout
+    const elapsed = Date.now() - startTime;
+    if (elapsed > maxTimeoutMs) {
+      console.log(`Generation timeout after ${elapsed}ms, breaking early`);
+      break;
+    }
+    
     try {
-      for (const k of Object.keys(bag)) {
-        const node = bag[k];
-        if (node?.images) {
-          for (const img of node.images) {
-            const fn = img?.filename ?? img?.name ?? img;
-            const sub = img?.subfolder ?? '';
-            const t = img?.type ?? 'output';
-            const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
-            if (/\.(mp4|webm)(\?|$)/i.test(String(fn))) videos.push(url); else images.push(url);
+      const h = await fetch(`${base}/history/${encodeURIComponent(promptId)}`, { 
+        headers,
+        signal: AbortSignal.timeout(10000) // 10 second timeout per request
+      });
+      const ht = await h.text();
+      let hj: any = {};
+      try { hj = ht ? JSON.parse(ht) : {}; } catch {}
+      const bag: any = hj?.[promptId]?.outputs || hj?.outputs || {};
+      
+      try {
+        for (const k of Object.keys(bag)) {
+          const node = bag[k];
+          if (node?.images) {
+            for (const img of node.images) {
+              const fn = img?.filename ?? img?.name ?? img;
+              const sub = img?.subfolder ?? '';
+              const t = img?.type ?? 'output';
+              const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
+              if (/\.(mp4|webm)(\?|$)/i.test(String(fn))) videos.push(url); else images.push(url);
+            }
+          }
+          if (node?.videos) {
+            for (const vid of node.videos) {
+              const fn = vid?.filename ?? vid?.name ?? vid;
+              const sub = vid?.subfolder ?? '';
+              const t = vid?.type ?? 'output';
+              const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
+              videos.push(url);
+            }
           }
         }
-        if (node?.videos) {
-          for (const vid of node.videos) {
-            const fn = vid?.filename ?? vid?.name ?? vid;
-            const sub = vid?.subfolder ?? '';
-            const t = vid?.type ?? 'output';
-            const url = `${base}/view?filename=${encodeURIComponent(fn)}&subfolder=${encodeURIComponent(sub)}&type=${encodeURIComponent(t)}`;
-            videos.push(url);
-          }
-        }
+      } catch (parseError) {
+        console.log(`Parse error on try ${i}:`, parseError);
       }
-    } catch {}
-    if (images.length || videos.length) break;
-    await new Promise(r => setTimeout(r, 2000));
+      
+      if (images.length || videos.length) {
+        console.log(`Generation completed after ${elapsed}ms and ${i + 1} tries`);
+        break;
+      }
+    } catch (fetchError) {
+      console.log(`Fetch error on try ${i}:`, fetchError);
+      // Continue polling even if individual requests fail
+    }
+    
+    // Progressive delay: start fast, then slow down
+    const delay = i < 10 ? 1000 : (i < 30 ? 1500 : 2000);
+    await new Promise(r => setTimeout(r, delay));
   }
   const urls = images.length ? images.slice() : videos.slice();
+  
+  // Add timeout warning if no results and we hit the timeout
+  const totalElapsed = Date.now() - startTime;
+  if (!images.length && !videos.length && totalElapsed > maxTimeoutMs * 0.9) {
+    console.log(`Warning: Generation may have timed out after ${totalElapsed}ms`);
+    // Still return the result structure but with timeout info
+    return { 
+      images, 
+      videos, 
+      urls, 
+      runpod: { ...sj, timeout_warning: true, elapsed_ms: totalElapsed } 
+    };
+  }
+  
   return { images, videos, urls, runpod: sj };
 }
