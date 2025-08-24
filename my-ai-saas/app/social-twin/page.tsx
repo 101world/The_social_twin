@@ -109,6 +109,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // LoRA and params
   const [loraName, setLoraName] = useState<string>("");
   const [loraScale, setLoraScale] = useState<number|''>('');
+  const [availableLoras, setAvailableLoras] = useState<any[]>([]);
+  const [lorasLoading, setLorasLoading] = useState(false);
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
@@ -218,10 +220,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
   
-  const LORA_CHOICES = ['None','Custom...','Character-A','Character-B'] as const;
-  const BATCH_CHOICES = [1,2,4,6,8] as const;
-  const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
-  const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
+  const LORA_CHOICES = ['None','Custom...'] as const;
+  const BATCH_CHOICES = [1,2,4,8] as const;
+  const AR_CHOICES = ['1:1','3:2','4:3','16:9','9:16','2:3'] as const;
+  const isPresetLoRa = (name: string) => {
+    return (LORA_CHOICES as readonly string[]).includes(name) || 
+           availableLoras.some(lora => lora.filename === name);
+  };
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -1120,6 +1125,34 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
     } catch {}
   }, [searchParams]);
+
+  // Load available LoRAs
+  useEffect(() => {
+    const loadAvailableLoras = async () => {
+      setLorasLoading(true);
+      try {
+        const response = await fetch('/api/runpod/discover-loras');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.loras) {
+            // Flatten all LoRA types into a single array
+            const allLoras = [
+              ...data.loras.character,
+              ...data.loras.style,
+              ...data.loras.concept,
+              ...data.loras.other
+            ];
+            setAvailableLoras(allLoras);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load LoRAs:', error);
+      } finally {
+        setLorasLoading(false);
+      }
+    };
+    loadAvailableLoras();
+  }, []);
 
   useEffect(() => {
     try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
@@ -2435,7 +2468,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Character LoRA</label>
+                            <label className="text-xs font-medium opacity-80">Character LoRA {lorasLoading && '(loading...)'}</label>
                             <select
                               value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
                               onChange={(e) => {
@@ -2445,9 +2478,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else setLoraName(v);
                               }}
                               className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
                                 <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {lora.name} ({lora.type})
+                                </option>
                               ))}
                             </select>
                             
@@ -4602,7 +4641,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <label className="text-xs font-semibold">Character (LoRA)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs font-medium opacity-80">Character</label>
+                        <label className="text-xs font-medium opacity-80">Character {lorasLoading && '(loading...)'}</label>
                         <select
                           value={isPresetLoRa(loraName) ? loraName : 'Custom...'}
                           onChange={(e) => {
@@ -4612,9 +4651,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             else setLoraName(v);
                           }}
                           className="w-full rounded border px-2 py-1 text-xs"
+                          disabled={lorasLoading}
                         >
                           {LORA_CHOICES.map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                          {availableLoras.map((lora) => (
+                            <option key={lora.filename} value={lora.filename}>
+                              {lora.name} ({lora.type})
+                            </option>
                           ))}
                         </select>
                       </div>
