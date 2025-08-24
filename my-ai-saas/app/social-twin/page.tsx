@@ -2912,47 +2912,56 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                 {/* Enhanced responsive prompt box with keyboard handling */}
                 <div className={`
-                  flex gap-2 items-end
+                  flex gap-3 items-end
                   ${isMobile ? (isKeyboardOpen ? 'fixed bottom-0 left-0 right-0 z-50' : 'sticky bottom-2') : ''}
                   rounded-xl p-3 shadow-lg backdrop-blur-sm transition-all duration-200
                   ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
                   ${isMobile ? 'm-2' : ''}
                 `}>
+                  {/* Textarea takes 75% width */}
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your prompt..."
                     className={`
-                      min-h-[32px] max-h-[80px] flex-1 resize-none rounded-lg p-3 text-sm 
+                      min-h-[32px] max-h-[80px] resize-none rounded-lg p-3 text-sm 
                       transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0
                       ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}
                       ${isMobile ? 'text-base' : 'text-sm'}
                     `}
                     ref={bottomInputRef}
                     style={{ 
-                      fontSize: isMobile ? '16px' : '14px' // Prevents zoom on iOS
+                      fontSize: isMobile ? '16px' : '14px', // Prevents zoom on iOS
+                      width: '75%',
+                      flexShrink: 0
                     }}
                   />
                   
-                  {/* Responsive button grid - 2x2 on mobile, flexible on desktop */}
-                  <div className={`${isMobile ? 'grid grid-cols-2 gap-2 min-w-[120px]' : 'flex items-center gap-2'}`}>
+                  {/* Button grid takes 25% width */}
+                  <div 
+                    className="grid grid-cols-2 gap-2 h-fit"
+                    style={{ 
+                      width: '25%',
+                      flexShrink: 0
+                    }}
+                  >
                     {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative h-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative h-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[9px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
+                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[8px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-lg p-1.5 h-8 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className="group cursor-pointer rounded-lg p-1 h-10 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -2975,7 +2984,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {/* Bottom row: Create button + Feature Menu button */}
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`h-8 cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all duration-200 hover:scale-105 ${
+                      className={`h-10 cursor-pointer rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
                           ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
                           : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
@@ -2983,22 +2992,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      <span className="text-xs font-medium">Create</span>
                     </button>
                     <button
                       onClick={() => setFeatureMenuOpen(v => !v)}
-                      className={`h-8 cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 hover:bg-purple-500/10 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}
+                      className={`h-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-purple-500/10 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}
                       title="Show features menu"
                       aria-haspopup="menu"
                       aria-expanded={featureMenuOpen}
                     >
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
-                      <span className="text-xs font-medium">Menu</span>
                     </button>
                   </div>
 
