@@ -57,6 +57,13 @@ export function pickRunpodUrlFromConfig(opts: {
     }
   }
   
-  // No fallback to environment variables - admin config is now the source of truth
-  return undefined;
+  // Third priority: environment variables (fallback)
+  const envByMode = {
+    text: process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL,
+    image: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
+    'image-modify': process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
+    video: process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL,
+  } as Record<string, string | undefined>;
+  
+  return envByMode[mode];
 }
