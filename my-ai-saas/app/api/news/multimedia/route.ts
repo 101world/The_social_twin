@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Minimal shape used by this API; Supabase RPC may return more fields
+type Article = {
+  id?: string;
+  title?: string;
+  content?: string;
+  published_at?: string;
+  source_name?: string;
+  source_url?: string;
+  category?: string;
+  image_url?: string | null;
+  video_url?: string | null;
+  youtube_url?: string | null;
+  [k: string]: unknown;
+};
+
+type CategoryAgg = {
+  count: number;
+  with_images: number;
+  with_videos: number;
+  with_youtube: number;
+};
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -9,8 +31,8 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const mediaType = searchParams.get('type') || 'all'; // 'images', 'videos', 'youtube', 'all'
-    const limit = parseInt(searchParams.get('limit') || '20');
+  const mediaType = searchParams.get('type') || 'all'; // 'images', 'videos', 'youtube', 'all'
+  const limit = Number.parseInt(searchParams.get('limit') || '20', 10) || 20;
 
     // Use the Supabase multimedia function
     const { data: articles, error } = await supabase
@@ -24,53 +46,52 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+  const list: Article[] = (articles as Article[] | null) ?? [];
+
     // Calculate multimedia statistics
     const stats = {
-      total: articles?.length || 0,
-      with_images: articles?.filter(a => a.image_url).length || 0,
-      with_videos: articles?.filter(a => a.video_url).length || 0,
-      with_youtube: articles?.filter(a => a.youtube_url).length || 0,
-      multimedia_only: articles?.filter(a => 
-        a.image_url || a.video_url || a.youtube_url
-      ).length || 0
+      total: list.length,
+      with_images: list.filter(a => !!a.image_url).length,
+      with_videos: list.filter(a => !!a.video_url).length,
+      with_youtube: list.filter(a => !!a.youtube_url).length,
+      multimedia_only: list.filter(a => a.image_url || a.video_url || a.youtube_url).length,
     };
 
     // Group by media type for better organization
     const categorized = {
-      images: articles?.filter(a => a.image_url) || [],
-      videos: articles?.filter(a => a.video_url) || [],
-      youtube: articles?.filter(a => a.youtube_url) || [],
-      all: articles || []
+      images: list.filter(a => !!a.image_url),
+      videos: list.filter(a => !!a.video_url),
+      youtube: list.filter(a => !!a.youtube_url),
+      all: list,
     };
 
     // Get top categories with multimedia content
-    const categoryStats = {};
-    articles?.forEach(article => {
-      const cat = article.category || 'General';
+    const categoryStats: Record<string, CategoryAgg> = {};
+    for (const article of list) {
+      const cat = (article.category || 'General') as string;
       if (!categoryStats[cat]) {
         categoryStats[cat] = {
           count: 0,
           with_images: 0,
           with_videos: 0,
-          with_youtube: 0
+          with_youtube: 0,
         };
       }
       categoryStats[cat].count++;
       if (article.image_url) categoryStats[cat].with_images++;
       if (article.video_url) categoryStats[cat].with_videos++;
       if (article.youtube_url) categoryStats[cat].with_youtube++;
-    });
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        articles: articles || [],
+        articles: list,
         categorized,
         statistics: stats,
-        category_breakdown: Object.entries(categoryStats).map(([category, stats]) => ({
-          category,
-          ...stats
-        })).sort((a, b) => b.count - a.count),
+        category_breakdown: Object.entries(categoryStats)
+          .map(([category, s]) => ({ category, ...s }))
+          .sort((a, b) => b.count - a.count),
         filters: {
           media_type: mediaType,
           limit
