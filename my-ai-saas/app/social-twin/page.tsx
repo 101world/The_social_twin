@@ -427,44 +427,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
   }, []);
 
-  // Enhanced mobile detection with keyboard handling
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState<boolean>(false);
-  const [viewportHeight, setViewportHeight] = useState<number>(0);
-  
+  // Simplified mobile detection without problematic keyboard handling
   useEffect(() => {
     const checkMobile = () => {
       const width = window.innerWidth;
-      const height = window.innerHeight;
-      const isMobileWidth = width < 768; // Updated breakpoint for better tablet support
+      const isMobileWidth = width < 768;
       const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
       setIsMobile(isMobileWidth || isMobileUA);
-      setViewportHeight(height);
-    };
-    
-    // Keyboard detection for mobile
-    const handleResize = () => {
-      checkMobile();
-      
-      // Detect keyboard open/close on mobile
-      if (isMobile) {
-        const currentHeight = window.innerHeight;
-        const heightDiff = viewportHeight - currentHeight;
-        const threshold = 150; // Minimum height difference to consider keyboard open
-        
-        setIsKeyboardOpen(heightDiff > threshold);
-      }
     };
     
     checkMobile(); // Initial check
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', checkMobile);
     window.addEventListener('orientationchange', checkMobile);
     
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', checkMobile);
       window.removeEventListener('orientationchange', checkMobile);
     };
-  }, [isMobile, viewportHeight]);
+  }, []);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -1999,8 +1980,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`
-                    flex items-center gap-2 py-1.5 transition-colors whitespace-nowrap flex-shrink-0
-                    ${isMobile ? 'flex-1 justify-center px-2 text-xs' : 'px-3 text-xs md:text-sm'}
+                    flex items-center gap-2 py-2 transition-colors whitespace-nowrap flex-shrink-0
+                    ${isMobile ? 'flex-1 justify-center px-3 text-xs min-h-[44px]' : 'px-3 text-xs md:text-sm'}
                     ${activeTab === tab.id
                       ? (darkMode
                           ? 'border-b border-neutral-300 text-neutral-100'
@@ -2013,8 +1994,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 >
                   {isMobile ? (
                     <>
-                      <span className="text-sm">{tab.icon}</span>
-                      <span className="text-[10px] font-medium">{tab.label}</span>
+                      <span className="text-base">{tab.icon}</span>
+                      <span className="text-[11px] font-medium">{tab.label}</span>
                     </>
                   ) : (
                     <span>{tab.label}</span>
@@ -2996,7 +2977,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[8px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
+                      <span className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[${isMobile ? '9px' : '8px'}] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
                     <label className="group cursor-pointer rounded-lg p-1 aspect-square flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className="transition-colors group-hover:stroke-gray-400">
