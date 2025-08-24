@@ -272,6 +272,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [guidance, setGuidance] = useState<number | ''>('');
   const [steps, setSteps] = useState<number | ''>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
+  const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
   const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard'>('chat');
   // Dashboard collapsibles
@@ -1150,9 +1151,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         };
         const origin = pickOrigin(imageUrl) || pickOrigin(imageModifyUrl) || pickOrigin(process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '');
         const url = origin ? `/api/runpod/discover-loras?url=${encodeURIComponent(origin)}` : '/api/runpod/discover-loras';
+        
+        console.log('🔍 Loading LoRAs from:', url);
+        console.log('RunPod origin detected:', origin);
+        
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
+          console.log('📦 LoRA discovery response:', data);
+          
           if (data.success && data.loras) {
             // Flatten all LoRA types into a single array
             const allLoras = [
@@ -1161,17 +1168,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ...data.loras.concept,
               ...data.loras.other
             ];
+            console.log('✅ Found LoRAs:', allLoras.length, allLoras);
             setAvailableLoras(allLoras);
+          } else {
+            console.log('❌ No LoRAs found in response');
+            setAvailableLoras([]);
           }
+        } else {
+          console.error('❌ LoRA discovery failed:', response.status, response.statusText);
+          setAvailableLoras([]);
         }
       } catch (error) {
-        console.error('Failed to load LoRAs:', error);
+        console.error('❌ Failed to load LoRAs:', error);
+        setAvailableLoras([]);
       } finally {
         setLorasLoading(false);
       }
     };
+    
     loadAvailableLoras();
-  }, []);
+  }, [imageUrl, imageModifyUrl]); // Re-load when URLs change
 
   useEffect(() => {
     try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
@@ -1941,7 +1957,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <textarea
                             value={input}
                             onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                            placeholder="Ask anything"
+                            placeholder=""
                             className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
                             onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
                           />
@@ -2874,49 +2890,67 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {(mode === 'image' || mode === 'image-modify') && (
                       <>
-                        {/* Effects LoRA (Power Loader) */}
-                        <select
-                          value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === 'None') setEffectLora('');
-                            else if (v === 'Custom...') setEffectLora(effectLora || '');
-                            else setEffectLora(v);
-                          }}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Effects LoRA"
+                        {/* Advanced Controls Toggle */}
+                        <button
+                          onClick={() => setShowAdvancedControls(!showAdvancedControls)}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-blue-500 border-blue-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
+                          title="Advanced Controls"
                         >
-                          {(['None','Custom...'] as const).map((opt) => (
-                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                          ))}
-                          {availableLoras.map((lora) => (
-                            <option key={lora.filename} value={lora.filename}>
-                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                            </option>
-                          ))}
-                        </select>
+                          <div className="flex items-center gap-1">
+                            <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            {!isMobile && <span>Style</span>}
+                          </div>
+                        </button>
 
-                        {/* Character LoRA */}
-                        <select
-                          value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === 'None') setLoraName('');
-                            else if (v === 'Custom...') setLoraName(loraName || '');
-                            else setLoraName(v);
-                          }}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Character LoRA"
-                        >
-                          {(['None','Custom...'] as const).map((opt) => (
-                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                          ))}
-                          {availableLoras.map((lora) => (
-                            <option key={lora.filename} value={lora.filename}>
-                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                            </option>
-                          ))}
-                        </select>
+                        {showAdvancedControls && (
+                          <>
+                            {/* Effects LoRA (Power Loader) */}
+                            <select
+                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setEffectLora('');
+                                else if (v === 'Custom...') setEffectLora(effectLora || '');
+                                else setEffectLora(v);
+                              }}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              title="Effects LoRA"
+                            >
+                              {(['None','Custom...'] as const).map((opt) => (
+                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Character LoRA */}
+                            <select
+                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setLoraName('');
+                                else if (v === 'Custom...') setLoraName(loraName || '');
+                                else setLoraName(v);
+                              }}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              title="Character LoRA"
+                            >
+                              {(['None','Custom...'] as const).map((opt) => (
+                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                                </option>
+                              ))}
+                            </select>
+                          </>
+                        )}
 
                         {/* Batch size */}
                         <select
@@ -3017,7 +3051,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={isMobile ? "Type message..." : "Describe what you want to create..."}
+                    placeholder=""
                     className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                     ref={bottomInputRef}
                     style={{ 
@@ -3086,10 +3120,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           console.log('Active endpoint:', activeEndpoint);
                           console.log('Current mode:', mode);
                           console.log('Input value:', input);
-                          console.log('Available LoRAs:', availableLoras.length);
+                          console.log('Available LoRAs:', availableLoras.length, availableLoras);
+                          console.log('LoRAs loading:', lorasLoading);
+                          console.log('Image URL:', imageUrl);
+                          console.log('Image Modify URL:', imageModifyUrl);
                           console.log('User ID:', userId);
                           const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
-                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}`);
+                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
                         }}
                         className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                         title="Debug info"
@@ -4613,7 +4650,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <textarea 
               value={input} 
               onChange={(e)=> setInput(e.target.value)} 
-              placeholder="Describe what you want to create..." 
               className="mb-3 h-32 w-full resize-none rounded border p-3 text-sm" 
             />
 
