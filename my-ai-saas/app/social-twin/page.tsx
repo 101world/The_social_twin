@@ -96,10 +96,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
-  const [showFeatureControls, setShowFeatureControls] = useState<boolean>(false);
-  const [userProjects, setUserProjects] = useState<any[]>([]);
-  const [showProjectDropdown, setShowProjectDropdown] = useState<boolean>(false);
-  const [selectedProject, setSelectedProject] = useState<string>('');
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -111,12 +107,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [videoKlingUrl, setVideoKlingUrl] = useState<string>("");
 
   // LoRA and params
-  const [loraName, setLoraName] = useState<string>(""); // Character LoRA filename
-  const [loraScale, setLoraScale] = useState<number|''>(''); // Character LoRA strength
-  const [effectLora, setEffectLora] = useState<string>(""); // Effects/Style LoRA filename
-  const [effectLoraScale, setEffectLoraScale] = useState<number|''>(''); // Effects LoRA strength
-  const [availableLoras, setAvailableLoras] = useState<any[]>([]);
-  const [lorasLoading, setLorasLoading] = useState(false);
+  const [loraName, setLoraName] = useState<string>("");
+  const [loraScale, setLoraScale] = useState<number|''>('');
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
@@ -222,23 +214,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     videoKling: 'social_twin_video_kling_url',
     loraName: 'social_twin_lora_name',
     loraScale: 'social_twin_lora_scale',
-    effectLora: 'social_twin_effect_lora',
-    effectLoraScale: 'social_twin_effect_lora_scale',
     batchSize: 'social_twin_batch_size',
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
-  
-  // Fixed: AR_CHOICES now match desktop with 3:2 and 2:3 ratios
-  // Fixed: BATCH_CHOICES now match desktop [1,2,4,8] 
-  // Fixed: LORA_CHOICES now load dynamically from API
-  // Deployment: 2025-08-24 - Force cache refresh
-  const LORA_CHOICES = ['None','Custom...'] as const;
-  const BATCH_CHOICES = [1,2,4,8] as const;
-  const AR_CHOICES = ['1:1','3:2','4:3','16:9','9:16','2:3'] as const;
-  const isPresetLoRa = (name: string) => {
-    return (LORA_CHOICES as readonly string[]).includes(name) || 
-           availableLoras.some(lora => lora.filename === name);
-  };
+  const LORA_CHOICES = ['None','Custom...','Character-A','Character-B'] as const;
+  const BATCH_CHOICES = [1,2,4,6,8] as const;
+  const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
+  const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -276,7 +258,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [guidance, setGuidance] = useState<number | ''>('');
   const [steps, setSteps] = useState<number | ''>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
-  const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
   const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard'>('chat');
   // Dashboard collapsibles
@@ -448,39 +429,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Fetch user projects for the dropdown
-  useEffect(() => {
-    const fetchUserProjects = async () => {
-      if (!userId) return;
-      
-      try {
-        const response = await fetch('/api/projects');
-        if (response.ok) {
-          const data = await response.json();
-          setUserProjects(data.projects || []);
-        }
-      } catch (error) {
-        console.warn('Failed to fetch user projects:', error);
-      }
-    };
-    
-    fetchUserProjects();
-  }, [userId]);
-
-  // Close project dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showProjectDropdown && !(event.target as Element)?.closest('.project-dropdown-container')) {
-        setShowProjectDropdown(false);
-      }
-    };
-    
-    if (showProjectDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showProjectDropdown]);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -1151,11 +1099,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || DEFAULT_VIDEO_KLING);
     setLoraName(localStorage.getItem(LOCAL_KEYS.loraName) || "");
     const lsScale = localStorage.getItem(LOCAL_KEYS.loraScale);
-  setLoraScale(lsScale ? Number(lsScale) : "");
-  const lsEffect = localStorage.getItem(LOCAL_KEYS.effectLora);
-  setEffectLora(lsEffect || "");
-  const lsEffectScale = localStorage.getItem(LOCAL_KEYS.effectLoraScale);
-  setEffectLoraScale(lsEffectScale ? Number(lsEffectScale) : "");
+    setLoraScale(lsScale ? Number(lsScale) : "");
     const lsBatch = localStorage.getItem(LOCAL_KEYS.batchSize);
     setBatchSize(lsBatch ? Number(lsBatch) : "");
     setAspectRatio(localStorage.getItem(LOCAL_KEYS.aspectRatio) || "");
@@ -1175,56 +1119,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
     } catch {}
   }, [searchParams]);
-
-  // Load available LoRAs
-  useEffect(() => {
-    const loadAvailableLoras = async () => {
-      setLorasLoading(true);
-      try {
-        // Pass the active RunPod origin so server can query your storage even if config isn't set
-        const pickOrigin = (u?: string) => {
-          try { if (u && /^https?:\/\//i.test(u)) return new URL(u).origin; } catch {}
-          return undefined;
-        };
-        const origin = pickOrigin(imageUrl) || pickOrigin(imageModifyUrl) || pickOrigin(process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '');
-        const url = origin ? `/api/runpod/discover-loras?url=${encodeURIComponent(origin)}` : '/api/runpod/discover-loras';
-        
-        console.log('🔍 Loading LoRAs from:', url);
-        console.log('RunPod origin detected:', origin);
-        
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📦 LoRA discovery response:', data);
-          
-          if (data.success && data.loras) {
-            // Flatten all LoRA types into a single array
-            const allLoras = [
-              ...data.loras.character,
-              ...data.loras.style,
-              ...data.loras.concept,
-              ...data.loras.other
-            ];
-            console.log('✅ Found LoRAs:', allLoras.length, allLoras);
-            setAvailableLoras(allLoras);
-          } else {
-            console.log('❌ No LoRAs found in response');
-            setAvailableLoras([]);
-          }
-        } else {
-          console.error('❌ LoRA discovery failed:', response.status, response.statusText);
-          setAvailableLoras([]);
-        }
-      } catch (error) {
-        console.error('❌ Failed to load LoRAs:', error);
-        setAvailableLoras([]);
-      } finally {
-        setLorasLoading(false);
-      }
-    };
-    
-    loadAvailableLoras();
-  }, [imageUrl, imageModifyUrl]); // Re-load when URLs change
 
   useEffect(() => {
     try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
@@ -1358,10 +1252,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     localStorage.setItem(LOCAL_KEYS.video, videoUrl);
     localStorage.setItem(LOCAL_KEYS.videoWan, videoWanUrl);
     localStorage.setItem(LOCAL_KEYS.videoKling, videoKlingUrl);
-  localStorage.setItem(LOCAL_KEYS.loraName, loraName);
-  if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
-  if (effectLora) localStorage.setItem(LOCAL_KEYS.effectLora, effectLora);
-  if (effectLoraScale !== "") localStorage.setItem(LOCAL_KEYS.effectLoraScale, String(effectLoraScale));
+    localStorage.setItem(LOCAL_KEYS.loraName, loraName);
+    if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
     if (batchSize !== "") localStorage.setItem(LOCAL_KEYS.batchSize, String(batchSize));
     localStorage.setItem(LOCAL_KEYS.aspectRatio, aspectRatio);
   try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
@@ -1369,25 +1261,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   async function handleSend() {
     console.log('🚀 HANDLE_SEND CALLED');
-    console.log('Mode:', mode);
-    console.log('Input:', JSON.stringify(input));
-    console.log('Active endpoint:', activeEndpoint);
-    console.log('User agent:', navigator.userAgent);
-    console.log('Is mobile detected:', isMobile);
-    console.log('Window width:', window.innerWidth);
-    console.log('Credits info:', creditInfo);
-    console.log('Can afford generation:', canAffordGeneration);
-    console.log('Generation cost:', generationCost);
-    console.log('LoRA name:', loraName);
-    console.log('LoRA scale:', loraScale);
-    console.log('Batch size:', batchSize);
-    console.log('Aspect ratio:', aspectRatio);
-    console.log('Effects preset:', effectsPreset);
-    console.log('Effects on:', effectsOn);
-    console.log('Video model:', videoModel);
-    console.log('User ID:', userId);
-    console.log('🔧 MOBILE GENERATION DEBUG - Will proceed even without activeEndpoint');
+    console.log('Raw input:', JSON.stringify(input));
     console.log('Call stack:', new Error().stack);
+    
+    // 📱 MOBILE DEBUG: Add comprehensive mobile detection and logging
+    const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const windowWidth = window.innerWidth;
+    console.log('📱 MOBILE DEBUG INFO:', {
+      isMobile,
+      isMobileUA,
+      windowWidth,
+      userAgent: navigator.userAgent,
+      mode,
+      userId,
+      activeEndpoint
+    });
     
     const trimmed = input.trim();
     console.log('Trimmed input:', JSON.stringify(trimmed));
@@ -1395,94 +1283,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     if (!trimmed) {
       console.log('❌ Empty input, returning');
       return;
-    }
-    
-    // 📱 MOBILE GENERATION PRE-CHECK
-    if (isMobile) {
-      console.log('📱 MOBILE GENERATION DETECTED - Running extensive pre-checks...');
-      
-      // Check network connectivity
-      if (typeof navigator !== 'undefined') {
-        console.log('📱 Network status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
-        if ((navigator as any).connection) {
-          console.log('📱 Connection info:', {
-            effectiveType: (navigator as any).connection.effectiveType,
-            downlink: (navigator as any).connection.downlink,
-            rtt: (navigator as any).connection.rtt,
-            saveData: (navigator as any).connection.saveData
-          });
-        }
-      }
-      
-      // Test basic API connectivity first on mobile
-      try {
-        console.log('📱 Testing basic API connectivity...');
-        const testRes = await fetch('/api/debug-mobile', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-User-Id': userId || '' 
-          },
-          body: JSON.stringify({ 
-            test: 'mobile_connectivity',
-            mode,
-            userId,
-            isMobile: true,
-            windowWidth: window.innerWidth,
-            userAgent: navigator.userAgent
-          })
-        });
-        
-        console.log('📱 API connectivity test result:', {
-          status: testRes.status,
-          ok: testRes.ok,
-          statusText: testRes.statusText,
-          headers: Object.fromEntries(testRes.headers.entries())
-        });
-        
-        if (!testRes.ok) {
-          const errorText = await testRes.text();
-          console.log('📱 API test failed with text:', errorText);
-          setMessages((prev) => [
-            ...prev,
-            { 
-              id: generateId(), 
-              role: "error", 
-              content: `📱 Mobile API test failed (${testRes.status}): ${errorText.slice(0, 200)}${errorText.length > 200 ? '...' : ''}` 
-            },
-          ]);
-          return;
-        }
-        
-        const debugResult = await testRes.json();
-        console.log('📱 Debug endpoint response:', debugResult);
-        
-        if (debugResult.debug === 'mobile test failed') {
-          setMessages((prev) => [
-            ...prev,
-            { 
-              id: generateId(), 
-              role: "error", 
-              content: `📱 Mobile generation test failed: ${debugResult.error}` 
-            },
-          ]);
-          return;
-        }
-        
-      } catch (connectivityError) {
-        console.log('📱 Connectivity test threw error:', connectivityError);
-        setMessages((prev) => [
-          ...prev,
-          { 
-            id: generateId(), 
-            role: "error", 
-            content: `📱 Mobile connectivity failed: ${connectivityError instanceof Error ? connectivityError.message : 'Unknown error'}\n\nPlease check your internet connection and try again.` 
-          },
-        ]);
-        return;
-      }
-      
-      console.log('📱 Mobile pre-checks passed, proceeding with generation...');
     }
     // Chat commands: save project / create project <title>
     const lower = trimmed.toLowerCase();
@@ -1526,9 +1326,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Allow generation even without activeEndpoint - server has fallback config
-    const shouldBlockForMissingEndpoint = false; // Set to true only if you want strict client-side validation
-    if (!activeEndpoint && shouldBlockForMissingEndpoint) {
+    if (!activeEndpoint) {
       setMessages((prev) => [
         ...prev,
         { id: generateId(), role: "error", content: `No endpoint configured for '${mode}'. Open settings to set a URL.` },
@@ -1556,11 +1354,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
         ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
         provider: textProvider,
-        // Character & Effects LoRAs
-        lora_character: loraName || undefined,
-        lora_character_scale: typeof loraScale === 'number' ? loraScale : undefined,
-        lora_effect: effectLora || undefined,
-        lora_effect_scale: typeof effectLoraScale === 'number' ? effectLoraScale : undefined,
+        lora: loraName || undefined,
+        lora_scale: typeof loraScale === 'number' ? loraScale : undefined,
         batch_size: typeof batchSize === 'number' ? batchSize : undefined,
         seed: typeof seed === 'number' ? seed : undefined,
         denoise: typeof denoise === 'number' ? denoise : undefined,
@@ -1569,8 +1364,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
             guidance: typeof guidance === 'number' ? guidance : undefined,
             steps: typeof steps === 'number' ? steps : undefined,
-            effects_preset: effectsPreset || undefined,
-            effects_on: effectsOn || undefined,
             video_model: mode==='video' ? videoModel : undefined,
             video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
         userId: userId || undefined,
@@ -1585,15 +1378,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         } : undefined,
         // Respect user's choice whether to save generated media into their personal library
         saveToLibrary: saveToLibrary === true,
-        // Mark mobile requests for server-side debugging
-        isMobile: isMobile,
-        userAgent: navigator.userAgent
+        // Add mobile debugging flag
+        __mobile_debug: isMobile,
+        __user_agent: navigator.userAgent
       };
       
-      // 📱 MOBILE: Log complete payload before sending
+      // 📱 MOBILE: Log API call details
       if (isMobile) {
-        console.log('📱 MOBILE API PAYLOAD:', JSON.stringify(apiPayload, null, 2));
-        console.log('📱 About to send to /api/generate-with-tracking...');
+        console.log('📱 MOBILE API CALL STARTING');
+        console.log('📱 Payload size:', JSON.stringify(apiPayload).length, 'bytes');
+        console.log('📱 Key parameters:', {
+          mode: apiPayload.mode,
+          prompt_length: apiPayload.prompt.length,
+          has_attachment: !!apiPayload.attachment,
+          batch_size: apiPayload.batch_size,
+          aspect_ratio: apiPayload.aspect_ratio
+        });
       }
       
   const res = await fetch("/api/generate-with-tracking", {
@@ -1601,25 +1401,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         headers: { 
           "Content-Type": "application/json", 
           "X-User-Id": userId || "",
-          // Add mobile-specific headers
+          // Add mobile header for server-side detection
           ...(isMobile ? { "X-Mobile-Request": "true" } : {})
         },
         body: JSON.stringify(apiPayload),
       });
-
-      console.log('🌐 API Response status:', res.status);
-      console.log('🌐 API Response headers:', res.headers);
       
-      // 📱 MOBILE: Enhanced response logging
+      // 📱 MOBILE: Log response details
       if (isMobile) {
         console.log('📱 MOBILE API RESPONSE:', {
           status: res.status,
           statusText: res.statusText,
           ok: res.ok,
-          headers: Object.fromEntries(res.headers.entries()),
-          url: res.url,
-          type: res.type,
-          redirected: res.redirected
+          headers: Object.fromEntries(res.headers.entries())
         });
       }
 
@@ -1628,20 +1422,41 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         let detail = `HTTP ${res.status}`;
         try {
           const errJson = await res.json();
-          console.log('❌ API Error response:', errJson);
           if (errJson?.error) {
             detail = errJson.workflow ? `${errJson.error} (${errJson.workflow})` : errJson.error;
           }
         } catch {}
+        
+        // 📱 MOBILE: Enhanced error logging
+        if (isMobile) {
+          console.log('📱 MOBILE API ERROR:', {
+            status: res.status,
+            statusText: res.statusText,
+            detail,
+            headers: Object.fromEntries(res.headers.entries())
+          });
+        }
+        
         setMessages((prev) => [
           ...prev,
-          { id: generateId(), role: "error", content: detail },
+          { id: generateId(), role: "error", content: isMobile ? `📱 Mobile Error: ${detail}` : detail },
         ]);
         return;
       }
 
       const payload = await res.json().catch(() => ({} as any));
-      console.log('✅ API Success payload:', payload);
+      
+      // 📱 MOBILE: Log successful response structure
+      if (isMobile) {
+        console.log('📱 MOBILE SUCCESS PAYLOAD:', {
+          has_runpod: !!payload.runpod,
+          has_urls: !!payload.urls,
+          has_images: !!payload.images,
+          urls_count: (payload.urls || []).length,
+          images_count: (payload.images || []).length,
+          payload_keys: Object.keys(payload)
+        });
+      }
       const data = payload.runpod ?? payload; // our API returns { ok, urls, runpod }
       const urls: string[] = payload.urls || (data?.urls || []);
       const batchImages: string[] = payload.images || (data?.images || []);
@@ -1692,35 +1507,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Make sure Save Project button is available after generation
   setShowSaveProject(true);
     } catch (err: any) {
-      console.log('❌ GENERATION ERROR:', err);
-      console.log('Error type:', typeof err);
-      console.log('Error name:', err?.name);
-      console.log('Error message:', err?.message);
-      console.log('Error stack:', err?.stack);
-      console.log('Network status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
-      console.log('User agent:', navigator.userAgent);
-      console.log('Is mobile:', isMobile);
-      
-      // More detailed error message for mobile users
-      const isMobileDevice = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      let errorMessage = `Request failed: ${err?.message ?? "Unknown error"}`;
-      
-      if (isMobileDevice) {
-        errorMessage += `\n\n🔧 Mobile Debug Info:\n`;
-        errorMessage += `• Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}\n`;
-        errorMessage += `• Network: ${navigator.onLine ? 'Online' : 'Offline'}\n`;
-        errorMessage += `• User ID: ${userId ? 'Set' : 'Missing'}\n`;
-        errorMessage += `• Credits: ${creditInfo?.credits || 'Unknown'}\n`;
-        errorMessage += `• Mode: ${mode}\n`;
-        
-        if (err?.name === 'TypeError' && err?.message?.includes('fetch')) {
-          errorMessage += `\n⚠️ This looks like a network connectivity issue on mobile. Try refreshing the page.`;
-        }
+      // 📱 MOBILE: Enhanced error handling with detailed logging
+      if (isMobile) {
+        console.log('📱 MOBILE GENERATION ERROR:', {
+          error_type: typeof err,
+          error_name: err?.name,
+          error_message: err?.message,
+          error_stack: err?.stack,
+          network_status: navigator.onLine ? 'ONLINE' : 'OFFLINE',
+          user_agent: navigator.userAgent,
+          window_width: window.innerWidth,
+          mode,
+          userId
+        });
       }
       
       setMessages((prev) => [
         ...prev,
-        { id: generateId(), role: "error", content: errorMessage },
+        { 
+          id: generateId(), 
+          role: "error", 
+          content: isMobile 
+            ? `📱 Mobile generation failed: ${err?.message ?? "Unknown error"}\n\nNetwork: ${navigator.onLine ? 'Online' : 'Offline'}\nDevice: Mobile (${window.innerWidth}px)\n\nTip: Try refreshing the page or check your internet connection.`
+            : `Request failed: ${err?.message ?? "Unknown error"}` 
+        },
       ]);
     }
   }
@@ -1960,52 +1770,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
     const updateKb = () => {
       const vv = window.visualViewport;
-      
-      if (isMobile && vv) {
-        // Enhanced mobile keyboard handling
-        const keyboardHeight = window.innerHeight - vv.height;
-        const isKeyboardOpen = keyboardHeight > 150; // Threshold for keyboard detection
-        
-        // Set keyboard offset for mobile positioning
-        docEl.style.setProperty('--kb-offset', `${isKeyboardOpen ? keyboardHeight : 0}px`);
-        
-        // Adjust composer positioning for mobile with smoother transitions
-        if (composerRef.current) {
-          if (isKeyboardOpen) {
-            composerRef.current.style.transform = `translateY(-${Math.min(keyboardHeight, 320)}px)`;
-            composerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-          } else {
-            composerRef.current.style.transform = 'translateY(0)';
-            composerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-          }
-        }
-      } else {
-        // Desktop behavior
-        const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
-        docEl.style.setProperty('--kb-offset', `${kb}px`);
-      }
+      const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+      docEl.style.setProperty('--kb-offset', `${kb}px`);
     };
     const updateComposerH = () => {
       const h = composerRef.current?.offsetHeight || 64;
       docEl.style.setProperty('--composer-h', `${h}px`);
     };
     const onVvResize = () => { updateVh(); updateKb(); };
-    const onVvScroll = () => { 
-      updateKb(); 
-      // Handle viewport scroll for mobile
-      if (isMobile && window.visualViewport) {
-        const vv = window.visualViewport;
-        const keyboardHeight = window.innerHeight - vv.height;
-        const isKeyboardOpen = keyboardHeight > 150;
-        
-        if (isKeyboardOpen && composerRef.current) {
-          // Keep composer in view when keyboard is open and user scrolls
-          const scrollOffset = vv.offsetTop || 0;
-          const totalOffset = Math.min(keyboardHeight + scrollOffset, 320);
-          composerRef.current.style.transform = `translateY(-${totalOffset}px)`;
-        }
-      }
-    };
+    const onVvScroll = () => { updateKb(); };
     let ro: ResizeObserver | null = null;
     if (typeof (window as any).ResizeObserver === 'function') {
       ro = new (window as any).ResizeObserver(() => updateComposerH());
@@ -2027,7 +1800,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       window.removeEventListener('resize', updateComposerH);
   try { ro?.disconnect?.(); } catch {}
     };
-  }, [isMobile]); // Add isMobile as dependency
+  }, []);
 
   return (
   <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
@@ -2100,95 +1873,27 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Top Navigation - always visible; scrollable on mobile */}
           <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
-            <div className="flex items-center justify-center flex-1">
-              {/* Tabs */}
-              <div className="flex items-center gap-1">
-                {[
-                  { id: 'chat', label: 'Chat', icon: '💬' },
-                  { id: 'generated', label: 'Generated', icon: '🎨' },
-                  { id: 'dashboard', label: 'Dashboard', icon: '📊' }
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-                      activeTab === tab.id
-                        ? (darkMode
-                            ? 'border-b border-neutral-300 text-neutral-100'
-                            : 'border-b border-neutral-800 text-neutral-900')
-                        : (darkMode
-                            ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
-                            : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
-                    }`}
-                  >
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
-              </div>
-              
-              {/* Project Management - Center aligned */}
-              {(messages.length > 0 || canvasItems.length > 0) && (
-                <div className="flex items-center gap-2 ml-6">
-                  {/* Projects Dropdown */}
-                  <div className="relative project-dropdown-container">
-                    <button
-                      onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
-                      title="Select project to organize"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2.007 2.007 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Projects</span>
-                      <svg className={`w-3 h-3 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    
-                    {/* Projects Dropdown */}
-                    {showProjectDropdown && (
-                      <div className={`absolute top-full left-0 mt-1 w-48 max-h-40 overflow-y-auto rounded-lg border shadow-lg z-50 ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-neutral-200'}`}>
-                        {userProjects.length === 0 ? (
-                          <div className={`p-3 text-xs ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>
-                            No saved projects yet
-                          </div>
-                        ) : (
-                          userProjects.slice(0, 10).map((project, index) => (
-                            <button
-                              key={project.id || index}
-                              onClick={() => {
-                                setSelectedProject(project.name || `Project ${index + 1}`);
-                                setShowProjectDropdown(false);
-                              }}
-                              className={`w-full px-3 py-2 text-left text-xs hover:bg-neutral-100 ${darkMode ? 'hover:bg-neutral-700 text-neutral-100' : 'text-neutral-900'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === Math.min(userProjects.length - 1, 9) ? 'rounded-b-lg' : ''}`}
-                            >
-                              {project.name || `Project ${index + 1}`}
-                            </button>
-                          ))
-                        )}
-                        {userProjects.length > 10 && (
-                          <div className={`px-3 py-2 text-xs border-t ${darkMode ? 'border-neutral-700 text-neutral-400' : 'border-neutral-200 text-gray-500'}`}>
-                            +{userProjects.length - 10} more projects...
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Save Project Button */}
-                  <button
-                    onClick={() => setProjectModalOpen(true)}
-                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
-                    title="Save current chat and grid as project"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    <span>Save</span>
-                  </button>
-                </div>
-              )}
-            </div>
+        {[
+          { id: 'chat', label: 'Chat', icon: '💬' },
+          { id: 'generated', label: 'Generated', icon: '🎨' },
+          { id: 'dashboard', label: 'Dashboard', icon: '📊' }
+        ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
+                    activeTab === tab.id
+                      ? (darkMode
+                          ? 'border-b border-neutral-300 text-neutral-100'
+                          : 'border-b border-neutral-800 text-neutral-900')
+                      : (darkMode
+                          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
+                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                </button>
+              ))}
             </div>
             
             {/* Save Project moved to bottom next to More */}
@@ -2203,8 +1908,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
-                      <div className="text-center opacity-50">
-                        <p>Use the prompt box below to get started</p>
+                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
+                        <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
+                        <div className="rounded-lg border p-2">
+                          <textarea
+                            value={input}
+                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
+                            placeholder="Ask anything"
+                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
+                          />
+                        </div>
                       </div>
                     ) : 'Start by entering a prompt below.'}
                   </div>
@@ -2395,26 +2109,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 hideUI
                 onCostCalculated={(cost, canAfford) => {
                   setGenerationCost(cost);
-                  // Handle credit loading state properly
-                  const hasValidCredits = creditInfo?.credits !== undefined && creditInfo?.credits !== null;
-                  
-                  if (hasValidCredits) {
-                    // Use the calculated canAfford if we have valid credit data
-                    setCanAffordGeneration(canAfford);
-                  } else {
-                    // If credits are still loading or failed, allow generation but log warning
-                    console.warn('Credits unavailable, allowing generation with server-side validation');
-                    setCanAffordGeneration(true);
-                  }
+                  setCanAffordGeneration(canAfford);
                 }}
               />
 
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 border-t p-2'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''}`}
-          style={{ 
-            bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))'
-          }}>
-                
-                {/* Character input row (only when needed) - same for mobile and desktop */}
+  <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-300 bg-white'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015]`}
+          style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+                {/* Character input row (only when needed) */}
                 {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
                   <div className="mb-2 flex items-center gap-2">
                     <input
@@ -2776,98 +2477,59 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
 
                     {/* Character & Style Control */}
-                    {showAdvancedControls && (mode === 'image' || mode === 'image-modify' || mode === 'video') && (
-                      <div className="space-y-4">
-                        <label className="text-sm font-semibold opacity-90">LoRA Selection</label>
+                    {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                      <div className="space-y-3">
+                        <label className="text-xs font-semibold opacity-90">Character & Style</label>
                         
-                        {/* Single LoRA Selector */}
-                        <div className="space-y-3">
-                          <select
-                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === 'None') {
-                                setLoraName('');
-                                setEffectLora('');
-                              } else if (v === 'Custom...') {
-                                setLoraName(loraName || '');
-                              } else {
-                                setLoraName(v);
-                                setEffectLora(v); // Set both to the same LoRA
-                              }
-                            }}
-                            className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${darkMode ? 'bg-neutral-900 border-neutral-700 hover:border-neutral-600' : 'bg-white border-neutral-300 hover:border-neutral-400'} ${lorasLoading ? 'opacity-50' : ''}`}
-                            disabled={lorasLoading}
-                          >
-                            {LORA_CHOICES.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt} {lorasLoading && opt === 'None' ? '(loading...)' : ''}
-                              </option>
-                            ))}
-                            {availableLoras.map((lora) => (
-                              <option key={lora.filename} value={lora.filename}>
-                                {lora.name} ({lora.type})
-                              </option>
-                            ))}
-                          </select>
-                          
-                          {loraName && !isPresetLoRa(loraName) && (
-                            <input
-                              type="text"
-                              placeholder="custom-lora.safetensors"
-                              value={loraName}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Character LoRA</label>
+                            <select
+                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
                               onChange={(e) => {
-                                setLoraName(e.target.value);
-                                setEffectLora(e.target.value); // Keep both in sync
+                                const v = e.target.value;
+                                if (v === 'None') setLoraName('');
+                                else if (v === 'Custom...') setLoraName(loraName || '');
+                                else setLoraName(v);
                               }}
-                              className={`w-full rounded-lg border px-3 py-2 text-sm font-mono transition-colors ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-300'}`}
-                            />
-                          )}
-                        </div>
-                        
-                        {/* LoRA Strength Controls */}
-                        {(loraName || effectLora) && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-xs font-medium opacity-80">Character Strength</label>
-                              <div className="space-y-1">
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="1"
-                                  step="0.01"
-                                  value={loraScale || 0.8}
-                                  onChange={(e) => setLoraScale(Number(e.target.value))}
-                                  className="w-full accent-blue-500"
-                                />
-                                <div className="flex justify-between text-xs opacity-60">
-                                  <span>0.0</span>
-                                  <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
-                                  <span>1.0</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-xs font-medium opacity-80">Effects Strength</label>
-                              <div className="space-y-1">
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="1"
-                                  step="0.01"
-                                  value={effectLoraScale || 0.6}
-                                  onChange={(e) => setEffectLoraScale(Number(e.target.value))}
-                                  className="w-full accent-purple-500"
-                                />
-                                <div className="flex justify-between text-xs opacity-60">
-                                  <span>0.0</span>
-                                  <span className="font-medium">{(effectLoraScale || 0.6).toFixed(2)}</span>
-                                  <span>1.0</span>
-                                </div>
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            >
+                              {LORA_CHOICES.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                            
+                            {loraName && !isPresetLoRa(loraName) && (
+                              <input
+                                type="text"
+                                placeholder="custom-character.safetensors"
+                                value={loraName}
+                                onChange={(e) => setLoraName(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">LoRA Strength</label>
+                            <div className="space-y-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={loraScale || 0.8}
+                                onChange={(e) => setLoraScale(Number(e.target.value))}
+                                className="w-full"
+                              />
+                              <div className="flex justify-between text-xs opacity-60">
+                                <span>0.0</span>
+                                <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
+                                <span>1.0</span>
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
                         {/* Style Presets */}
                         <div className="space-y-2">
@@ -2970,166 +2632,58 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                
-                {/* Feature Controls Toggle - Only show if not in feature controls mode */}
-                
-                {/* Feature Controls - Hidden by default */}
-                {showFeatureControls && (
-                  <>
-                    {/* Close button for feature controls */}
-                    <div className="mb-2 flex justify-between items-center">
-                      <span className={`text-xs font-medium ${darkMode ? 'text-neutral-300' : 'text-gray-600'}`}>
-                        Generation Features
-                      </span>
-                      <button
-                        onClick={() => setShowFeatureControls(false)}
-                        className={`p-1 rounded transition-all ${darkMode ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-200 text-gray-500'}`}
-                        title="Hide feature controls"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                
-                {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
-                <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
-                  <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
-                    {/* Mode buttons - SVG icons for mobile, text for desktop */}
-                    {isMobile ? (
-                      <>
-                        {/* Mobile: SVG icon buttons (no background) */}
-                        <button 
-                          title="Text mode" 
-                          onClick={() => setMode('text')}
-                          className={`p-2 transition-all ${
-                            mode === 'text'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Image mode" 
-                          onClick={() => setMode('image')}
-                          className={`p-2 transition-all ${
-                            mode === 'image'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Modify image" 
-                          onClick={() => setMode('image-modify')}
-                          className={`p-2 transition-all ${
-                            mode === 'image-modify'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Video mode" 
-                          onClick={() => setMode('video')}
-                          className={`p-2 transition-all ${
-                            mode === 'video'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
-                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Desktop: SVG icon buttons (same as mobile) */}
-                        <button 
-                          title="Text mode" 
-                          onClick={() => setMode('text')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'text'
-                              ? 'bg-blue-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Image mode" 
-                          onClick={() => setMode('image')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'image'
-                              ? 'bg-green-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Modify image" 
-                          onClick={() => setMode('image-modify')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'image-modify'
-                              ? 'bg-purple-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Video mode" 
-                          onClick={() => setMode('video')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'video'
-                              ? 'bg-red-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
-                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </>
-                    )}
+                {/* Mode buttons row with Save Project on right */}
+                <div className="mb-2 flex items-center gap-2 justify-between">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {/* Mode buttons */}
+                    <button 
+                      title="Text mode" 
+                      onClick={() => setMode('text')}
+                      className="group p-1.5 rounded-lg transition-all hover:bg-blue-500/10"
+                    > 
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M4 8h16M4 16h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M4 12h12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Image mode" 
+                      onClick={() => setMode('image')}
+                      className="group p-1.5 rounded-lg transition-all hover:bg-green-500/10"
+                    > 
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-green-500">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" stroke="#fff" strokeWidth="2"/>
+                        <path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Modify image" 
+                      onClick={() => setMode('image-modify')}
+                      className="group p-1.5 rounded-lg transition-all hover:bg-purple-500/10"
+                    > 
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-purple-500">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke="#fff" strokeWidth="2"/>
+                        <path d="M15 5l4 4" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
+                    <button 
+                      title="Video mode" 
+                      onClick={() => setMode('video')}
+                      className="group p-1.5 rounded-lg transition-all hover:bg-red-500/10"
+                    > 
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-red-500">
+                        <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2"/>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
+                      </svg>
+                    </button>
                     
-                    {/* Mode-specific controls - same layout for both */}
+                    {/* Quick dropdowns */}
                     {mode === 'text' && (
                       <select
                         value={textProvider}
                         onChange={(e)=> setTextProvider(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                         title="Provider"
                       >
                         <option value="social">Social</option>
@@ -3138,84 +2692,108 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </select>
                     )}
                     
-                    {(mode === 'image' || mode === 'image-modify') && (
+                    {mode === 'image' && (
                       <>
-                        {/* Character LoRA */}
                         <select
-                          value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === 'None') setLoraName('');
-                            else if (v === 'Custom...') setLoraName(loraName || '');
-                            else setLoraName(v);
-                          }}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Character"
+                          value={effectsPreset}
+                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Effects"
                         >
-                          {(['None','Custom...'] as const).map((opt) => (
-                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                          ))}
-                          {availableLoras.map((lora) => (
-                            <option key={lora.filename} value={lora.filename}>
-                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                            </option>
-                          ))}
+                          <option value="off">Effects: Off</option>
+                          <option value="subtle">Effects: Subtle</option>
+                          <option value="cinematic">Effects: Cinematic</option>
+                          <option value="stylized">Effects: Stylized</option>
                         </select>
-
-                        {/* Batch size */}
                         <select
-                          value={batchSize === '' ? '1' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Quantity"
                         >
+                          <option value="">Qty: 1</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}</option>
+                            <option key={n} value={n}>Qty: {n}</option>
                           ))}
                         </select>
-
-                        {/* Aspect ratio */}
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Aspect Ratio"
                         >
-                          <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                          <option value="">1:1</option>
                           {AR_CHOICES.map((ar) => (
                             <option key={ar} value={ar}>{ar}</option>
                           ))}
                         </select>
                       </>
                     )}
-
+                    
+                    {mode === 'image-modify' && (
+                      <>
+                        <select
+                          value={effectsPreset}
+                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Effects"
+                        >
+                          <option value="off">Effects: Off</option>
+                          <option value="subtle">Effects: Subtle</option>
+                          <option value="cinematic">Effects: Cinematic</option>
+                          <option value="stylized">Effects: Stylized</option>
+                        </select>
+                        <select
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Quantity"
+                        >
+                          <option value="">Qty: 1</option>
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>Qty: {n}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Aspect Ratio"
+                        >
+                          <option value="">1:1</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                    
                     {mode === 'video' && (
                       <>
                         <select
                           value={videoModel}
-                          onChange={(e) => setVideoModel(e.target.value as any)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Video model"
+                          onChange={(e)=> setVideoModel(e.target.value as any)}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          title="Model"
                         >
-                          <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
-                          <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
+                          <option value="ltxv">LTXV</option>
+                          <option value="wan">WAN</option>
                         </select>
-
                         <select
-                          value={batchSize === '' ? '1' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          value={batchSize === '' ? '' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Quantity"
                         >
+                          <option value="">Qty: 1</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}</option>
+                            <option key={n} value={n}>Qty: {n}</option>
                           ))}
                         </select>
-
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -3225,25 +2803,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </select>
                       </>
                     )}
-
-                    {mode === 'image' && (
-                      <>
-                        <button
-                          onClick={() => setImgTab('character')}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
-                        >
-                          {isMobile ? 'Char' : 'Character'}
-                        </button>
-                        {loraName && (
-                          <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
-                            {isMobile ? loraName.slice(0, 8) : loraName}
-                          </span>
-                        )}
-                      </>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {(messages.length > 0 || canvasItems.length > 0) && !isMobile && (
+                    {(messages.length > 0 || canvasItems.length > 0) && (
                       <button
                         onClick={() => setProjectModalOpen(true)}
                         className={`rounded-lg border px-2 py-1 text-xs font-medium transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
@@ -3254,41 +2816,34 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     )}
                   </div>
                 </div>
-                  </>
-                )}
 
-                {/* Prompt input area - unified desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90' : 'bg-white'} ${isMobile ? 'relative' : ''}`}>
+                {/* Compact prompt box with minimal padding */}
+        <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''} rounded-xl p-2 shadow-lg ${darkMode ? 'bg-neutral-900/90 border border-neutral-700 shadow-black/20' : 'bg-white border border-neutral-200 shadow-gray-200/60'} backdrop-blur-sm`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder=""
-                    className={`${isMobile ? 'min-h-[28px] max-h-[60px] text-sm' : 'min-h-[32px] max-h-[80px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
-                    ref={bottomInputRef}
-                    style={{ 
-                      fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
-                    }}
-                    disabled={isGeneratingBatch}
+                    placeholder="Type your prompt..."
+          className={`min-h-[28px] max-h-[60px] flex-1 resize-none rounded-lg p-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
+          ref={bottomInputRef}
                   />
-                    {/* Action buttons in 2x2 grid - clean borderless design aligned with textarea */}
-                  <div className={`grid grid-cols-2 gap-1 ${isMobile ? 'h-[28px]' : 'h-[32px]'}`}>
-                    {/* Top row: Send + Upload */}
+                   <div className="flex items-center gap-1">
                     <button
                       onClick={handleSend}
-                      disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-7 w-11' : 'h-5 w-8'} cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? (darkMode ? 'hover:bg-blue-500/20 bg-blue-600/10' : 'hover:bg-blue-500/20 bg-blue-100/50') : 'cursor-not-allowed opacity-50'}`}
+                      disabled={!canAffordGeneration}
+                      className={`group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
+                      {/* Cost badge */}
+                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[9px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`group cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20 ${isMobile ? 'h-7 w-11' : 'h-5 w-8'}`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" className="transition-colors group-hover:stroke-gray-400">
-                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
                         type="file"
@@ -3306,45 +2861,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
-                    
-                    {/* Bottom row: Create button spanning full width */}
-                    <button
-                      onClick={() => setShowFeatureControls(!showFeatureControls)}
-                      className={`col-span-2 flex items-center justify-center gap-1 rounded transition-all hover:scale-105 ${isMobile ? 'py-2 px-3 h-7' : 'py-1 px-2 h-5'} ${showFeatureControls ? (darkMode ? 'bg-blue-600/30 text-blue-300' : 'bg-blue-100 text-blue-700') : (darkMode ? 'hover:bg-neutral-700/50 bg-neutral-800/50' : 'hover:bg-gray-200/50 bg-gray-100/50')}`}
-                      title={showFeatureControls ? "Hide creation tools" : "Show creation tools (modes, settings, effects)"}
-                    >
-                      <svg width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                      </svg>
-                      <span className={`${isMobile ? 'text-sm font-medium' : 'text-xs'}`}>Create</span>
-                    </button>
                   </div>
+
                 </div>
                 {attached ? (
-                  <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
-                    <div className={`flex items-center gap-2 rounded-lg border ${isMobile ? 'p-2 flex-1' : 'p-3 w-full'} ${darkMode ? 'border-neutral-700 bg-neutral-800/50' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-2 rounded border p-2">
                       {attached && attached.type.startsWith('image') ? (
-                        <img src={attached.dataUrl} alt={attached.name || 'attachment'} className={`${isMobile ? 'h-10 w-10' : 'h-16 w-16'} object-cover rounded-lg`} />
+                        <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
                       ) : attached && attached.type.startsWith('video') ? (
-                        <div className={`${isMobile ? 'h-10 w-10' : 'h-16 w-16'} overflow-hidden rounded-lg border`}>
+                        <div className="h-12 w-12 overflow-hidden rounded border">
                           <video src={attached.dataUrl} className="h-full w-full object-cover" />
                         </div>
                       ) : (
-                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
-                          📄
+                        <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                          PDF
                         </div>
                       )}
-                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} flex-1 min-w-0`}>
-                        <div className={`font-medium truncate`} title={attached?.name || ''}>{attached?.name || ''}</div>
-                        <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>{attached?.type || ''}</div>
+                      <div className="text-xs">
+                        <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
+                        <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
                       </div>
                     </div>
                     <button
-                      className={`rounded-lg border ${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} font-medium transition-all hover:scale-105 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300' : 'border-gray-300 hover:bg-gray-100 text-gray-700'}`}
+                      className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
                       onClick={() => setAttached(null)}
-                    >
-                      {isMobile ? '✕' : 'Remove'}
-                    </button>
+                    >Remove</button>
                   </div>
                 ) : null}
               </div>
@@ -4813,6 +4355,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <textarea 
               value={input} 
               onChange={(e)=> setInput(e.target.value)} 
+              placeholder="Describe what you want to create..." 
               className="mb-3 h-32 w-full resize-none rounded border p-3 text-sm" 
             />
 
@@ -5004,7 +4547,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <label className="text-xs font-semibold">Character (LoRA)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs font-medium opacity-80">Character {lorasLoading && '(loading...)'}</label>
+                        <label className="text-xs font-medium opacity-80">Character</label>
                         <select
                           value={isPresetLoRa(loraName) ? loraName : 'Custom...'}
                           onChange={(e) => {
@@ -5014,15 +4557,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             else setLoraName(v);
                           }}
                           className="w-full rounded border px-2 py-1 text-xs"
-                          disabled={lorasLoading}
                         >
                           {LORA_CHOICES.map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                          {availableLoras.map((lora) => (
-                            <option key={lora.filename} value={lora.filename}>
-                              {lora.name} ({lora.type})
-                            </option>
                           ))}
                         </select>
                       </div>
