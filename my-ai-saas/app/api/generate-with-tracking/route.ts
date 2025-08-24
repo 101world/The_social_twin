@@ -27,16 +27,12 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authRes = await auth();
-    const userId = authRes.userId;
-    const getToken = authRes.getToken;
-    
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const authRes = await auth();
+  let userId = authRes.userId as string | null;
+  const getToken = authRes.getToken;
 
     // Check if this is a mobile request and add mobile-specific optimizations
-    const isMobileRequest = req.headers.get('x-mobile-request') === 'true';
+  const isMobileRequest = req.headers.get('x-mobile-request') === 'true';
     
     if (isMobileRequest) {
       console.log('📱 MOBILE GENERATION REQUEST - Applying mobile optimizations');
@@ -46,6 +42,17 @@ export async function POST(req: NextRequest) {
   // Clerk auth still required for user identity; admin key stays server-side only.
 
   const body = await req.json();
+
+    // Fallback identity for mobile when cookies are stripped: allow same-origin X-User-Id/body userId
+    if (!userId) {
+      const hdrUid = req.headers.get('x-user-id');
+      const bodyUid = typeof body?.userId === 'string' ? body.userId : undefined;
+      userId = (hdrUid || bodyUid || null) as string | null;
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
     // Log the complete request for debugging
     console.log('=== GENERATION REQUEST DEBUG ===');
@@ -72,7 +79,7 @@ export async function POST(req: NextRequest) {
     const {
       prompt,
       mode,
-      runpodUrl: runpodUrlRaw,
+  runpodUrl: runpodUrlRaw,
       provider,
       batch_size = 1,
       userId: bodyUserId,
@@ -81,8 +88,10 @@ export async function POST(req: NextRequest) {
       ...otherParams
     } = body;
 
-    const cfg = await getRunpodConfig().catch(()=>null);
-    const runpodUrl = pickRunpodUrlFromConfig({ provided: (typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg });
+  const cfg = await getRunpodConfig().catch(()=>null);
+  // Always prefer server-configured URL; ignore client value unless explicitly allowed
+  const allowClientRunpod = process.env.ALLOW_CLIENT_RUNPOD_URL === 'true';
+  const runpodUrl = pickRunpodUrlFromConfig({ provided: (allowClientRunpod && typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg });
 
     // Log URL resolution for debugging
     console.log('URL Resolution Debug:', {
@@ -214,8 +223,15 @@ export async function POST(req: NextRequest) {
 
     // Now perform the generation directly (no internal HTTP), then update records
     try {
+      // Server-side timeout guard (299s) to mirror client expectations and avoid hanging connections
+      const SERVER_TIMEOUT_MS = 299000; // 299s
+      let didTimeout = false;
+      const withTimeout = <T>(p: Promise<T>): Promise<T> => new Promise((resolve, reject) => {
+        const t = setTimeout(() => { didTimeout = true; reject(new Error('Generation timeout')); }, SERVER_TIMEOUT_MS);
+        p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); reject(e); });
+      });
       const apiKey = process.env.RUNPOD_API_KEY || undefined;
-      const out = await runSocialTwinGeneration({
+  const out = await withTimeout(runSocialTwinGeneration({
         mode: mode as any,
         prompt,
         negative: typeof otherParams?.negative === 'string' ? otherParams.negative : undefined,
@@ -240,7 +256,7 @@ export async function POST(req: NextRequest) {
   lora_effect_scale: typeof otherParams?.lora_effect_scale === 'number' ? otherParams.lora_effect_scale : undefined,
         aspect_ratio: typeof otherParams?.aspect_ratio === 'string' ? otherParams.aspect_ratio : undefined,
         guidance: typeof otherParams?.guidance === 'number' ? otherParams.guidance : undefined,
-      });
+      }));
 
       const urls: string[] = out.urls || [];
       const batchImages: string[] = out.images || [];
@@ -350,7 +366,7 @@ export async function POST(req: NextRequest) {
         elapsed_ms: out.runpod.elapsed_ms
       } : undefined;
       
-      const responseData = {
+  const responseData = {
         ok: true,
         urls,
         images: batchImages,
@@ -362,7 +378,7 @@ export async function POST(req: NextRequest) {
           generationId: generationRecord.id
         },
         allowanceWarning,
-        timeoutWarning,
+  timeoutWarning: timeoutWarning || (didTimeout ? { message: 'Server timeout at ~299s; background may continue. Check Generated tab shortly.', elapsed_ms: SERVER_TIMEOUT_MS } : undefined),
         // Add mobile debugging info if mobile request
         ...(isMobileRequest ? { 
           mobile_debug: {

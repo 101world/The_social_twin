@@ -1427,12 +1427,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       // Use the new tracking API endpoint
   const res = await fetch("/api/generate-with-tracking", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": userId || "",
+          // Mark mobile requests explicitly to enable server-side optimizations
+          "X-Mobile-Request": isMobile ? "true" : "false",
+        },
         body: JSON.stringify({
           prompt: trimmed,
           mode,
-          // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
-          ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
+          // Do NOT pass client runpodUrl by default; always prefer server-side config
+          // If you need to allow manual overrides, wire a dedicated "override" toggle and send conditionally
           provider: textProvider,
           // Character & Effects LoRAs
           lora_character: loraName || undefined,
