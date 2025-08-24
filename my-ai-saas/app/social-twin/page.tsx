@@ -98,8 +98,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   // Mobile features popover
   const [featureMenuOpen, setFeatureMenuOpen] = useState<boolean>(false);
-  // Create tools toggle state
-  const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
   // Library modal state
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [libraryContent, setLibraryContent] = useState<any[]>([]);
@@ -3141,21 +3139,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {/* Bottom row: Create button + Library button - NO BACKGROUNDS */}
                     <button
-                      onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
-                        createToolsOpen 
-                          ? `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-90` 
-                          : `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`
-                      }`}
+                      onClick={() => setLibraryOpen(true)}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`}
                       style={{ 
                         height: isMobile ? '20px' : '26px',
                         background: 'transparent',
                         border: 'none'
                       }}
-                      title="Toggle creation tools"
-                      aria-pressed={createToolsOpen}
+                      title="Open Library"
+                      aria-label="Open Library"
                     >
-                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
@@ -3178,8 +3172,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                 </div>
                 
-                {/* Creation Tools Dropdown - appears when Create (+) button is clicked */}
-                {createToolsOpen && (
+
                   <div className={`mt-3 p-3 rounded-lg border ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex flex-col gap-2">
                       <div className={`text-xs font-medium mb-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
@@ -3188,7 +3181,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={() => {
-                            setPrompt("A beautiful landscape");
+                            setInput("A beautiful landscape");
                             setCreateToolsOpen(false);
                           }}
                           className={`p-2 rounded text-left text-xs transition-colors ${
@@ -3201,7 +3194,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </button>
                         <button
                           onClick={() => {
-                            setPrompt("A professional portrait");
+                            setInput("A professional portrait");
                             setCreateToolsOpen(false);
                           }}
                           className={`p-2 rounded text-left text-xs transition-colors ${
@@ -3214,7 +3207,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </button>
                         <button
                           onClick={() => {
-                            setPrompt("A futuristic city");
+                            setInput("A futuristic city");
                             setCreateToolsOpen(false);
                           }}
                           className={`p-2 rounded text-left text-xs transition-colors ${
@@ -3227,7 +3220,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </button>
                         <button
                           onClick={() => {
-                            setPrompt("Abstract art");
+                            setInput("Abstract art");
                             setCreateToolsOpen(false);
                           }}
                           className={`p-2 rounded text-left text-xs transition-colors ${
@@ -3240,8 +3233,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </button>
                       </div>
                     </div>
-                  </div>
-                )}
                 
                 {attached ? (
                   <div className="mt-2 flex items-center gap-3">
