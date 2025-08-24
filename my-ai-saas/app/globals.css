@@ -415,3 +415,72 @@ html[data-landing-active="1"] body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Mobile optimization and keyboard handling */
+@media (max-width: 768px) {
+  /* Prevent zoom on input focus for iOS */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  /* Improve touch targets */
+  button, a, label {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Handle safe areas for modern phones */
+  .mobile-safe {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Prevent overscroll bounce */
+  .overscroll-none {
+    overscroll-behavior: none;
+  }
+  
+  /* Better mobile tap experience */
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Dynamic viewport height for mobile */
+.h-screen-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Keyboard handling */
+@media (max-width: 768px) {
+  .keyboard-safe {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: translateY(0);
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .keyboard-open .keyboard-safe {
+    transform: translateY(0);
+  }
+}
+
+/* Hide scrollbars but keep functionality */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

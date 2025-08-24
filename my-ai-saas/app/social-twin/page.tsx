@@ -423,16 +423,44 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
   }, []);
 
-  // Mobile detection effect
+  // Enhanced mobile detection with keyboard handling
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState<boolean>(false);
+  const [viewportHeight, setViewportHeight] = useState<number>(0);
+  
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isMobileWidth = width < 768; // Updated breakpoint for better tablet support
+      const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      setIsMobile(isMobileWidth || isMobileUA);
+      setViewportHeight(height);
+    };
+    
+    // Keyboard detection for mobile
+    const handleResize = () => {
+      checkMobile();
+      
+      // Detect keyboard open/close on mobile
+      if (isMobile) {
+        const currentHeight = window.innerHeight;
+        const heightDiff = viewportHeight - currentHeight;
+        const threshold = 150; // Minimum height difference to consider keyboard open
+        
+        setIsKeyboardOpen(heightDiff > threshold);
+      }
     };
     
     checkMobile(); // Initial check
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, [isMobile, viewportHeight]);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -1807,13 +1835,46 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }, []);
 
   return (
-  <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
+  <main className={`
+    relative h-screen w-screen overflow-hidden max-w-full
+    ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}
+    ${isMobile ? 'h-[100dvh] overscroll-none' : 'h-screen-dvh'}
+  `}
+  style={{
+    // Prevent zoom and improve mobile viewport handling
+    touchAction: 'manipulation',
+    WebkitTextSizeAdjust: '100%',
+    // Handle safe area for modern phones
+    paddingTop: isMobile ? 'env(safe-area-inset-top)' : '0',
+    paddingBottom: isMobile ? 'env(safe-area-inset-bottom)' : '0',
+  }}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
-      {/* Chat panel docked right (collapsible) */}
+      {/* Chat panel docked right (collapsible) - enhanced mobile responsiveness */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
-        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' }}
+        className={`
+          absolute z-[10010] pointer-events-auto flex flex-col overflow-hidden min-w-0
+          ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} 
+          ${simpleMode ? '' : 'border-l transition-[width] duration-200'} 
+          ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')}
+          ${isMobile && isKeyboardOpen ? 'pb-0' : ''}
+        `}
+        style={simpleMode 
+          ? { 
+              left: sidebarOpen ? (isMobile ? 0 : 240) : 0, 
+              transition: 'left 150ms ease',
+              // Mobile-specific adjustments
+              ...(isMobile && {
+                paddingTop: 'env(safe-area-inset-top)',
+                paddingBottom: isKeyboardOpen ? '0' : 'env(safe-area-inset-bottom)',
+              })
+            } 
+          : { 
+              width: chatCollapsed ? 40 : (isMobile ? '100vw' : 'min(30vw, 520px)'), 
+              minWidth: chatCollapsed ? 40 : (isMobile ? '100vw' : 'min(320px, 100vw)'), 
+              maxWidth: chatCollapsed ? 40 : (isMobile ? '100vw' : 'min(520px, 100vw)')
+            }
+        }
       >
         {/* Full-rail click target when collapsed */}
         {chatCollapsed ? (
@@ -1827,7 +1888,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Collapse handle - Hidden on mobile in simple mode to avoid interfering with mobile UX */}
         {!(simpleMode && isMobile) && (
         <button
-          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          className={`
+            absolute z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg transition-all duration-200 border-2 hover:scale-110 animate-pulse hover:animate-none
+            bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-white/20 hover:border-white/40
+            ${isMobile ? 'left-2 top-1/2' : 'md:left-[-40px] left-2 top-1/2'}
+          `}
           onClick={()=> setChatCollapsed(v=>!v)}
           title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
           aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
@@ -1843,8 +1908,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <h1 className="text-base md:text-lg font-semibold tracking-tight">
+  <header className={`
+    flex items-center justify-between gap-2 px-3 py-2 
+    ${darkMode ? '' : 'bg-white'} 
+    ${isMobile ? 'text-sm min-h-[60px]' : ''}
+  `} 
+  style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+          <h1 className={`font-semibold tracking-tight ${isMobile ? 'text-sm' : 'text-base md:text-lg'}`}>
             {creditInfo?.subscription_active && creditInfo?.subscription_plan
               ? (()=>{
                   const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim();
@@ -1874,9 +1944,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - always visible; scrollable on mobile */}
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-            <div className="flex gap-1">
+        {/* Top Navigation - enhanced mobile responsive */}
+          <div className={`
+            flex justify-between items-center border-b overflow-x-auto no-scrollbar
+            ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} 
+            ${isMobile ? 'px-1' : 'px-0'}
+          `} 
+          style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+            <div className={`flex ${isMobile ? 'w-full' : 'gap-1'}`}>
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
           { id: 'generated', label: 'Generated', icon: '🎨' },
@@ -1885,17 +1960,27 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
+                  className={`
+                    flex items-center gap-2 py-1.5 transition-colors whitespace-nowrap flex-shrink-0
+                    ${isMobile ? 'flex-1 justify-center px-2 text-xs' : 'px-3 text-xs md:text-sm'}
+                    ${activeTab === tab.id
                       ? (darkMode
                           ? 'border-b border-neutral-300 text-neutral-100'
                           : 'border-b border-neutral-800 text-neutral-900')
                       : (darkMode
                           ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
                           : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
-                  }`}
+                    }
+                  `}
                 >
-                  <span>{tab.label}</span>
+                  {isMobile ? (
+                    <>
+                      <span className="text-sm">{tab.icon}</span>
+                      <span className="text-[10px] font-medium">{tab.label}</span>
+                    </>
+                  ) : (
+                    <span>{tab.label}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -2825,16 +2910,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 </div>
 
-                {/* Compact prompt box with minimal padding */}
-        <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''} rounded-xl p-2 shadow-lg ${darkMode ? 'bg-neutral-900/90 border border-neutral-700 shadow-black/20' : 'bg-white border border-neutral-200 shadow-gray-200/60'} backdrop-blur-sm`}>
+                {/* Enhanced responsive prompt box with keyboard handling */}
+                <div className={`
+                  flex gap-2 items-end
+                  ${isMobile ? (isKeyboardOpen ? 'fixed bottom-0 left-0 right-0 z-50' : 'sticky bottom-2') : ''}
+                  rounded-xl p-3 shadow-lg backdrop-blur-sm transition-all duration-200
+                  ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
+                  ${isMobile ? 'm-2' : ''}
+                `}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your prompt..."
-          className={`min-h-[28px] max-h-[60px] flex-1 resize-none rounded-lg p-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
-          ref={bottomInputRef}
+                    className={`
+                      min-h-[32px] max-h-[80px] flex-1 resize-none rounded-lg p-3 text-sm 
+                      transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0
+                      ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}
+                      ${isMobile ? 'text-base' : 'text-sm'}
+                    `}
+                    ref={bottomInputRef}
+                    style={{ 
+                      fontSize: isMobile ? '16px' : '14px' // Prevents zoom on iOS
+                    }}
                   />
-                   <div className="grid grid-cols-2 gap-1 w-full">
+                  
+                  {/* Responsive button grid - 2x2 on mobile, flexible on desktop */}
+                  <div className={`${isMobile ? 'grid grid-cols-2 gap-2 min-w-[120px]' : 'flex items-center gap-2'}`}>
                     {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
