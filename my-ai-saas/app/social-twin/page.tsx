@@ -2011,7 +2011,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Save Project moved to bottom next to More */}
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : 'calc(var(--composer-h, 64px))' }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '120px' : 'calc(var(--composer-h, 64px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -2933,17 +2933,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 </div>
 
-                {/* Enhanced responsive prompt box with pulsating glow effect */}
+                {/* Enhanced responsive prompt box with pulsating glow effect - NO BACKGROUND */}
                 <div 
                   className={`
                     flex gap-3 items-end
-                    ${isMobile ? 'sticky bottom-2' : ''}
+                    ${isMobile ? 'fixed bottom-4 left-2 right-2' : ''}
                     rounded-xl p-3 backdrop-blur-sm transition-all duration-200 border-0
-                    ${darkMode ? 'bg-neutral-900/95' : 'bg-white/95'}
-                    ${isMobile ? 'mx-2 mb-2' : ''}
+                    ${isMobile ? '' : ''}
                   `}
                   style={{
-                    // Dynamic pulsating shadow based on typing speed
+                    // Dynamic pulsating shadow based on typing speed - NO BACKGROUND, JUST GLOW
+                    background: 'transparent',
                     boxShadow: typingSpeed > 0 
                       ? `0 0 ${Math.min(40, 20 + typingSpeed * 2)}px rgba(59, 130, 246, ${Math.min(0.8, 0.3 + typingSpeed * 0.1)}), 
                          0 0 ${Math.min(80, 40 + typingSpeed * 4)}px rgba(59, 130, 246, ${Math.min(0.4, 0.1 + typingSpeed * 0.05)})`
@@ -3002,7 +3002,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   
                   {/* Button grid takes 10% width - LARGE ICONS, MOBILE OPTIMIZED */}
                   <div 
-                    className="grid grid-cols-2 gap-1 h-fit"
+                    className={`grid grid-cols-2 gap-1 h-fit rounded-lg p-1 ${darkMode ? 'bg-neutral-800/80' : 'bg-gray-50/80'} backdrop-blur-sm`}
                     style={{ 
                       width: '10%',
                       flexShrink: 0,
@@ -3013,7 +3013,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/20 bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       style={{ height: isMobile ? '20px' : '26px' }} // Much bigger desktop buttons
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
@@ -3025,7 +3025,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Cost badge */}
                       <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" style={{ height: isMobile ? '20px' : '26px' }} title="Attach image/video/pdf">
+                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20 bg-gray-500/10" style={{ height: isMobile ? '20px' : '26px' }} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -3051,8 +3051,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onClick={() => setCreateToolsOpen(v => !v)}
                       className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
-                          ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
-                          : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
+                          ? `${darkMode ? 'bg-blue-600/30 border border-blue-500/70 text-blue-300' : 'bg-blue-200 border border-blue-400 text-blue-700'} shadow-md` 
+                          : `hover:bg-blue-500/20 bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
                       }`}
                       style={{ height: isMobile ? '20px' : '26px' }}
                       title="Toggle creation tools"
@@ -3064,7 +3064,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/20 bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
                       style={{ height: isMobile ? '20px' : '26px' }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
