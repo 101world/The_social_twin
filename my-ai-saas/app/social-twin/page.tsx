@@ -102,6 +102,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
   // Library modal state
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
+  const [libraryContent, setLibraryContent] = useState<any[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -646,6 +648,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       });
     } catch (e) {
       // ignore
+    }
+  }
+
+  // Fetch all generated content from Supabase for Library
+  async function loadLibraryContent() {
+    if (!userId || libraryLoading) return;
+    
+    setLibraryLoading(true);
+    try {
+      const response = await fetch('/api/social-twin/generations', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': userId
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Sort by created_at descending (most recent first)
+        const sortedContent = data.sort((a: any, b: any) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setLibraryContent(sortedContent);
+      } else {
+        console.error('Failed to load library content');
+        setLibraryContent([]);
+      }
+    } catch (error) {
+      console.error('Error loading library content:', error);
+      setLibraryContent([]);
+    } finally {
+      setLibraryLoading(false);
     }
   }
 
@@ -1261,6 +1296,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       return fromItem?.type !== 'operator' && toItem?.type !== 'operator';
     }));
   }, []);
+
+  // Load library content when modal opens
+  useEffect(() => {
+    if (libraryOpen && userId) {
+      loadLibraryContent();
+    }
+  }, [libraryOpen, userId]);
 
   const activeEndpoint = useMemo(() => {
     switch (mode) {
@@ -4113,7 +4155,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   Your Library
                 </h2>
                 <span className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>
-                  ({messages.filter(m => m.imageUrl || m.videoUrl).length} items)
+                  ({libraryLoading ? '...' : `${libraryContent.length} items`})
                 </span>
               </div>
               <button
@@ -4128,7 +4170,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             
             {/* Content */}
             <div className="h-full overflow-y-auto p-4">
-              {messages.filter(m => m.imageUrl || m.videoUrl).length === 0 ? (
+              {libraryLoading ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-4"></div>
+                  <p className={`text-sm ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
+                    Loading your content...
+                  </p>
+                </div>
+              ) : libraryContent.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={`mb-4 ${darkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -4142,18 +4191,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {messages.filter(m => m.imageUrl || m.videoUrl).map((message, index) => (
-                    <div key={index} className={`
+                  {libraryContent.map((item, index) => (
+                    <div key={item.id || index} className={`
                       rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
                       ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
                     `}>
-                      {message.imageUrl && (
+                      {item.media_type === 'image' && item.media_url && (
                         <div className="aspect-square relative">
                           <img
-                            src={message.imageUrl}
-                            alt={message.content || 'Generated image'}
+                            src={item.media_url}
+                            alt={item.prompt || 'Generated image'}
                             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                            onClick={() => setViewer({ open: true, src: message.imageUrl! })}
+                            onClick={() => setViewer({ open: true, src: item.media_url! })}
                           />
                           <div className="absolute top-2 right-2">
                             <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
@@ -4162,10 +4211,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                         </div>
                       )}
-                      {message.videoUrl && (
+                      {item.media_type === 'video' && item.media_url && (
                         <div className="aspect-video relative">
                           <video
-                            src={message.videoUrl}
+                            src={item.media_url}
                             className="w-full h-full object-cover cursor-pointer"
                             controls
                           />
@@ -4176,19 +4225,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                         </div>
                       )}
-                      {message.content && (
+                      {item.prompt && (
                         <div className="p-3">
                           <p className={`text-sm line-clamp-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
-                            {message.content}
+                            {item.prompt}
                           </p>
                           <div className="flex items-center justify-between mt-2">
                             <span className={`text-xs ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
-                              {new Date(message.createdAt || Date.now()).toLocaleDateString()}
+                              {new Date(item.created_at || Date.now()).toLocaleDateString()}
                             </span>
                             <button
                               onClick={() => {
-                                if (message.imageUrl) {
-                                  folderModalPayload.current = { url: message.imageUrl, type: 'image', prompt: message.content };
+                                if (item.media_url) {
+                                  folderModalPayload.current = { 
+                                    url: item.media_url, 
+                                    type: item.media_type === 'video' ? 'video' : 'image', 
+                                    prompt: item.prompt 
+                                  };
                                   setFolderModalOpen(true);
                                 }
                               }}
