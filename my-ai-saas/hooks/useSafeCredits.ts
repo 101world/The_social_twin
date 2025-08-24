@@ -1,33 +1,87 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCredits as useCreditsOriginal } from '@/lib/credits-context';
+import { useAuth } from '@clerk/nextjs';
 
-// Safe wrapper for useCredits that handles provider issues
+// Mobile-safe credits hook that fetches directly from API
 export function useSafeCredits() {
+  const { userId } = useAuth();
   const [creditInfo, setCreditInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState<() => Promise<void>>(() => async () => {});
-  const [deductCredits, setDeductCredits] = useState<(amount: number) => Promise<boolean>>(() => async () => false);
+
+  const fetchCredits = async () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch('/api/credits', {
+        headers: {
+          'X-User-Id': userId
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCreditInfo(data);
+        setError(null);
+      } else {
+        console.warn('Failed to fetch credits:', response.status);
+        setError('Failed to fetch credits');
+        // Set default values for failed credit fetch
+        setCreditInfo({ 
+          credits: 100, // Default credits for mobile
+          subscription_active: false,
+          subscription_plan: null 
+        });
+      }
+    } catch (err) {
+      console.warn('Credits fetch error:', err);
+      setError('Network error');
+      // Set default values for network errors
+      setCreditInfo({ 
+        credits: 100, // Default credits for mobile
+        subscription_active: false,
+        subscription_plan: null 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
+    fetchCredits();
+  }, [userId]);
+
+  const refresh = async () => {
+    await fetchCredits();
+  };
+
+  const deductCredits = async (amount: number): Promise<boolean> => {
+    if (!userId || !creditInfo?.credits) return false;
+    
     try {
-      const creditsContext = useCreditsOriginal();
-      setCreditInfo(creditsContext.creditInfo);
-      setLoading(creditsContext.loading);
-      setError(creditsContext.error);
-      setRefresh(() => creditsContext.refresh);
-      setDeductCredits(() => creditsContext.deductCredits);
-    } catch (err) {
-      console.warn('Credits context not available, using fallback values');
-      setCreditInfo(null);
-      setLoading(false);
-      setError('Credits context not available');
-      setRefresh(() => async () => {});
-      setDeductCredits(() => async () => false);
+      const response = await fetch('/api/credits/deduct', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': userId
+        },
+        body: JSON.stringify({ amount })
+      });
+      
+      if (response.ok) {
+        await refresh(); // Refresh credits after deduction
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
-  }, []);
+  };
 
   return {
     creditInfo,

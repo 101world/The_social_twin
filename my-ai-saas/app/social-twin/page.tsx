@@ -2136,7 +2136,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 hideUI
                 onCostCalculated={(cost, canAfford) => {
                   setGenerationCost(cost);
-                  setCanAffordGeneration(canAfford);
+                  // Mobile-safe: handle undefined credits gracefully
+                  const hasCredits = creditInfo?.credits !== undefined && creditInfo?.credits !== null;
+                  const actualCanAfford = hasCredits ? canAfford : true; // Allow generation if credits are loading
+                  setCanAffordGeneration(actualCanAfford);
                 }}
               />
 
@@ -3075,14 +3078,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           console.log('User agent:', navigator.userAgent);
                           console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
                           console.log('isMobile state:', isMobile);
-                          console.log('Credits:', creditInfo?.credits);
+                          console.log('Credits raw:', creditInfo);
+                          console.log('Credits value:', creditInfo?.credits);
+                          console.log('Credits type:', typeof creditInfo?.credits);
                           console.log('Can afford:', canAffordGeneration);
                           console.log('Generation cost:', generationCost);
                           console.log('Active endpoint:', activeEndpoint);
                           console.log('Current mode:', mode);
                           console.log('Input value:', input);
                           console.log('Available LoRAs:', availableLoras.length);
-                          alert(`Debug: Credits=${creditInfo?.credits}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}`);
+                          console.log('User ID:', userId);
+                          const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
+                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}`);
                         }}
                         className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                         title="Debug info"
