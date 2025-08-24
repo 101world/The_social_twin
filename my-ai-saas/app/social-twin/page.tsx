@@ -2937,7 +2937,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
                   ${isMobile ? 'mx-2 mb-2' : ''}
                 `}>
-                  {/* Textarea takes 80% width */}
+                  {/* Textarea takes 90% width for mobile optimization */}
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -2951,16 +2951,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     ref={bottomInputRef}
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px', // Prevents zoom on iOS
-                      width: '80%',
+                      width: '90%',
                       flexShrink: 0
                     }}
                   />
                   
-                  {/* Button grid takes 20% width - LEAN & SLEEK */}
+                  {/* Button grid takes 10% width - OPTIMIZED FOR MOBILE */}
                   <div 
                     className="grid grid-cols-2 gap-1 h-fit"
                     style={{ 
-                      width: '20%',
+                      width: '10%',
                       flexShrink: 0,
                       height: '38px' // Match textarea min-height for sleek alignment
                     }}
@@ -2973,7 +2973,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -2981,7 +2981,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
                     <label className="group cursor-pointer rounded-md px-1 h-[18px] flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -3012,7 +3012,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
@@ -3022,7 +3022,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
-                      <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
                     </button>
