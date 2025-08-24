@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "functions": {
     "app/api/**/*.ts": {
-      "maxDuration": 480
+      "maxDuration": 300
     }
   }
 }
