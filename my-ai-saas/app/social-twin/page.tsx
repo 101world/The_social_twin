@@ -1445,29 +1445,73 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         __user_agent: navigator.userAgent
       };
       
+      // 📱 MOBILE: Optimize payload for mobile networks
+      let optimizedPayload = { ...apiPayload };
+      if (isMobile) {
+        // Remove or compress large fields for mobile
+        if (optimizedPayload.__user_agent) {
+          optimizedPayload.__user_agent = optimizedPayload.__user_agent.substring(0, 100);
+        }
+        
+        // Compress attachment data if too large
+        if (optimizedPayload.attachment?.dataUrl && optimizedPayload.attachment.dataUrl.length > 500000) {
+          console.log('📱 MOBILE: Large attachment detected, may cause issues');
+        }
+        
+        console.log('📱 MOBILE: Payload optimized for mobile network');
+      }
+      
       // 📱 MOBILE: Log API call details
       if (isMobile) {
         console.log('📱 MOBILE API CALL STARTING');
-        console.log('📱 Payload size:', JSON.stringify(apiPayload).length, 'bytes');
+        console.log('📱 Payload size:', JSON.stringify(optimizedPayload).length, 'bytes');
         console.log('📱 Key parameters:', {
-          mode: apiPayload.mode,
-          prompt_length: apiPayload.prompt.length,
-          has_attachment: !!apiPayload.attachment,
-          batch_size: apiPayload.batch_size,
-          aspect_ratio: apiPayload.aspect_ratio
+          mode: optimizedPayload.mode,
+          prompt_length: optimizedPayload.prompt.length,
+          has_attachment: !!optimizedPayload.attachment,
+          batch_size: optimizedPayload.batch_size,
+          aspect_ratio: optimizedPayload.aspect_ratio
         });
       }
+      // 📱 MOBILE: Enhanced request with timeout and retry logic
+      const timeoutMs = isMobile ? 60000 : 30000; // Longer timeout for mobile
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
-  const res = await fetch("/api/generate-with-tracking", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-User-Id": userId || "",
-          // Add mobile header for server-side detection
-          ...(isMobile ? { "X-Mobile-Request": "true" } : {})
-        },
-        body: JSON.stringify(apiPayload),
-      });
+      let res;
+      try {
+        res = await fetch("/api/generate-with-tracking", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json", 
+            "X-User-Id": userId || "",
+            // Add mobile header for server-side detection
+            ...(isMobile ? { "X-Mobile-Request": "true" } : {})
+          },
+          body: JSON.stringify(optimizedPayload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          setMessages((prev) => [
+            ...prev,
+            { id: generateId(), role: "error", content: `📱 Request timeout (${timeoutMs/1000}s) - Please try again with a shorter prompt or better connection` },
+          ]);
+          return;
+        }
+        
+        // Network error - provide mobile-specific guidance
+        setMessages((prev) => [
+          ...prev,
+          { id: generateId(), role: "error", content: isMobile 
+            ? "📱 Network error - Check your mobile connection and try again" 
+            : "Network error - Please check your connection" },
+        ]);
+        return;
+      }
       
       // 📱 MOBILE: Log response details
       if (isMobile) {

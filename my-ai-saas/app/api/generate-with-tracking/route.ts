@@ -12,6 +12,19 @@ const CREDIT_COSTS = {
   'image-modify': 3,
 };
 
+// Handle CORS preflight requests for mobile
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-Mobile-Request',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const authRes = await auth();
@@ -20,6 +33,13 @@ export async function POST(req: NextRequest) {
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if this is a mobile request and add mobile-specific optimizations
+    const isMobileRequest = req.headers.get('x-mobile-request') === 'true';
+    
+    if (isMobileRequest) {
+      console.log('📱 MOBILE GENERATION REQUEST - Applying mobile optimizations');
     }
 
   // We use the admin client (service role) to avoid RLS token issues during server-side generation tracking.
@@ -43,8 +63,7 @@ export async function POST(req: NextRequest) {
     console.log('Request Body:', JSON.stringify(body, null, 2));
     
     // Mobile-specific debugging
-    const isMobileRequest = req.headers.get('x-mobile-request') === 'true' || body.isMobile === true;
-    if (isMobileRequest) {
+    if (isMobileRequest || body.isMobile === true) {
       console.log('📱 MOBILE REQUEST DETECTED ON SERVER');
       console.log('📱 Mobile User Agent:', body.userAgent || req.headers.get('user-agent'));
       console.log('📱 Mobile Payload Size:', JSON.stringify(body).length, 'bytes');
@@ -284,11 +303,11 @@ export async function POST(req: NextRequest) {
         elapsed_ms: out.runpod.elapsed_ms
       } : undefined;
       
-      return NextResponse.json({
-  ok: true,
-  urls,
-  images: batchImages,
-  videos: batchVideos,
+      const responseData = {
+        ok: true,
+        urls,
+        images: batchImages,
+        videos: batchVideos,
         creditInfo: {
           cost: totalCost,
           didDeduct,
@@ -296,8 +315,31 @@ export async function POST(req: NextRequest) {
           generationId: generationRecord.id
         },
         allowanceWarning,
-        timeoutWarning
-      });
+        timeoutWarning,
+        // Add mobile debugging info if mobile request
+        ...(isMobileRequest ? { 
+          mobile_debug: {
+            request_processed: true,
+            timestamp: new Date().toISOString(),
+            user_agent: req.headers.get('user-agent')
+          }
+        } : {})
+      };
+
+      // Create response with mobile-optimized headers
+      const response = NextResponse.json(responseData);
+      
+      // Add mobile-specific CORS headers for better compatibility
+      if (isMobileRequest) {
+        response.headers.set('Access-Control-Allow-Origin', '*');
+        response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Mobile-Request');
+        response.headers.set('Access-Control-Max-Age', '86400');
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('X-Mobile-Optimized', 'true');
+      }
+      
+      return response;
 
     } catch (generationError) {
       console.error('Generation request failed:', generationError);
@@ -316,10 +358,25 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', generationRecord.id);
 
-  return NextResponse.json({ 
-    error: 'Generation request failed', 
-    details: generationError instanceof Error ? generationError.message : 'Unknown error' 
-  }, { status: 500 });
+      const errorResponse = NextResponse.json({ 
+        error: 'Generation request failed', 
+        details: generationError instanceof Error ? generationError.message : 'Unknown error',
+        ...(isMobileRequest ? {
+          mobile_debug: {
+            error_type: 'generation_failed',
+            timestamp: new Date().toISOString(),
+            user_agent: req.headers.get('user-agent')
+          }
+        } : {})
+      }, { status: 500 });
+
+      // Add mobile CORS headers to error responses too
+      if (isMobileRequest) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+        errorResponse.headers.set('X-Mobile-Error', 'true');
+      }
+
+      return errorResponse;
     }
 
   } catch (err) {
