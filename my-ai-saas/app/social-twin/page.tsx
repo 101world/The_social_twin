@@ -1295,7 +1295,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   async function handleSend() {
     console.log('🚀 HANDLE_SEND CALLED');
-    console.log('Raw input:', JSON.stringify(input));
+    console.log('Mode:', mode);
+    console.log('Input:', JSON.stringify(input));
+    console.log('Active endpoint:', activeEndpoint);
+    console.log('LoRA name:', loraName);
+    console.log('LoRA scale:', loraScale);
+    console.log('Batch size:', batchSize);
+    console.log('Aspect ratio:', aspectRatio);
+    console.log('Effects preset:', effectsPreset);
+    console.log('Effects on:', effectsOn);
+    console.log('Video model:', videoModel);
+    console.log('User ID:', userId);
     console.log('Call stack:', new Error().stack);
     
     const trimmed = input.trim();
@@ -1407,11 +1417,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         }),
       });
 
+      console.log('🌐 API Response status:', res.status);
+      console.log('🌐 API Response headers:', res.headers);
+
       if (!res.ok) {
         // Show a clear message when the workflow isn't available yet (501) or other errors
         let detail = `HTTP ${res.status}`;
         try {
           const errJson = await res.json();
+          console.log('❌ API Error response:', errJson);
           if (errJson?.error) {
             detail = errJson.workflow ? `${errJson.error} (${errJson.workflow})` : errJson.error;
           }
@@ -1424,6 +1438,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
 
       const payload = await res.json().catch(() => ({} as any));
+      console.log('✅ API Success payload:', payload);
       const data = payload.runpod ?? payload; // our API returns { ok, urls, runpod }
       const urls: string[] = payload.urls || (data?.urls || []);
       const batchImages: string[] = payload.images || (data?.images || []);
