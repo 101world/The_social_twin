@@ -2933,26 +2933,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 </div>
 
-                {/* Enhanced responsive prompt box with pulsating glow effect - EXACT REPLICA */}
+                {/* Enhanced responsive prompt box with pulsating glow effect - DIMMED GLOW */}
                 <div 
-                  className="flex gap-3 items-end rounded-xl p-3 backdrop-blur-sm transition-all duration-200 border-0"
+                  className={`flex gap-3 rounded-xl p-3 transition-all duration-200 border-0 ${isMobile ? 'items-center' : 'items-end'}`}
                   style={{
-                    // Dynamic pulsating shadow based on typing speed - NO BACKGROUND, JUST GLOW
+                    // Dynamic pulsating shadow based on typing speed - DIMMED BY 35% IDLE, 25% TYPING
                     background: 'transparent',
                     boxShadow: typingSpeed > 0 
-                      ? `0 0 ${Math.min(40, 20 + typingSpeed * 2)}px rgba(59, 130, 246, ${Math.min(0.8, 0.3 + typingSpeed * 0.1)}), 
-                         0 0 ${Math.min(80, 40 + typingSpeed * 4)}px rgba(59, 130, 246, ${Math.min(0.4, 0.1 + typingSpeed * 0.05)})`
-                      : '0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1)', // 120 BPM idle pulse (500ms duration)
+                      ? `0 0 ${Math.min(40, 20 + typingSpeed * 2)}px rgba(59, 130, 246, ${Math.min(0.6, 0.225 + typingSpeed * 0.075)}), 
+                         0 0 ${Math.min(80, 40 + typingSpeed * 4)}px rgba(59, 130, 246, ${Math.min(0.3, 0.075 + typingSpeed * 0.0375)})`
+                      : '0 0 20px rgba(59, 130, 246, 0.195), 0 0 40px rgba(59, 130, 246, 0.065)', // 35% dimmed idle pulse
                     animation: typingSpeed === 0 ? 'pulse-idle 1s ease-in-out infinite' : 'none'
                   }}
                 >
                   <style jsx>{`
                     @keyframes pulse-idle {
                       0%, 100% { 
-                        box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), 0 0 30px rgba(59, 130, 246, 0.08);
+                        box-shadow: 0 0 15px rgba(59, 130, 246, 0.13), 0 0 30px rgba(59, 130, 246, 0.052);
                       }
                       50% { 
-                        box-shadow: 0 0 25px rgba(59, 130, 246, 0.4), 0 0 50px rgba(59, 130, 246, 0.15);
+                        box-shadow: 0 0 25px rgba(59, 130, 246, 0.26), 0 0 50px rgba(59, 130, 246, 0.098);
                       }
                     }
                   `}</style>
@@ -2991,25 +2991,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px', // Prevents zoom on iOS
                       width: '90%',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      minHeight: isMobile ? '44px' : '32px', // Match button grid height on mobile
+                      alignSelf: isMobile ? 'center' : 'flex-end'
                     }}
                   />
                   
-                  {/* Button grid takes 10% width - LARGE ICONS, MOBILE OPTIMIZED */}
+                  {/* Button grid takes 10% width - CLEAN NO BACKGROUNDS, BETTER SPACING */}
                   <div 
-                    className={`grid grid-cols-2 gap-1 h-fit rounded-lg p-1 ${darkMode ? 'bg-neutral-800/80' : 'bg-gray-50/80'} backdrop-blur-sm`}
+                    className="grid grid-cols-2 gap-3 h-fit"
                     style={{ 
                       width: '10%',
                       flexShrink: 0,
-                      height: isMobile ? '44px' : '56px' // Much larger desktop buttons
+                      height: isMobile ? '44px' : '56px', // Much larger desktop buttons
+                      alignSelf: isMobile ? 'center' : 'flex-end'
                     }}
                   >
                     {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/20 bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
-                      style={{ height: isMobile ? '20px' : '26px' }} // Much bigger desktop buttons
+                      className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'opacity-70 hover:opacity-100' : 'cursor-not-allowed opacity-30'}`}
+                      style={{ 
+                        height: isMobile ? '20px' : '26px',
+                        background: 'transparent',
+                        border: 'none'
+                      }}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -3020,7 +3027,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Cost badge */}
                       <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20 bg-gray-500/10" style={{ height: isMobile ? '20px' : '26px' }} title="Attach image/video/pdf">
+                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 opacity-70 hover:opacity-100" 
+                      style={{ 
+                        height: isMobile ? '20px' : '26px',
+                        background: 'transparent',
+                        border: 'none'
+                      }} 
+                      title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -3041,15 +3054,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Create button + Library button */}
+                    {/* Bottom row: Create button + Library button - NO BACKGROUNDS */}
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
                       className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
-                          ? `${darkMode ? 'bg-blue-600/30 border border-blue-500/70 text-blue-300' : 'bg-blue-200 border border-blue-400 text-blue-700'} shadow-md` 
-                          : `hover:bg-blue-500/20 bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
+                          ? `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-90` 
+                          : `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`
                       }`}
-                      style={{ height: isMobile ? '20px' : '26px' }}
+                      style={{ 
+                        height: isMobile ? '20px' : '26px',
+                        background: 'transparent',
+                        border: 'none'
+                      }}
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
@@ -3059,8 +3076,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/20 bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
-                      style={{ height: isMobile ? '20px' : '26px' }}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'} opacity-70 hover:opacity-100`}
+                      style={{ 
+                        height: isMobile ? '20px' : '26px',
+                        background: 'transparent',
+                        border: 'none'
+                      }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
