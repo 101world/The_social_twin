@@ -112,6 +112,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
+  
+  // Effects and styling
+  const [effectsPreset, setEffectsPreset] = useState<'off'|'subtle'|'cinematic'|'stylized'>('off');
+  const [effectsOn, setEffectsOn] = useState<boolean>(false);
+  
+  // Video model selection
+  const [videoModel, setVideoModel] = useState<'ltxv'|'wan'|'kling'>('ltxv');
+  
+  // Generation states
+  const [isGeneratingBatch, setIsGeneratingBatch] = useState<boolean>(false);
+  
+  // UI tab states
+  const [imgTab, setImgTab] = useState<'character' | 'settings' | null>(null);
   // Workflow popover and tweakable settings
   const [showWorkflowPopoverFor, setShowWorkflowPopoverFor] = useState<'image'|'image-modify'|null>(null);
   const [useFluxDev, setUseFluxDev] = useState<boolean>(true);
@@ -217,13 +230,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     batchSize: 'social_twin_batch_size',
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
+  
   const LORA_CHOICES = ['None','Custom...','Character-A','Character-B'] as const;
   const BATCH_CHOICES = [1,2,4,6,8] as const;
   const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
   const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
+  
+  // Canvas and generation helpers
+  const addToCanvas = (url: string, type: 'image' | 'video') => {
+    const newItem: CanvasItem = {
+      id: generateId(),
+      type,
+      url,
+      x: 40 + (canvasItems.length % 5) * 40,
+      y: 40 + (canvasItems.length % 5) * 30,
+      w: type === 'video' ? 360 : 320,
+      h: type === 'video' ? 240 : 320,
+    };
+    setCanvasItems(prev => [...prev, newItem]);
+  };
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+  
+  // Credit and generation cost calculation
+  const CREDIT_COSTS = {
+    text: 1,
+    image: 5,
+    video: 10,
+    'image-modify': 3,
+  };
+  
+  const generationCost = CREDIT_COSTS[mode] || CREDIT_COSTS.text;
+  const canAffordGeneration = creditInfo && creditInfo.available >= generationCost;
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
@@ -328,6 +367,129 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
   // Reveal bottom composer only after user starts typing in center box (empty state)
   const [composerShown, setComposerShown] = useState<boolean>(false);
+
+  // Main message sending function with mobile support and dropdown parameters
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    if (!canAffordGeneration) return;
+    if (isGeneratingBatch) return;
+
+    // Clear input immediately for better UX
+    const prompt = input.trim();
+    setInput('');
+
+    // Add user message to chat
+    const userMessage: ChatMessage = {
+      id: generateId(),
+      role: 'user',
+      content: prompt,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+
+    // Add loading message
+    const loadingMessage: ChatMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      loading: true,
+      pendingType: mode,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, loadingMessage]);
+
+    try {
+      // Prepare generation parameters including dropdown values
+      const generationParams = {
+        prompt,
+        mode,
+        provider: textProvider,
+        userId,
+        batch_size: batchSize || 1,
+        attachment: attached ? {
+          name: attached.name,
+          type: attached.type,
+          dataUrl: attached.dataUrl,
+        } : undefined,
+        // Dropdown parameters for image/video generation
+        lora: loraName || undefined,
+        lora_scale: loraScale || 0.8,
+        aspect_ratio: aspectRatio || (mode === 'video' ? '16:9' : '1:1'),
+        effects_preset: effectsPreset || 'off',
+        effects_on: effectsOn,
+        video_model: mode === 'video' ? videoModel : undefined,
+        denoise: denoise || undefined,
+        seed: seed || undefined,
+        // Pass appropriate RunPod URL based on mode
+        runpodUrl: mode === 'text' ? textUrl :
+                  mode === 'image' ? imageUrl :
+                  mode === 'image-modify' ? imageModifyUrl :
+                  mode === 'video' ? (videoModel === 'wan' ? videoWanUrl : 
+                                     videoModel === 'kling' ? videoKlingUrl : videoUrl) :
+                  undefined,
+      };
+
+      console.log('Sending generation request with params:', generationParams);
+
+      const response = await fetch('/api/generate-with-tracking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Id': userId || '',
+        },
+        body: JSON.stringify(generationParams),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}`);
+      }
+
+      // Update loading message with result
+      setMessages(prev => prev.map(msg => 
+        msg.id === loadingMessage.id ? {
+          ...msg,
+          loading: false,
+          content: result.content || 'Generation completed',
+          imageUrl: result.imageUrl,
+          videoUrl: result.videoUrl,
+          images: result.images,
+        } : msg
+      ));
+
+      // Add to canvas if sendToCanvas is enabled and we have media
+      if (sendToCanvas && (result.imageUrl || result.videoUrl || result.images?.length)) {
+        const mediaUrl = result.imageUrl || result.videoUrl || result.images?.[0];
+        const mediaType = result.videoUrl ? 'video' : 'image';
+        
+        if (mediaUrl) {
+          addToCanvas(mediaUrl, mediaType);
+        }
+      }
+
+      // Clear attachment after successful generation
+      setAttached(null);
+
+      // Refresh credits after successful generation
+      refreshCredits();
+
+    } catch (error: any) {
+      console.error('Generation error:', error);
+      
+      // Update loading message with error
+      setMessages(prev => prev.map(msg => 
+        msg.id === loadingMessage.id ? {
+          id: msg.id,
+          role: 'error' as const,
+          content: `Generation failed: ${error.message || 'Unknown error'}`,
+          createdAt: msg.createdAt,
+        } : msg
+      ));
+    }
+  };
   const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
   
   // Linking preview state for canvas connections
@@ -2582,8 +2744,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
                 {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
-                <div className="mb-2 flex items-center gap-2 justify-between">
-                  <div className="flex items-center gap-1 flex-wrap">
+                <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
+                  <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
                     {/* Mode buttons - SVG icons for mobile, text for desktop */}
                     {isMobile ? (
                       <>
@@ -2718,7 +2880,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <select
                         value={textProvider}
                         onChange={(e)=> setTextProvider(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                         title="Provider"
                       >
                         <option value="social">Social</option>
@@ -2732,7 +2894,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={effectsPreset}
                           onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Effects"
                         >
                           <option value="off">{isMobile ? 'No FX' : 'No effects'}</option>
@@ -2744,7 +2906,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Batch size"
                         >
                           <option value="">{isMobile ? '1x' : 'Single'}</option>
@@ -2757,7 +2919,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={aspectRatio}
                             onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                             title="Aspect Ratio"
                           >
                             <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -2774,7 +2936,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={videoModel}
                           onChange={(e) => setVideoModel(e.target.value as any)}
-                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Video model"
                         >
                           <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
@@ -2784,7 +2946,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Batch size"
                         >
                           <option value="">{isMobile ? '1x' : 'Single'}</option>
@@ -2796,7 +2958,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -2811,13 +2973,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <>
                         <button
                           onClick={() => setImgTab('character')}
-                          className={`${isMobile ? 'px-2 py-1 text-xs' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
                         >
-                          Character
+                          {isMobile ? 'Char' : 'Character'}
                         </button>
                         {loraName && (
-                          <span className={`${isMobile ? 'px-1 py-1 text-xs' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
-                            {loraName}
+                          <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
+                            {isMobile ? loraName.slice(0, 8) : loraName}
                           </span>
                         )}
                       </>
@@ -2837,16 +2999,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
 
                 {/* Prompt input area - unified desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder=""
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
+                    placeholder={isMobile ? "Type message..." : "Describe what you want to create..."}
+                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                     ref={bottomInputRef}
                     style={{ 
-                      fontSize: isMobile ? '16px' : '14px'
+                      fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
                     }}
                     disabled={isGeneratingBatch}
                   />
