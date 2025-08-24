@@ -97,6 +97,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [showFeatureControls, setShowFeatureControls] = useState<boolean>(false);
+  const [userProjects, setUserProjects] = useState<any[]>([]);
+  const [showProjectDropdown, setShowProjectDropdown] = useState<boolean>(false);
+  const [selectedProject, setSelectedProject] = useState<string>('');
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -445,6 +448,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Fetch user projects for the dropdown
+  useEffect(() => {
+    const fetchUserProjects = async () => {
+      if (!userId) return;
+      
+      try {
+        const response = await fetch('/api/projects');
+        if (response.ok) {
+          const data = await response.json();
+          setUserProjects(data.projects || []);
+        }
+      } catch (error) {
+        console.warn('Failed to fetch user projects:', error);
+      }
+    };
+    
+    fetchUserProjects();
+  }, [userId]);
+
+  // Close project dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showProjectDropdown && !(event.target as Element)?.closest('.project-dropdown-container')) {
+        setShowProjectDropdown(false);
+      }
+    };
+    
+    if (showProjectDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProjectDropdown]);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -1947,27 +1983,95 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Top Navigation - always visible; scrollable on mobile */}
           <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
-        {[
-          { id: 'chat', label: 'Chat', icon: '💬' },
-          { id: 'generated', label: 'Generated', icon: '🎨' },
-          { id: 'dashboard', label: 'Dashboard', icon: '📊' }
-        ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
-                      ? (darkMode
-                          ? 'border-b border-neutral-300 text-neutral-100'
-                          : 'border-b border-neutral-800 text-neutral-900')
-                      : (darkMode
-                          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
-                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                </button>
-              ))}
+            <div className="flex items-center justify-center flex-1">
+              {/* Tabs */}
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'chat', label: 'Chat', icon: '💬' },
+                  { id: 'generated', label: 'Generated', icon: '🎨' },
+                  { id: 'dashboard', label: 'Dashboard', icon: '📊' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
+                      activeTab === tab.id
+                        ? (darkMode
+                            ? 'border-b border-neutral-300 text-neutral-100'
+                            : 'border-b border-neutral-800 text-neutral-900')
+                        : (darkMode
+                            ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
+                            : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+              
+              {/* Project Management - Center aligned */}
+              {(messages.length > 0 || canvasItems.length > 0) && (
+                <div className="flex items-center gap-2 ml-6">
+                  {/* Projects Dropdown */}
+                  <div className="relative project-dropdown-container">
+                    <button
+                      onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
+                      title="Select project to organize"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2.007 2.007 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Projects</span>
+                      <svg className={`w-3 h-3 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Projects Dropdown */}
+                    {showProjectDropdown && (
+                      <div className={`absolute top-full left-0 mt-1 w-48 max-h-40 overflow-y-auto rounded-lg border shadow-lg z-50 ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+                        {userProjects.length === 0 ? (
+                          <div className={`p-3 text-xs ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>
+                            No saved projects yet
+                          </div>
+                        ) : (
+                          userProjects.slice(0, 10).map((project, index) => (
+                            <button
+                              key={project.id || index}
+                              onClick={() => {
+                                setSelectedProject(project.name || `Project ${index + 1}`);
+                                setShowProjectDropdown(false);
+                              }}
+                              className={`w-full px-3 py-2 text-left text-xs hover:bg-neutral-100 ${darkMode ? 'hover:bg-neutral-700 text-neutral-100' : 'text-neutral-900'} ${index === 0 ? 'rounded-t-lg' : ''} ${index === Math.min(userProjects.length - 1, 9) ? 'rounded-b-lg' : ''}`}
+                            >
+                              {project.name || `Project ${index + 1}`}
+                            </button>
+                          ))
+                        )}
+                        {userProjects.length > 10 && (
+                          <div className={`px-3 py-2 text-xs border-t ${darkMode ? 'border-neutral-700 text-neutral-400' : 'border-neutral-200 text-gray-500'}`}>
+                            +{userProjects.length - 10} more projects...
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Save Project Button */}
+                  <button
+                    onClick={() => setProjectModalOpen(true)}
+                    className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg border transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
+                    title="Save current chat and grid as project"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Save</span>
+                  </button>
+                </div>
+              )}
+            </div>
             </div>
             
             {/* Save Project moved to bottom next to More */}
@@ -2751,20 +2855,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
                 
                 {/* Feature Controls Toggle - Only show if not in feature controls mode */}
-                {!showFeatureControls && (
-                  <div className="mb-2 flex justify-center">
-                    <button
-                      onClick={() => setShowFeatureControls(true)}
-                      className={`px-3 py-1.5 text-xs rounded-lg transition-all ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
-                      title="Show feature controls"
-                    >
-                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                      </svg>
-                      Features
-                    </button>
-                  </div>
-                )}
                 
                 {/* Feature Controls - Hidden by default */}
                 {showFeatureControls && (
@@ -3100,100 +3190,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Folder + Debug/Save */}
+                    {/* Bottom row: Create button spanning full width */}
                     <button
-                      onClick={() => setFolderModalOpen(true)}
-                      className={`flex items-center justify-center rounded transition-all hover:scale-105 ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
-                      title="Organize in folder"
+                      onClick={() => setShowFeatureControls(!showFeatureControls)}
+                      className={`col-span-2 flex items-center justify-center gap-1 rounded transition-all hover:scale-105 ${showFeatureControls ? (darkMode ? 'bg-blue-600/30 text-blue-300' : 'bg-blue-100 text-blue-700') : (darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50')}`}
+                      title={showFeatureControls ? "Hide creation tools" : "Show creation tools (modes, settings, effects)"}
                     >
-                      <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
+                      <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                       </svg>
+                      <span className="text-xs">Create</span>
                     </button>
-                    {isMobile ? (
-                      <button
-                        onClick={async () => {
-                          console.log('=== MOBILE DEBUG INFO ===');
-                          console.log('User agent:', navigator.userAgent);
-                          console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
-                          console.log('isMobile state:', isMobile);
-                          console.log('Credits raw:', creditInfo);
-                          console.log('Credits value:', creditInfo?.credits);
-                          console.log('Credits type:', typeof creditInfo?.credits);
-                          console.log('Can afford:', canAffordGeneration);
-                          console.log('Generation cost:', generationCost);
-                          console.log('Active endpoint:', activeEndpoint);
-                          console.log('Current mode:', mode);
-                          console.log('Input value:', input);
-                          console.log('Available LoRAs:', availableLoras.length, availableLoras);
-                          console.log('LoRAs loading:', lorasLoading);
-                          console.log('Image URL:', imageUrl);
-                          console.log('Image Modify URL:', imageModifyUrl);
-                          console.log('User ID:', userId);
-                          
-                          // Test API connectivity
-                          try {
-                            console.log('Testing mobile API connectivity...');
-                            const testResponse = await fetch('/api/debug/mobile-test', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                testType: 'mobile-generation-debug',
-                                userAgent: navigator.userAgent,
-                                windowSize: { width: window.innerWidth, height: window.innerHeight },
-                                currentState: {
-                                  mode,
-                                  credits: creditInfo?.credits,
-                                  canAfford: canAffordGeneration,
-                                  activeEndpoint,
-                                  userId
-                                }
-                              })
-                            });
-                            
-                            if (testResponse.ok) {
-                              const testData = await testResponse.json();
-                              console.log('✅ Mobile API test successful:', testData);
-                              alert(`✅ Mobile API Test: ${testData.success ? 'SUCCESS' : 'FAILED'}\n\nUser: ${testData.data?.userId || 'Not authenticated'}\nEndpoint: Working\nCredits: ${creditInfo?.credits || 'Unknown'}`);
-                            } else {
-                              console.log('❌ Mobile API test failed:', testResponse.status);
-                              alert(`❌ Mobile API Test FAILED\nStatus: ${testResponse.status}\nThis might be why generation is failing!`);
-                            }
-                          } catch (error) {
-                            console.log('❌ Mobile API test error:', error);
-                            alert(`❌ Mobile API Test ERROR\n${error}\nThis is likely why generation fails!`);
-                          }
-                          
-                          const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
-                          console.log(`Debug Summary: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
-                        }}
-                        className={`flex items-center justify-center rounded transition-all hover:scale-105 ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
-                        title="Debug info + API test"
-                      >
-                        <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          // Simple save functionality - could be enhanced later
-                          const data = { messages, input, mode };
-                          console.log('Saving conversation:', data);
-                        }}
-                        disabled={!messages.length}
-                        className={`flex items-center justify-center rounded transition-all hover:scale-105 ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
-                        title="Save as recipe"
-                      >
-                        <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    )}
                   </div>
                 </div>
                 {attached ? (
