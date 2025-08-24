@@ -4343,6 +4343,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <p className={`text-sm ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
                     Create some images or videos to see them here!
                   </p>
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
+                    Debug: libraryContent.length = {libraryContent.length}
+                  </p>
                 </div>
               ) : (
                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
@@ -4365,6 +4368,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             alt={item.prompt || 'Generated image'}
                             className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
                             onClick={() => setViewer({ open: true, src: imageUrl })}
+                            onError={(e) => {
+                              // Show broken image placeholder when image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent && !parent.querySelector('.broken-image-placeholder')) {
+                                const placeholder = document.createElement('div');
+                                placeholder.className = 'broken-image-placeholder w-full h-full flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500';
+                                placeholder.innerHTML = `
+                                  <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24" class="mb-2">
+                                    <path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                  </svg>
+                                  <p class="text-xs text-center px-2">Image unavailable</p>
+                                  <p class="text-xs text-center px-2 text-gray-300 dark:text-gray-600">${item.type || 'Generated'}</p>
+                                `;
+                                parent.appendChild(placeholder);
+                              }
+                            }}
                           />
                           <div className={`absolute inset-0 bg-black/0 ${isMobile ? 'bg-black/10' : 'group-hover:bg-black/20'} transition-colors flex items-center justify-center`}>
                             <div className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex gap-2`}>
