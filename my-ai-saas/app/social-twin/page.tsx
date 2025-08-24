@@ -1882,7 +1882,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   <main className={`
     relative h-screen w-screen overflow-hidden max-w-full
     ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}
-    ${isMobile ? 'h-[100dvh] overscroll-none' : 'h-screen-dvh'}
+    ${isMobile ? 'h-[100dvh]' : 'h-screen-dvh'}
   `}
   style={{
     // Prevent zoom and improve mobile viewport handling
@@ -1901,17 +1901,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} 
           ${simpleMode ? '' : 'border-l transition-[width] duration-200'} 
           ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')}
-          ${isMobile && isKeyboardOpen ? 'pb-0' : ''}
         `}
         style={simpleMode 
           ? { 
               left: sidebarOpen ? (isMobile ? 0 : 240) : 0, 
-              transition: 'left 150ms ease',
-              // Mobile-specific adjustments
-              ...(isMobile && {
-                paddingTop: 'env(safe-area-inset-top)',
-                paddingBottom: isKeyboardOpen ? '0' : 'env(safe-area-inset-bottom)',
-              })
+              transition: 'left 150ms ease'
             } 
           : { 
               width: chatCollapsed ? 40 : (isMobile ? '100vw' : 'min(30vw, 520px)'), 
@@ -2032,7 +2026,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Save Project moved to bottom next to More */}
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '120px' : 'calc(var(--composer-h, 64px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -2957,10 +2951,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {/* Enhanced responsive prompt box with keyboard handling */}
                 <div className={`
                   flex gap-3 items-end
-                  ${isMobile ? (isKeyboardOpen ? 'fixed bottom-0 left-0 right-0 z-50' : 'sticky bottom-2') : ''}
+                  ${isMobile ? 'sticky bottom-2' : ''}
                   rounded-xl p-3 shadow-lg backdrop-blur-sm transition-all duration-200
                   ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
-                  ${isMobile ? 'm-2' : ''}
+                  ${isMobile ? 'mx-2 mb-2' : ''}
                 `}>
                   {/* Textarea takes 80% width */}
                   <textarea
