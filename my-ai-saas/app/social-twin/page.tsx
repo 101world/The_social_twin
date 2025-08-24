@@ -2956,31 +2956,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                   />
                   
-                  {/* Button grid takes 20% width */}
+                  {/* Button grid takes 20% width - LEAN & SLEEK */}
                   <div 
-                    className="grid grid-cols-2 gap-1 h-fit items-stretch"
+                    className="grid grid-cols-2 gap-1 h-fit"
                     style={{ 
                       width: '20%',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      height: '38px' // Match textarea min-height for sleek alignment
                     }}
                   >
                     {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative aspect-square cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative h-[18px] cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1.5 py-0.5 text-[${isMobile ? '9px' : '8px'}] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
+                      <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-lg p-1 aspect-square flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className="group cursor-pointer rounded-md px-1 h-[18px] flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -3003,7 +3004,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {/* Bottom row: Create button + Library button */}
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`aspect-square cursor-pointer rounded-lg flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                      className={`h-[18px] cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
                           ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
                           : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
@@ -3011,17 +3012,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`aspect-square cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
+                      className={`h-[18px] cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
-                      <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
                     </button>
