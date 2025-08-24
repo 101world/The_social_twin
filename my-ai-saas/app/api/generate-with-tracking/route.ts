@@ -175,13 +175,13 @@ export async function POST(req: NextRequest) {
         type: normType,
         prompt: prompt || null,
         status: 'pending',
-        save_to_library: saveToLibrary,
         generation_params: {
           cost: totalCost,
           batch_size,
           runpod_url: runpodUrl,
           provider,
           duration_seconds: normType === 'video' && durationSecondsInput ? durationSecondsInput : null,
+          saveToLibrary: saveToLibrary, // Store in generation_params instead
           ...otherParams
         }
       }])
@@ -316,7 +316,10 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', generationRecord.id);
 
-  return NextResponse.json({ error: 'Generation request failed', details: generationError instanceof Error ? generationError.message : 'Unknown error' }, { status: 500 });
+  return NextResponse.json({ 
+    error: 'Generation request failed', 
+    details: generationError instanceof Error ? generationError.message : 'Unknown error' 
+  }, { status: 500 });
     }
 
   } catch (err) {
