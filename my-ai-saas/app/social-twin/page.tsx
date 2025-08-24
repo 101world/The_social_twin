@@ -3053,7 +3053,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
-                {/* Prompt input area - unified desktop feel */}
+                {/* Prompt input area - match desktop layout on mobile; no bg behind icons */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
                   <textarea
                     value={input}
@@ -3067,24 +3067,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                     disabled={isGeneratingBatch}
                   />
-                    {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {/* Top row: Send + Upload */}
+                  {/* Action buttons inline (desktop layout) with no bg behind icons */}
+                  <div className="flex items-center gap-2 self-center pl-1">
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} cursor-pointer flex items-center justify-center transition-transform hover:scale-105 ${(!canAffordGeneration || !input.trim() || isGeneratingBatch) ? 'opacity-50 cursor-not-allowed' : ''} text-neutral-600 dark:text-neutral-300 hover:text-blue-600`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none">
+                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
-                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <label className={`group cursor-pointer flex items-center justify-center`} title="Attach image/video/pdf" aria-label="Attach">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="text-neutral-600 dark:text-neutral-300 group-hover:text-neutral-500">
+                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
                         type="file"
@@ -3102,14 +3101,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
-                    
-                    {/* Bottom row: Folder + Debug (mobile only) */}
                     <button
                       onClick={() => setFolderModalOpen(true)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                      className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
                       title="Organize in folder"
+                      aria-label="Folder"
                     >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                      <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </button>
@@ -3136,10 +3134,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
                           alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
                         }}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
                         title="Debug info"
+                        aria-label="Debug"
                       >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
                           <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
@@ -3148,15 +3147,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     ) : (
                       <button
                         onClick={() => {
-                          // Simple save functionality - could be enhanced later
                           const data = { messages, input, mode };
                           console.log('Saving conversation:', data);
                         }}
                         disabled={!messages.length}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                        className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
                         title="Save as recipe"
+                        aria-label="Save"
                       >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
                           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
