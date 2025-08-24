@@ -1143,7 +1143,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     const loadAvailableLoras = async () => {
       setLorasLoading(true);
       try {
-        const response = await fetch('/api/runpod/discover-loras');
+        // Pass the active RunPod origin so server can query your storage even if config isn't set
+        const pickOrigin = (u?: string) => {
+          try { if (u && /^https?:\/\//i.test(u)) return new URL(u).origin; } catch {}
+          return undefined;
+        };
+        const origin = pickOrigin(imageUrl) || pickOrigin(imageModifyUrl) || pickOrigin(process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '');
+        const url = origin ? `/api/runpod/discover-loras?url=${encodeURIComponent(origin)}` : '/api/runpod/discover-loras';
+        const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.loras) {
