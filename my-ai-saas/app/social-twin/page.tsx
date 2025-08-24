@@ -223,6 +223,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Fixed: AR_CHOICES now match desktop with 3:2 and 2:3 ratios
   // Fixed: BATCH_CHOICES now match desktop [1,2,4,8] 
   // Fixed: LORA_CHOICES now load dynamically from API
+  // Deployment: 2025-08-24 - Force cache refresh
   const LORA_CHOICES = ['None','Custom...'] as const;
   const BATCH_CHOICES = [1,2,4,8] as const;
   const AR_CHOICES = ['1:1','3:2','4:3','16:9','9:16','2:3'] as const;
