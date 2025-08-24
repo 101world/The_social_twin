@@ -3139,54 +3139,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Create button + Library button - NO BACKGROUNDS */}
+                    {/* Bottom row: Create button + Library button - BIGGER AND MORE VISIBLE */}
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                      className={`cursor-pointer rounded-lg px-2 py-2 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
-                          ? `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-90` 
-                          : `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`
+                          ? `${darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'} opacity-100` 
+                          : `${darkMode ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'} opacity-90 hover:opacity-100`
                       }`}
                       style={{ 
-                        height: isMobile ? '20px' : '26px',
-                        background: 'transparent',
-                        border: 'none'
+                        height: isMobile ? '36px' : '32px',
+                        minWidth: isMobile ? '36px' : '32px',
+                        border: '1px solid rgba(59, 130, 246, 0.3)'
                       }}
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width={isMobile ? "20" : "18"} height={isMobile ? "20" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'} opacity-70 hover:opacity-100`}
+                      className={`cursor-pointer rounded-lg px-2 py-2 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'} opacity-90 hover:opacity-100`}
                       style={{ 
-                        height: isMobile ? '20px' : '26px',
-                        background: 'transparent',
-                        border: 'none'
+                        height: isMobile ? '36px' : '32px',
+                        minWidth: isMobile ? '36px' : '32px',
+                        border: '1px solid rgba(16, 185, 129, 0.3)'
                       }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
-                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width={isMobile ? "20" : "18"} height={isMobile ? "20" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => setCreateToolsOpen(!createToolsOpen)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`}
-                      style={{ 
-                        height: isMobile ? '20px' : '26px',
-                        background: 'transparent',
-                        border: 'none'
-                      }}
-                      title="Open Create Tools - Quick generation options"
-                      aria-label="Create"
-                    >
-                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                     </button>
                   </div>
