@@ -1565,6 +1565,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   refreshCredits();
   // Refresh generated history so new outputs appear in the Generated tab
   try { refreshGeneratedHistory(); } catch {}
+  // 📱 MOBILE: Also refresh library content to show new items
+  try { loadLibraryContent(); } catch {}
   // Make sure Save Project button is available after generation
   setShowSaveProject(true);
     } catch (err: any) {
@@ -4244,12 +4246,44 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
                             onClick={() => setViewer({ open: true, src: item.media_url! })}
                           />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-                                <path d="M12 9a3 3 0 100 6 3 3 0 000-6z"/>
-                                <path fillRule="evenodd" d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zM3 12a9 9 0 1118 0 9 9 0 01-18 0z"/>
-                              </svg>
+                          <div className={`absolute inset-0 bg-black/0 ${isMobile ? 'bg-black/10' : 'group-hover:bg-black/20'} transition-colors flex items-center justify-center`}>
+                            <div className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex gap-2`}>
+                              {/* Send to Chat Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMessages(prev => [...prev, {
+                                    id: generateId(),
+                                    role: 'assistant',
+                                    content: 'Added from library',
+                                    imageUrl: item.media_url,
+                                    createdAt: new Date().toISOString()
+                                  }]);
+                                  setLibraryOpen(false);
+                                }}
+                                className="bg-blue-500/90 hover:bg-blue-600 text-white p-2 rounded-full transition-colors"
+                                title="Send to Chat"
+                              >
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                                </svg>
+                              </button>
+                              {/* Download Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const link = document.createElement('a');
+                                  link.href = item.media_url!;
+                                  link.download = `generated-image-${Date.now()}.jpg`;
+                                  link.click();
+                                }}
+                                className="bg-green-500/90 hover:bg-green-600 text-white p-2 rounded-full transition-colors"
+                                title="Download"
+                              >
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                </svg>
+                              </button>
                             </div>
                           </div>
                           <div className="absolute top-2 right-2">
@@ -4268,8 +4302,47 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             playsInline
                             onClick={() => setViewer({ open: true, src: item.media_url! })}
                           />
-                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                            <div className="bg-white/80 rounded-full p-2">
+                          <div className={`absolute inset-0 bg-black/20 flex items-center justify-center`}>
+                            <div className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex gap-2`}>
+                              {/* Send to Chat Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMessages(prev => [...prev, {
+                                    id: generateId(),
+                                    role: 'assistant',
+                                    content: 'Added from library',
+                                    videoUrl: item.media_url,
+                                    createdAt: new Date().toISOString()
+                                  }]);
+                                  setLibraryOpen(false);
+                                }}
+                                className="bg-blue-500/90 hover:bg-blue-600 text-white p-2 rounded-full transition-colors"
+                                title="Send to Chat"
+                              >
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+                                </svg>
+                              </button>
+                              {/* Download Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const link = document.createElement('a');
+                                  link.href = item.media_url!;
+                                  link.download = `generated-video-${Date.now()}.mp4`;
+                                  link.click();
+                                }}
+                                className="bg-green-500/90 hover:bg-green-600 text-white p-2 rounded-full transition-colors"
+                                title="Download"
+                              >
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                </svg>
+                              </button>
+                            </div>
+                            {/* Play Icon (always visible) */}
+                            <div className="bg-white/80 rounded-full p-2 group-hover:opacity-75 transition-opacity">
                               <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z"/>
                               </svg>

@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       batch_size = 1,
       userId: bodyUserId,
       attachment,
+      saveToLibrary = true, // Default to true to save in library
       ...otherParams
     } = body;
 
@@ -174,6 +175,7 @@ export async function POST(req: NextRequest) {
         type: normType,
         prompt: prompt || null,
         status: 'pending',
+        save_to_library: saveToLibrary,
         generation_params: {
           cost: totalCost,
           batch_size,
@@ -232,11 +234,17 @@ export async function POST(req: NextRequest) {
   const resultUrl = aiImage || aiVideo || firstVideo || null;
   const content = null;
   const respDurationSec = undefined;
+  
+  // Determine media type and URL
+  const mediaType = aiVideo || firstVideo ? 'video' : (aiImage ? 'image' : null);
+  const mediaUrl = resultUrl;
 
     await supabase
         .from('media_generations')
         .update({
           result_url: resultUrl,
+          media_url: mediaUrl,
+          media_type: mediaType,
           thumbnail_url: resultUrl,
           status: 'completed',
           completed_at: new Date().toISOString(),
