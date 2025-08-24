@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
       env_fallback: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL
     });
 
+    // Log dropdown parameters
+    console.log('Dropdown Parameters:', {
+      lora: otherParams?.lora,
+      lora_scale: otherParams?.lora_scale,
+      aspect_ratio: otherParams?.aspect_ratio,
+      guidance: otherParams?.guidance,
+      batch_size: batch_size
+    });
+
     if (!runpodUrl) {
       return NextResponse.json({ error: 'No RunPod URL configured for mode: ' + mode }, { status: 500 });
     }
@@ -188,6 +197,11 @@ export async function POST(req: NextRequest) {
         apiKey,
         userId,
         ckpt_name: typeof (otherParams as any)?.ckpt_name === 'string' ? (otherParams as any).ckpt_name : undefined,
+        // Add dropdown parameters
+        lora: typeof otherParams?.lora === 'string' ? otherParams.lora : undefined,
+        lora_scale: typeof otherParams?.lora_scale === 'number' ? otherParams.lora_scale : undefined,
+        aspect_ratio: typeof otherParams?.aspect_ratio === 'string' ? otherParams.aspect_ratio : undefined,
+        guidance: typeof otherParams?.guidance === 'number' ? otherParams.guidance : undefined,
       });
 
       const urls: string[] = out.urls || [];

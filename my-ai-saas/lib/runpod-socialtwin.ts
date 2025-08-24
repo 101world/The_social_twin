@@ -20,6 +20,11 @@ type RunParams = {
   userId?: string | null;
   ckpt_name?: string; // optional override for image mode
   workflow_settings?: any;
+  // New dropdown parameters
+  lora?: string; // LoRA name (Effects/Character)
+  lora_scale?: number; // LoRA strength
+  aspect_ratio?: string; // Size/aspect ratio
+  guidance?: number; // FluxGuidance value
 };
 
 function ensureBase(url: string) {
@@ -99,7 +104,7 @@ async function uploadReferenceToComfy(base: string, apiKey: string | undefined, 
 }
 
 export async function runSocialTwinGeneration(params: RunParams): Promise<{ images: string[]; videos: string[]; urls: string[]; runpod: any; }>{
-  const { mode, prompt, negative, width, height, batch_size, steps, cfg, seed, imageUrl, attachment, runpodUrl, apiKey, userId, ckpt_name } = params;
+  const { mode, prompt, negative, width, height, batch_size, steps, cfg, seed, imageUrl, attachment, runpodUrl, apiKey, userId, ckpt_name, lora, lora_scale, aspect_ratio, guidance } = params;
   const base = ensureBase(runpodUrl);
   const headers = {
     'Content-Type': 'application/json',
@@ -111,6 +116,30 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
   let graph: any = {};
   const userSeed = typeof seed === 'number' ? seed : Math.floor(Math.random() * 1000000);
 
+  // Helper function to convert aspect ratio to dimensions
+  const getAspectDimensions = (aspectRatio?: string, defaultWidth = 1920, defaultHeight = 1088) => {
+    switch (aspectRatio) {
+      case 'A4P': return { width: 768, height: 1024 }; // Portrait
+      case 'A4L': return { width: 1024, height: 768 }; // Landscape  
+      case '16:9': return { width: 1920, height: 1088 }; // Widescreen
+      case '1:1': return { width: 1024, height: 1024 }; // Square
+      case '3:4': return { width: 768, height: 1024 }; // Portrait
+      case '4:3': return { width: 1024, height: 768 }; // Landscape
+      default: return { width: defaultWidth, height: defaultHeight };
+    }
+  };
+
+  // Helper function to convert LoRA names to actual file names
+  const getLoRAFileName = (loraName?: string) => {
+    if (!loraName || loraName === 'None') return null;
+    switch (loraName) {
+      case 'Character-A': return 'character_a_lora.safetensors';
+      case 'Character-B': return 'character_b_lora.safetensors';
+      case 'Custom...': return null; // Handle custom LoRA separately
+      default: return loraName.endsWith('.safetensors') ? loraName : `${loraName}.safetensors`;
+    }
+  };
+
   // Load workflow and patch
   if (mode === 'image') {
     graph = await loadWorkflowJson('Socialtwin-Image.json');
@@ -119,39 +148,54 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
     const dimsKey = findByClassAndTitle(graph, 'EmptySD3LatentImage') || '27';
     const samplerKey = findByClassAndTitle(graph, 'KSampler') || '31';
     const ckptKey = findByClassAndTitle(graph, 'CheckpointLoaderSimple') || '30';
+    const loraKey = findByClassAndTitle(graph, 'Power Lora Loader (rgthree)') || '47';
+    const guidanceKey = findByClassAndTitle(graph, 'FluxGuidance') || '35';
+
+    // 1. PROMPT: Set positive prompt
     if (posKey && graph[posKey]?.inputs) graph[posKey].inputs.text = prompt;
+    
+    // 2. NEGATIVE: Set negative prompt
     if (typeof negative === 'string' && negKey && graph[negKey]?.inputs) graph[negKey].inputs.text = negative;
+    
+    // 3. SIZE (ASPECT RATIO): Set dimensions based on dropdown
+    const dimensions = getAspectDimensions(aspect_ratio, width, height);
     if (dimsKey && graph[dimsKey]?.inputs) {
-      graph[dimsKey].inputs.width = typeof width === 'number' ? width : (graph[dimsKey].inputs.width ?? 1024);
-      graph[dimsKey].inputs.height = typeof height === 'number' ? height : (graph[dimsKey].inputs.height ?? 1024);
+      graph[dimsKey].inputs.width = dimensions.width;
+      graph[dimsKey].inputs.height = dimensions.height;
+      // 4. BATCH SIZE (QUANTITY): Set number of images to generate
       if (typeof batch_size === 'number') graph[dimsKey].inputs.batch_size = batch_size;
     }
-    // Apply workflow_settings if present
-    try {
-      const wf = (params as any).workflow_settings;
-      if (wf) {
-        if (wf.sampler && samplerKey && graph[samplerKey]?.inputs) {
-          graph[samplerKey].inputs.sampler_name = wf.sampler;
-          graph[samplerKey].inputs.sampler = wf.sampler;
-        }
-        if (typeof wf.denoise === 'number' && samplerKey && graph[samplerKey]?.inputs) {
-          graph[samplerKey].inputs.denoise = wf.denoise;
-        }
-        if (wf.unet) {
-          const unetKey = findByClassAndTitle(graph, 'UNet', 'UNET') || findNodeKeyBy(graph, (n:any)=> (n.class_type||'').toLowerCase().includes('unet'));
-          if (unetKey && graph[unetKey]?.inputs) {
-            graph[unetKey].inputs.unet_name = wf.unet;
-            graph[unetKey].inputs.name = wf.unet;
-          }
-        }
+
+    // 5. EFFECTS/CHARACTER (LORA): Configure LoRA
+    const loraFileName = getLoRAFileName(lora);
+    if (loraKey && graph[loraKey]?.inputs && loraFileName) {
+      // Power Lora Loader configuration
+      graph[loraKey].inputs["➕ Add Lora"] = loraFileName;
+      // Add LoRA strength if specified
+      if (typeof lora_scale === 'number') {
+        graph[loraKey].inputs.strength_model = lora_scale;
+        graph[loraKey].inputs.strength_clip = lora_scale;
       }
-    } catch (e) { /* ignore */ }
+    }
+
+    // 6. GUIDANCE: Set FluxGuidance value
+    if (guidanceKey && graph[guidanceKey]?.inputs) {
+      graph[guidanceKey].inputs.guidance = typeof guidance === 'number' ? guidance : 3.5;
+    }
+
+    // 7. SAMPLER SETTINGS: Configure KSampler
     if (samplerKey && graph[samplerKey]?.inputs) {
       if (typeof steps === 'number') graph[samplerKey].inputs.steps = Math.max(1, Math.round(steps));
       if (typeof cfg === 'number') graph[samplerKey].inputs.cfg = cfg;
       graph[samplerKey].inputs.seed = userSeed;
     }
-    // Apply workflow_settings if present (sampler/denoise/UNet overrides)
+
+    // 8. MODEL: Set checkpoint if specified
+    if (typeof ckpt_name === 'string' && ckpt_name && ckptKey && graph[ckptKey]?.inputs) {
+      graph[ckptKey].inputs.ckpt_name = ckpt_name;
+    }
+
+    // Apply additional workflow_settings if present
     try {
       const wf = (params as any).workflow_settings;
       if (wf) {
@@ -171,9 +215,6 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
         }
       }
     } catch (e) { /* ignore workflow tweak failures */ }
-    if (typeof ckpt_name === 'string' && ckpt_name && ckptKey && graph[ckptKey]?.inputs) {
-      graph[ckptKey].inputs.ckpt_name = ckpt_name;
-    }
   } else if (mode === 'image-modify') {
     graph = await loadWorkflowJson('SocialTwin-Modify.json');
     const posKey = findByClassAndTitle(graph, 'CLIPTextEncode', 'Positive') || '6';
