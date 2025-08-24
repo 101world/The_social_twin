@@ -1396,6 +1396,94 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       console.log('❌ Empty input, returning');
       return;
     }
+    
+    // 📱 MOBILE GENERATION PRE-CHECK
+    if (isMobile) {
+      console.log('📱 MOBILE GENERATION DETECTED - Running extensive pre-checks...');
+      
+      // Check network connectivity
+      if (typeof navigator !== 'undefined') {
+        console.log('📱 Network status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
+        if ((navigator as any).connection) {
+          console.log('📱 Connection info:', {
+            effectiveType: (navigator as any).connection.effectiveType,
+            downlink: (navigator as any).connection.downlink,
+            rtt: (navigator as any).connection.rtt,
+            saveData: (navigator as any).connection.saveData
+          });
+        }
+      }
+      
+      // Test basic API connectivity first on mobile
+      try {
+        console.log('📱 Testing basic API connectivity...');
+        const testRes = await fetch('/api/debug-mobile', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-User-Id': userId || '' 
+          },
+          body: JSON.stringify({ 
+            test: 'mobile_connectivity',
+            mode,
+            userId,
+            isMobile: true,
+            windowWidth: window.innerWidth,
+            userAgent: navigator.userAgent
+          })
+        });
+        
+        console.log('📱 API connectivity test result:', {
+          status: testRes.status,
+          ok: testRes.ok,
+          statusText: testRes.statusText,
+          headers: Object.fromEntries(testRes.headers.entries())
+        });
+        
+        if (!testRes.ok) {
+          const errorText = await testRes.text();
+          console.log('📱 API test failed with text:', errorText);
+          setMessages((prev) => [
+            ...prev,
+            { 
+              id: generateId(), 
+              role: "error", 
+              content: `📱 Mobile API test failed (${testRes.status}): ${errorText.slice(0, 200)}${errorText.length > 200 ? '...' : ''}` 
+            },
+          ]);
+          return;
+        }
+        
+        const debugResult = await testRes.json();
+        console.log('📱 Debug endpoint response:', debugResult);
+        
+        if (debugResult.debug === 'mobile test failed') {
+          setMessages((prev) => [
+            ...prev,
+            { 
+              id: generateId(), 
+              role: "error", 
+              content: `📱 Mobile generation test failed: ${debugResult.error}` 
+            },
+          ]);
+          return;
+        }
+        
+      } catch (connectivityError) {
+        console.log('📱 Connectivity test threw error:', connectivityError);
+        setMessages((prev) => [
+          ...prev,
+          { 
+            id: generateId(), 
+            role: "error", 
+            content: `📱 Mobile connectivity failed: ${connectivityError instanceof Error ? connectivityError.message : 'Unknown error'}\n\nPlease check your internet connection and try again.` 
+          },
+        ]);
+        return;
+      }
+      
+      console.log('📱 Mobile pre-checks passed, proceeding with generation...');
+    }
     // Chat commands: save project / create project <title>
     const lower = trimmed.toLowerCase();
     if (lower === 'save project' || lower === 'create project') {
@@ -1462,49 +1550,78 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setMessages((prev)=> [...prev, placeholder]);
       
       // Use the new tracking API endpoint
-  const res = await fetch("/api/generate-with-tracking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
-        body: JSON.stringify({
-          prompt: trimmed,
-          mode,
-          // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
-          ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
-          provider: textProvider,
-          // Character & Effects LoRAs
-          lora_character: loraName || undefined,
-          lora_character_scale: typeof loraScale === 'number' ? loraScale : undefined,
-          lora_effect: effectLora || undefined,
-          lora_effect_scale: typeof effectLoraScale === 'number' ? effectLoraScale : undefined,
-          batch_size: typeof batchSize === 'number' ? batchSize : undefined,
-          seed: typeof seed === 'number' ? seed : undefined,
+      const apiPayload = {
+        prompt: trimmed,
+        mode,
+        // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
+        ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
+        provider: textProvider,
+        // Character & Effects LoRAs
+        lora_character: loraName || undefined,
+        lora_character_scale: typeof loraScale === 'number' ? loraScale : undefined,
+        lora_effect: effectLora || undefined,
+        lora_effect_scale: typeof effectLoraScale === 'number' ? effectLoraScale : undefined,
+        batch_size: typeof batchSize === 'number' ? batchSize : undefined,
+        seed: typeof seed === 'number' ? seed : undefined,
+        denoise: typeof denoise === 'number' ? denoise : undefined,
+        unet: unetName || undefined,
+        aspect_ratio: aspectRatio || undefined,
+            cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
+            guidance: typeof guidance === 'number' ? guidance : undefined,
+            steps: typeof steps === 'number' ? steps : undefined,
+            effects_preset: effectsPreset || undefined,
+            effects_on: effectsOn || undefined,
+            video_model: mode==='video' ? videoModel : undefined,
+            video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
+        userId: userId || undefined,
+        attachment: attached || undefined,
+        imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
+        workflow_settings: showWorkflowPopoverFor ? {
+          target: showWorkflowPopoverFor,
+          use_flux_dev: useFluxDev,
+          sampler,
           denoise: typeof denoise === 'number' ? denoise : undefined,
           unet: unetName || undefined,
-          aspect_ratio: aspectRatio || undefined,
-              cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
-              guidance: typeof guidance === 'number' ? guidance : undefined,
-              steps: typeof steps === 'number' ? steps : undefined,
-              effects_preset: effectsPreset || undefined,
-              effects_on: effectsOn || undefined,
-              video_model: mode==='video' ? videoModel : undefined,
-              video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
-          userId: userId || undefined,
-          attachment: attached || undefined,
-          imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
-          workflow_settings: showWorkflowPopoverFor ? {
-            target: showWorkflowPopoverFor,
-            use_flux_dev: useFluxDev,
-            sampler,
-            denoise: typeof denoise === 'number' ? denoise : undefined,
-            unet: unetName || undefined,
-          } : undefined,
-          // Respect user's choice whether to save generated media into their personal library
-          saveToLibrary: saveToLibrary === true,
-        }),
+        } : undefined,
+        // Respect user's choice whether to save generated media into their personal library
+        saveToLibrary: saveToLibrary === true,
+        // Mark mobile requests for server-side debugging
+        isMobile: isMobile,
+        userAgent: navigator.userAgent
+      };
+      
+      // 📱 MOBILE: Log complete payload before sending
+      if (isMobile) {
+        console.log('📱 MOBILE API PAYLOAD:', JSON.stringify(apiPayload, null, 2));
+        console.log('📱 About to send to /api/generate-with-tracking...');
+      }
+      
+  const res = await fetch("/api/generate-with-tracking", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "X-User-Id": userId || "",
+          // Add mobile-specific headers
+          ...(isMobile ? { "X-Mobile-Request": "true" } : {})
+        },
+        body: JSON.stringify(apiPayload),
       });
 
       console.log('🌐 API Response status:', res.status);
       console.log('🌐 API Response headers:', res.headers);
+      
+      // 📱 MOBILE: Enhanced response logging
+      if (isMobile) {
+        console.log('📱 MOBILE API RESPONSE:', {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+          headers: Object.fromEntries(res.headers.entries()),
+          url: res.url,
+          type: res.type,
+          redirected: res.redirected
+        });
+      }
 
       if (!res.ok) {
         // Show a clear message when the workflow isn't available yet (501) or other errors
@@ -3141,7 +3258,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
 
                 {/* Prompt input area - unified desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90' : 'bg-white'} ${isMobile ? 'relative' : ''}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -3160,17 +3277,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-4 w-9' : 'h-5 w-8'} cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/20' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative ${isMobile ? 'h-7 w-11' : 'h-5 w-8'} cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? (darkMode ? 'hover:bg-blue-500/20 bg-blue-600/10' : 'hover:bg-blue-500/20 bg-blue-100/50') : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    <label className={`group cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className={`group cursor-pointer rounded flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/20 ${isMobile ? 'h-7 w-11' : 'h-5 w-8'}`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -3193,13 +3310,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {/* Bottom row: Create button spanning full width */}
                     <button
                       onClick={() => setShowFeatureControls(!showFeatureControls)}
-                      className={`col-span-2 flex items-center justify-center gap-1 rounded transition-all hover:scale-105 ${showFeatureControls ? (darkMode ? 'bg-blue-600/30 text-blue-300' : 'bg-blue-100 text-blue-700') : (darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50')}`}
+                      className={`col-span-2 flex items-center justify-center gap-1 rounded transition-all hover:scale-105 ${isMobile ? 'py-2 px-3 h-7' : 'py-1 px-2 h-5'} ${showFeatureControls ? (darkMode ? 'bg-blue-600/30 text-blue-300' : 'bg-blue-100 text-blue-700') : (darkMode ? 'hover:bg-neutral-700/50 bg-neutral-800/50' : 'hover:bg-gray-200/50 bg-gray-100/50')}`}
                       title={showFeatureControls ? "Hide creation tools" : "Show creation tools (modes, settings, effects)"}
                     >
-                      <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width={isMobile ? "18" : "14"} height={isMobile ? "18" : "14"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                       </svg>
-                      <span className="text-xs">Create</span>
+                      <span className={`${isMobile ? 'text-sm font-medium' : 'text-xs'}`}>Create</span>
                     </button>
                   </div>
                 </div>

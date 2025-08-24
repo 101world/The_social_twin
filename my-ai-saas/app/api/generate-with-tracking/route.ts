@@ -31,15 +31,24 @@ export async function POST(req: NextRequest) {
     console.log('=== GENERATION REQUEST DEBUG ===');
     console.log('Timestamp:', new Date().toISOString());
     console.log('User ID:', userId);
-    console.log('Request Body:', JSON.stringify(body, null, 2));
     console.log('Request Headers:', {
       'content-type': req.headers.get('content-type'),
       'user-agent': req.headers.get('user-agent'),
       'x-forwarded-for': req.headers.get('x-forwarded-for'),
       'x-real-ip': req.headers.get('x-real-ip'),
+      'x-mobile-request': req.headers.get('x-mobile-request'),
       origin: req.headers.get('origin'),
       referer: req.headers.get('referer')
     });
+    console.log('Request Body:', JSON.stringify(body, null, 2));
+    
+    // Mobile-specific debugging
+    const isMobileRequest = req.headers.get('x-mobile-request') === 'true' || body.isMobile === true;
+    if (isMobileRequest) {
+      console.log('📱 MOBILE REQUEST DETECTED ON SERVER');
+      console.log('📱 Mobile User Agent:', body.userAgent || req.headers.get('user-agent'));
+      console.log('📱 Mobile Payload Size:', JSON.stringify(body).length, 'bytes');
+    }
     
     const {
       prompt,
