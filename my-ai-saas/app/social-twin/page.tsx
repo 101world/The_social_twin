@@ -641,6 +641,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   async function loadLibraryContent() {
     if (!userId || libraryLoading) return;
     
+    console.log('🔍 Loading library content for user:', userId);
     setLibraryLoading(true);
     try {
       const response = await fetch('/api/social-twin/generations', {
@@ -651,19 +652,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         }
       });
       
+      console.log('📡 Library API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Raw library data:', data);
+        console.log('📊 Library data length:', data.length);
+        
         // Sort by created_at descending (most recent first)
         const sortedContent = data.sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
+        console.log('📚 Final library content:', sortedContent);
         setLibraryContent(sortedContent);
       } else {
-        console.error('Failed to load library content');
+        const errorText = await response.text();
+        console.error('❌ Failed to load library content:', response.status, errorText);
         setLibraryContent([]);
       }
     } catch (error) {
-      console.error('Error loading library content:', error);
+      console.error('💥 Error loading library content:', error);
       setLibraryContent([]);
     } finally {
       setLibraryLoading(false);
