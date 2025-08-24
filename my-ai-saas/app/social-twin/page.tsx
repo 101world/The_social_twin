@@ -100,6 +100,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [featureMenuOpen, setFeatureMenuOpen] = useState<boolean>(false);
   // Create tools toggle state
   const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
+  // Library modal state
+  const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -2997,14 +2999,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </svg>
                     </button>
                     <button
-                      onClick={() => setFeatureMenuOpen(v => !v)}
-                      className={`h-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-purple-500/10 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}
-                      title="Show features menu"
-                      aria-haspopup="menu"
-                      aria-expanded={featureMenuOpen}
+                      onClick={() => setLibraryOpen(true)}
+                      className={`h-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
+                      title="Open Library - View all generated content"
+                      aria-label="Library"
                     >
                       <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
                     </button>
                   </div>
@@ -4094,6 +4095,122 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         existingTitle={currentProjectTitle || undefined}
         dark={darkMode}
       />
+      
+      {/* Library Modal - Shows all generated content */}
+      {libraryOpen && (
+        <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`
+            relative w-full max-w-4xl h-[80vh] m-4 rounded-xl shadow-xl overflow-hidden
+            ${darkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-neutral-200'}
+          `}>
+            {/* Header */}
+            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}>
+              <div className="flex items-center gap-2">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={darkMode ? 'text-emerald-400' : 'text-emerald-600'}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Your Library
+                </h2>
+                <span className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>
+                  ({messages.filter(m => m.imageUrl || m.videoUrl).length} items)
+                </span>
+              </div>
+              <button
+                onClick={() => setLibraryOpen(false)}
+                className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'}`}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="h-full overflow-y-auto p-4">
+              {messages.filter(m => m.imageUrl || m.videoUrl).length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={`mb-4 ${darkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <h3 className={`text-lg font-medium mb-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
+                    No generated content yet
+                  </h3>
+                  <p className={`text-sm ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
+                    Create some images or videos to see them here!
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {messages.filter(m => m.imageUrl || m.videoUrl).map((message, index) => (
+                    <div key={index} className={`
+                      rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
+                      ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
+                    `}>
+                      {message.imageUrl && (
+                        <div className="aspect-square relative">
+                          <img
+                            src={message.imageUrl}
+                            alt={message.content || 'Generated image'}
+                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => setViewer({ open: true, src: message.imageUrl! })}
+                          />
+                          <div className="absolute top-2 right-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
+                              Image
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {message.videoUrl && (
+                        <div className="aspect-video relative">
+                          <video
+                            src={message.videoUrl}
+                            className="w-full h-full object-cover cursor-pointer"
+                            controls
+                          />
+                          <div className="absolute top-2 right-2">
+                            <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
+                              Video
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {message.content && (
+                        <div className="p-3">
+                          <p className={`text-sm line-clamp-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
+                            {message.content}
+                          </p>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className={`text-xs ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
+                              {new Date(message.createdAt || Date.now()).toLocaleDateString()}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (message.imageUrl) {
+                                  folderModalPayload.current = { url: message.imageUrl, type: 'image', prompt: message.content };
+                                  setFolderModalOpen(true);
+                                }
+                              }}
+                              className={`text-xs px-2 py-1 rounded transition-colors ${
+                                darkMode 
+                                  ? 'text-emerald-400 hover:bg-emerald-400/10' 
+                                  : 'text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Welcome Modal */}
       {showWelcomeModal && (
