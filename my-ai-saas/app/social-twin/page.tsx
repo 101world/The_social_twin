@@ -104,6 +104,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [libraryContent, setLibraryContent] = useState<any[]>([]);
   const [libraryLoading, setLibraryLoading] = useState<boolean>(false);
+  // Typing speed for pulsating effect
+  const [typingSpeed, setTypingSpeed] = useState<number>(0); // characters per second
+  const [lastTypingTime, setLastTypingTime] = useState<number>(0);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -2929,18 +2933,58 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 </div>
 
-                {/* Enhanced responsive prompt box with keyboard handling */}
-                <div className={`
-                  flex gap-3 items-end
-                  ${isMobile ? 'sticky bottom-2' : ''}
-                  rounded-xl p-3 shadow-lg backdrop-blur-sm transition-all duration-200
-                  ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
-                  ${isMobile ? 'mx-2 mb-2' : ''}
-                `}>
+                {/* Enhanced responsive prompt box with pulsating glow effect */}
+                <div 
+                  className={`
+                    flex gap-3 items-end
+                    ${isMobile ? 'sticky bottom-2' : ''}
+                    rounded-xl p-3 backdrop-blur-sm transition-all duration-200 border-0
+                    ${darkMode ? 'bg-neutral-900/95' : 'bg-white/95'}
+                    ${isMobile ? 'mx-2 mb-2' : ''}
+                  `}
+                  style={{
+                    // Dynamic pulsating shadow based on typing speed
+                    boxShadow: typingSpeed > 0 
+                      ? `0 0 ${Math.min(40, 20 + typingSpeed * 2)}px rgba(59, 130, 246, ${Math.min(0.8, 0.3 + typingSpeed * 0.1)}), 
+                         0 0 ${Math.min(80, 40 + typingSpeed * 4)}px rgba(59, 130, 246, ${Math.min(0.4, 0.1 + typingSpeed * 0.05)})`
+                      : '0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.1)', // 120 BPM idle pulse (500ms duration)
+                    animation: typingSpeed === 0 ? 'pulse-idle 1s ease-in-out infinite' : 'none'
+                  }}
+                >
+                  <style jsx>{`
+                    @keyframes pulse-idle {
+                      0%, 100% { 
+                        box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), 0 0 30px rgba(59, 130, 246, 0.08);
+                      }
+                      50% { 
+                        box-shadow: 0 0 25px rgba(59, 130, 246, 0.4), 0 0 50px rgba(59, 130, 246, 0.15);
+                      }
+                    }
+                  `}</style>
                   {/* Textarea takes 90% width - UNIVERSAL DESKTOP & MOBILE */}
                   <textarea
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      const now = Date.now();
+                      
+                      // Track typing speed for pulsating effect
+                      if (lastTypingTime > 0) {
+                        const timeDiff = now - lastTypingTime;
+                        const charDiff = Math.abs(newValue.length - input.length);
+                        if (timeDiff > 0 && charDiff > 0) {
+                          const speed = (charDiff / timeDiff) * 1000; // chars per second
+                          setTypingSpeed(speed);
+                        }
+                      }
+                      setLastTypingTime(now);
+                      
+                      // Clear typing after 1 second of inactivity
+                      if (typingTimeout) clearTimeout(typingTimeout);
+                      setTypingTimeout(setTimeout(() => setTypingSpeed(0), 1000));
+                      
+                      setInput(newValue);
+                    }}
                     placeholder="Type your prompt..."
                     className={`
                       min-h-[32px] max-h-[80px] resize-none rounded-lg p-3 text-sm 
@@ -2962,7 +3006,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     style={{ 
                       width: '10%',
                       flexShrink: 0,
-                      height: isMobile ? '44px' : '38px' // Larger touch targets on mobile
+                      height: isMobile ? '44px' : '56px' // Much larger desktop buttons
                     }}
                   >
                     {/* Top row: Send + Attach */}
@@ -2970,19 +3014,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
                       className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
-                      style={{ height: isMobile ? '20px' : '18px' }}
+                      style={{ height: isMobile ? '20px' : '26px' }} // Much bigger desktop buttons
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       {/* Cost badge */}
                       <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" style={{ height: isMobile ? '20px' : '18px' }} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" style={{ height: isMobile ? '20px' : '26px' }} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -3010,22 +3054,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
                           : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
                       }`}
-                      style={{ height: isMobile ? '20px' : '18px' }}
+                      style={{ height: isMobile ? '20px' : '26px' }}
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
                       className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
-                      style={{ height: isMobile ? '20px' : '18px' }}
+                      style={{ height: isMobile ? '20px' : '26px' }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
-                      <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
                     </button>
