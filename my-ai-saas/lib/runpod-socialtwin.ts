@@ -21,8 +21,13 @@ type RunParams = {
   ckpt_name?: string; // optional override for image mode
   workflow_settings?: any;
   // New dropdown parameters
-  lora?: string; // LoRA name (Effects/Character)
-  lora_scale?: number; // LoRA strength
+  lora?: string; // Back-compat single LoRA name
+  lora_scale?: number; // Back-compat single LoRA strength
+  // New: separate character/effects LoRAs
+  lora_character?: string;
+  lora_character_scale?: number;
+  lora_effect?: string;
+  lora_effect_scale?: number;
   aspect_ratio?: string; // Size/aspect ratio
   guidance?: number; // FluxGuidance value
 };
@@ -104,7 +109,7 @@ async function uploadReferenceToComfy(base: string, apiKey: string | undefined, 
 }
 
 export async function runSocialTwinGeneration(params: RunParams): Promise<{ images: string[]; videos: string[]; urls: string[]; runpod: any; }>{
-  const { mode, prompt, negative, width, height, batch_size, steps, cfg, seed, imageUrl, attachment, runpodUrl, apiKey, userId, ckpt_name, lora, lora_scale, aspect_ratio, guidance } = params;
+  const { mode, prompt, negative, width, height, batch_size, steps, cfg, seed, imageUrl, attachment, runpodUrl, apiKey, userId, ckpt_name, lora, lora_scale, lora_character, lora_character_scale, lora_effect, lora_effect_scale, aspect_ratio, guidance } = params;
   const base = ensureBase(runpodUrl);
   const headers = {
     'Content-Type': 'application/json',
@@ -123,8 +128,11 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
       case 'A4L': return { width: 1024, height: 768 }; // Landscape  
       case '16:9': return { width: 1920, height: 1088 }; // Widescreen
       case '1:1': return { width: 1024, height: 1024 }; // Square
-      case '3:4': return { width: 768, height: 1024 }; // Portrait
       case '4:3': return { width: 1024, height: 768 }; // Landscape
+      case '3:4': return { width: 768, height: 1024 }; // Portrait
+      case '9:16': return { width: 1024, height: 1820 }; // Tall portrait
+      case '3:2': return { width: 1536, height: 1024 }; // Classic photo (landscape)
+      case '2:3': return { width: 1024, height: 1536 }; // Classic photo (portrait)
       default: return { width: defaultWidth, height: defaultHeight };
     }
   };
@@ -173,15 +181,28 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
       if (typeof batch_size === 'number') graph[dimsKey].inputs.batch_size = batch_size;
     }
 
-    // 5. EFFECTS/CHARACTER (LORA): Configure LoRA
-    const loraFileName = getLoRAFileName(lora);
-    if (loraKey && graph[loraKey]?.inputs && loraFileName) {
-      // Power Lora Loader configuration
-      graph[loraKey].inputs["➕ Add Lora"] = loraFileName;
-      // Add LoRA strength if specified
-      if (typeof lora_scale === 'number') {
-        graph[loraKey].inputs.strength_model = lora_scale;
-        graph[loraKey].inputs.strength_clip = lora_scale;
+    // 5. EFFECTS/CHARACTER (LORA): Configure one or two LoRAs
+    const charFile = getLoRAFileName(lora_character ?? lora);
+    const effFile = getLoRAFileName(lora_effect);
+    if (loraKey && graph[loraKey]?.inputs) {
+      if (charFile && effFile) {
+        // Multiple LoRAs — concatenate; Power Lora Loader supports multi-add via this field
+        graph[loraKey].inputs["➕ Add Lora"] = `${charFile}\n${effFile}`;
+      } else if (charFile || effFile) {
+        graph[loraKey].inputs["➕ Add Lora"] = (charFile || effFile) as string;
+      }
+      // Strength handling: apply a unified strength if provided (max of inputs)
+      const chosenStrength =
+        typeof lora_character_scale === 'number' || typeof lora_effect_scale === 'number' || typeof lora_scale === 'number'
+          ? Math.max(
+              ...( [lora_character_scale, lora_effect_scale, lora_scale]
+                .filter((v): v is number => typeof v === 'number')
+              )
+            )
+          : undefined;
+      if (typeof chosenStrength === 'number') {
+        graph[loraKey].inputs.strength_model = chosenStrength;
+        graph[loraKey].inputs.strength_clip = chosenStrength;
       }
     }
 
@@ -227,16 +248,46 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
     const posKey = findByClassAndTitle(graph, 'CLIPTextEncode', 'Positive') || '6';
     const dimsKey = findByClassAndTitle(graph, 'EmptySD3LatentImage') || '188';
     const samplerKey = findByClassAndTitle(graph, 'KSampler') || '31';
+    const guidanceKey = findByClassAndTitle(graph, 'FluxGuidance') || '35';
+    const loraKey = findByClassAndTitle(graph, 'Power Lora Loader (rgthree)');
     if (posKey && graph[posKey]?.inputs) graph[posKey].inputs.text = prompt;
     if (dimsKey && graph[dimsKey]?.inputs) {
-      graph[dimsKey].inputs.width = typeof width === 'number' ? width : (graph[dimsKey].inputs.width ?? 1024);
-      graph[dimsKey].inputs.height = typeof height === 'number' ? height : (graph[dimsKey].inputs.height ?? 1024);
+      // Prefer aspect_ratio mapping when provided; otherwise honor explicit width/height or defaults
+      const dims = getAspectDimensions(aspect_ratio, (typeof width === 'number' ? width : (graph[dimsKey].inputs.width ?? 1024)), (typeof height === 'number' ? height : (graph[dimsKey].inputs.height ?? 1024)));
+      graph[dimsKey].inputs.width = dims.width;
+      graph[dimsKey].inputs.height = dims.height;
       if (typeof batch_size === 'number') graph[dimsKey].inputs.batch_size = batch_size;
     }
     if (samplerKey && graph[samplerKey]?.inputs) {
       if (typeof steps === 'number') graph[samplerKey].inputs.steps = Math.max(1, Math.round(steps));
       if (typeof cfg === 'number') graph[samplerKey].inputs.cfg = cfg;
       graph[samplerKey].inputs.seed = userSeed;
+    }
+    // If the modify workflow includes FluxGuidance, allow overriding
+    if (guidanceKey && graph[guidanceKey]?.inputs) {
+      graph[guidanceKey].inputs.guidance = typeof guidance === 'number' ? guidance : (graph[guidanceKey].inputs.guidance ?? 2.5);
+    }
+    // If the modify workflow includes a Power Lora Loader, configure LoRAs similarly
+    if (loraKey && graph[loraKey]?.inputs) {
+      const charFile = getLoRAFileName(lora_character ?? lora);
+      const effFile = getLoRAFileName(lora_effect);
+      if (charFile && effFile) {
+        graph[loraKey].inputs["➕ Add Lora"] = `${charFile}\n${effFile}`;
+      } else if (charFile || effFile) {
+        graph[loraKey].inputs["➕ Add Lora"] = (charFile || effFile) as string;
+      }
+      const chosenStrength =
+        typeof lora_character_scale === 'number' || typeof lora_effect_scale === 'number' || typeof lora_scale === 'number'
+          ? Math.max(
+              ...( [lora_character_scale, lora_effect_scale, lora_scale]
+                .filter((v): v is number => typeof v === 'number')
+              )
+            )
+          : undefined;
+      if (typeof chosenStrength === 'number') {
+        graph[loraKey].inputs.strength_model = chosenStrength;
+        graph[loraKey].inputs.strength_clip = chosenStrength;
+      }
     }
     // Upload reference image and set LoadImage
     const refUrl: string | undefined = imageUrl || attachment?.dataUrl;

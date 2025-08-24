@@ -107,8 +107,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [videoKlingUrl, setVideoKlingUrl] = useState<string>("");
 
   // LoRA and params
-  const [loraName, setLoraName] = useState<string>("");
-  const [loraScale, setLoraScale] = useState<number|''>('');
+  const [loraName, setLoraName] = useState<string>(""); // Character LoRA filename
+  const [loraScale, setLoraScale] = useState<number|''>(''); // Character LoRA strength
+  const [effectLora, setEffectLora] = useState<string>(""); // Effects/Style LoRA filename
+  const [effectLoraScale, setEffectLoraScale] = useState<number|''>(''); // Effects LoRA strength
   const [availableLoras, setAvailableLoras] = useState<any[]>([]);
   const [lorasLoading, setLorasLoading] = useState(false);
   const [batchSize, setBatchSize] = useState<number|''>('');
@@ -216,6 +218,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     videoKling: 'social_twin_video_kling_url',
     loraName: 'social_twin_lora_name',
     loraScale: 'social_twin_lora_scale',
+    effectLora: 'social_twin_effect_lora',
+    effectLoraScale: 'social_twin_effect_lora_scale',
     batchSize: 'social_twin_batch_size',
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
@@ -1109,7 +1113,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || DEFAULT_VIDEO_KLING);
     setLoraName(localStorage.getItem(LOCAL_KEYS.loraName) || "");
     const lsScale = localStorage.getItem(LOCAL_KEYS.loraScale);
-    setLoraScale(lsScale ? Number(lsScale) : "");
+  setLoraScale(lsScale ? Number(lsScale) : "");
+  const lsEffect = localStorage.getItem(LOCAL_KEYS.effectLora);
+  setEffectLora(lsEffect || "");
+  const lsEffectScale = localStorage.getItem(LOCAL_KEYS.effectLoraScale);
+  setEffectLoraScale(lsEffectScale ? Number(lsEffectScale) : "");
     const lsBatch = localStorage.getItem(LOCAL_KEYS.batchSize);
     setBatchSize(lsBatch ? Number(lsBatch) : "");
     setAspectRatio(localStorage.getItem(LOCAL_KEYS.aspectRatio) || "");
@@ -1290,8 +1298,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     localStorage.setItem(LOCAL_KEYS.video, videoUrl);
     localStorage.setItem(LOCAL_KEYS.videoWan, videoWanUrl);
     localStorage.setItem(LOCAL_KEYS.videoKling, videoKlingUrl);
-    localStorage.setItem(LOCAL_KEYS.loraName, loraName);
-    if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
+  localStorage.setItem(LOCAL_KEYS.loraName, loraName);
+  if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
+  if (effectLora) localStorage.setItem(LOCAL_KEYS.effectLora, effectLora);
+  if (effectLoraScale !== "") localStorage.setItem(LOCAL_KEYS.effectLoraScale, String(effectLoraScale));
     if (batchSize !== "") localStorage.setItem(LOCAL_KEYS.batchSize, String(batchSize));
     localStorage.setItem(LOCAL_KEYS.aspectRatio, aspectRatio);
   try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
@@ -1392,8 +1402,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
           ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
           provider: textProvider,
-          lora: loraName || undefined,
-          lora_scale: typeof loraScale === 'number' ? loraScale : undefined,
+          // Character & Effects LoRAs
+          lora_character: loraName || undefined,
+          lora_character_scale: typeof loraScale === 'number' ? loraScale : undefined,
+          lora_effect: effectLora || undefined,
+          lora_effect_scale: typeof effectLoraScale === 'number' ? effectLoraScale : undefined,
           batch_size: typeof batchSize === 'number' ? batchSize : undefined,
           seed: typeof seed === 'number' ? seed : undefined,
           denoise: typeof denoise === 'number' ? denoise : undefined,
@@ -2521,7 +2534,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                           
                           <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">LoRA Strength</label>
+                            <label className="text-xs font-medium opacity-80">Character Strength</label>
                             <div className="space-y-1">
                               <input
                                 type="range"
@@ -2535,6 +2548,61 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               <div className="flex justify-between text-xs opacity-60">
                                 <span>0.0</span>
                                 <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
+                                <span>1.0</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Effects LoRA */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Effects LoRA {lorasLoading && '(loading...)'}</label>
+                            <select
+                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setEffectLora('');
+                                else if (v === 'Custom...') setEffectLora(effectLora || '');
+                                else setEffectLora(v);
+                              }}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              disabled={lorasLoading}
+                            >
+                              {LORA_CHOICES.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {lora.name} ({lora.type})
+                                </option>
+                              ))}
+                            </select>
+                            {effectLora && !isPresetLoRa(effectLora) && (
+                              <input
+                                type="text"
+                                placeholder="effects-style.safetensors"
+                                value={effectLora}
+                                onChange={(e) => setEffectLora(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Effects Strength</label>
+                            <div className="space-y-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={effectLoraScale || 0.6}
+                                onChange={(e) => setEffectLoraScale(Number(e.target.value))}
+                                className="w-full"
+                              />
+                              <div className="flex justify-between text-xs opacity-60">
+                                <span>0.0</span>
+                                <span className="font-medium">{(effectLoraScale || 0.6).toFixed(2)}</span>
                                 <span>1.0</span>
                               </div>
                             </div>

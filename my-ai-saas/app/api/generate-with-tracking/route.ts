@@ -68,6 +68,10 @@ export async function POST(req: NextRequest) {
     console.log('Dropdown Parameters:', {
       lora: otherParams?.lora,
       lora_scale: otherParams?.lora_scale,
+  lora_character: otherParams?.lora_character,
+  lora_character_scale: otherParams?.lora_character_scale,
+  lora_effect: otherParams?.lora_effect,
+  lora_effect_scale: otherParams?.lora_effect_scale,
       aspect_ratio: otherParams?.aspect_ratio,
       guidance: otherParams?.guidance,
       batch_size: batch_size
@@ -200,6 +204,10 @@ export async function POST(req: NextRequest) {
         // Add dropdown parameters
         lora: typeof otherParams?.lora === 'string' ? otherParams.lora : undefined,
         lora_scale: typeof otherParams?.lora_scale === 'number' ? otherParams.lora_scale : undefined,
+  lora_character: typeof otherParams?.lora_character === 'string' ? otherParams.lora_character : undefined,
+  lora_character_scale: typeof otherParams?.lora_character_scale === 'number' ? otherParams.lora_character_scale : undefined,
+  lora_effect: typeof otherParams?.lora_effect === 'string' ? otherParams.lora_effect : undefined,
+  lora_effect_scale: typeof otherParams?.lora_effect_scale === 'number' ? otherParams.lora_effect_scale : undefined,
         aspect_ratio: typeof otherParams?.aspect_ratio === 'string' ? otherParams.aspect_ratio : undefined,
         guidance: typeof otherParams?.guidance === 'number' ? otherParams.guidance : undefined,
       });
