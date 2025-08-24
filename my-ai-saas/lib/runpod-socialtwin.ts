@@ -131,12 +131,19 @@ export async function runSocialTwinGeneration(params: RunParams): Promise<{ imag
 
   // Helper function to convert LoRA names to actual file names
   const getLoRAFileName = (loraName?: string) => {
-    if (!loraName || loraName === 'None') return null;
+    if (!loraName || loraName === 'None' || loraName === '') return null;
+    
+    // If it's already a .safetensors file, use as-is
+    if (loraName.endsWith('.safetensors')) return loraName;
+    
+    // Legacy mappings for backwards compatibility
     switch (loraName) {
       case 'Character-A': return 'character_a_lora.safetensors';
       case 'Character-B': return 'character_b_lora.safetensors';
       case 'Custom...': return null; // Handle custom LoRA separately
-      default: return loraName.endsWith('.safetensors') ? loraName : `${loraName}.safetensors`;
+      default: 
+        // Auto-append .safetensors if not present
+        return loraName.includes('.') ? loraName : `${loraName}.safetensors`;
     }
   };
 
