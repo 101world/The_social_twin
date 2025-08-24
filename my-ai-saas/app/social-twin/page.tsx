@@ -3177,6 +3177,72 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
 
                 </div>
+                
+                {/* Creation Tools Dropdown - appears when Create (+) button is clicked */}
+                {createToolsOpen && (
+                  <div className={`mt-3 p-3 rounded-lg border ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex flex-col gap-2">
+                      <div className={`text-xs font-medium mb-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
+                        🎨 Quick Create
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            setPrompt("A beautiful landscape");
+                            setCreateToolsOpen(false);
+                          }}
+                          className={`p-2 rounded text-left text-xs transition-colors ${
+                            darkMode 
+                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
+                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}
+                        >
+                          🏞️ Landscape
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPrompt("A professional portrait");
+                            setCreateToolsOpen(false);
+                          }}
+                          className={`p-2 rounded text-left text-xs transition-colors ${
+                            darkMode 
+                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
+                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}
+                        >
+                          👤 Portrait
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPrompt("A futuristic city");
+                            setCreateToolsOpen(false);
+                          }}
+                          className={`p-2 rounded text-left text-xs transition-colors ${
+                            darkMode 
+                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
+                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}
+                        >
+                          🏙️ Futuristic
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPrompt("Abstract art");
+                            setCreateToolsOpen(false);
+                          }}
+                          className={`p-2 rounded text-left text-xs transition-colors ${
+                            darkMode 
+                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
+                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
+                          }`}
+                        >
+                          🎭 Abstract
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {attached ? (
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-2 rounded border p-2">
