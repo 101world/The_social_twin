@@ -98,6 +98,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   // Mobile features popover
   const [featureMenuOpen, setFeatureMenuOpen] = useState<boolean>(false);
+  // Create tools toggle state
+  const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -2636,8 +2638,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right */}
-                <div className="mb-2 flex items-center gap-2 justify-between">
+                {/* Mode buttons row with Save Project on right - animated hide/show */}
+                <div className={`transition-all duration-300 ease-in-out transform ${createToolsOpen ? 'opacity-100 translate-y-0 mb-2' : 'opacity-0 -translate-y-4 h-0 overflow-hidden'}`}>
+                  <div className="flex items-center gap-2 justify-between">
                   <div className="flex items-center gap-1 flex-wrap">
                     {/* Mode buttons */}
                     <button 
@@ -2820,6 +2823,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     )}
                   </div>
                 </div>
+                </div>
 
                 {/* Compact prompt box with minimal padding */}
         <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''} rounded-xl p-2 shadow-lg ${darkMode ? 'bg-neutral-900/90 border border-neutral-700 shadow-black/20' : 'bg-white border border-neutral-200 shadow-gray-200/60'} backdrop-blur-sm`}>
@@ -2830,12 +2834,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           className={`min-h-[28px] max-h-[60px] flex-1 resize-none rounded-lg p-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
           ref={bottomInputRef}
                   />
-                   <div className={`${isMobile ? 'grid grid-cols-2 gap-1' : 'flex items-center gap-1'}`}>
-                    {/* Top row mobile: Send + Attach */}
+                   <div className="grid grid-cols-2 gap-1 w-full">
+                    {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-8 w-full' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative h-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -2846,7 +2850,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Cost badge */}
                       <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[9px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 ${isMobile ? 'w-full' : ''} flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                    <label className="group cursor-pointer rounded-lg p-1.5 h-8 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -2867,36 +2871,34 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row mobile: Create button spanning full width */}
-                    {isMobile && (
-                      <button
-                        onClick={() => setFeatureMenuOpen(v => !v)}
-                        className={`col-span-2 h-8 w-full cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}
-                        title="Show features"
-                        aria-haspopup="menu"
-                        aria-expanded={featureMenuOpen}
-                      >
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                        </svg>
-                        <span className="text-xs font-medium">Create</span>
-                      </button>
-                    )}
-                    {/* Desktop: Create button to open same features menu */}
-                    {!isMobile && (
-                      <button
-                        onClick={() => setFeatureMenuOpen(v => !v)}
-                        className={`h-8 px-3 cursor-pointer rounded-lg inline-flex items-center justify-center gap-1 transition-all hover:scale-[1.02] hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}
-                        title="Show features"
-                        aria-haspopup="menu"
-                        aria-expanded={featureMenuOpen}
-                      >
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                        </svg>
-                        <span className="text-xs font-medium">Create</span>
-                      </button>
-                    )}
+                    {/* Bottom row: Create button + Feature Menu button */}
+                    <button
+                      onClick={() => setCreateToolsOpen(v => !v)}
+                      className={`h-8 cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all duration-200 hover:scale-105 ${
+                        createToolsOpen 
+                          ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
+                          : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
+                      }`}
+                      title="Toggle creation tools"
+                      aria-pressed={createToolsOpen}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span className="text-xs font-medium">Create</span>
+                    </button>
+                    <button
+                      onClick={() => setFeatureMenuOpen(v => !v)}
+                      className={`h-8 cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 hover:bg-purple-500/10 ${darkMode ? 'text-purple-300' : 'text-purple-700'}`}
+                      title="Show features menu"
+                      aria-haspopup="menu"
+                      aria-expanded={featureMenuOpen}
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                      <span className="text-xs font-medium">Menu</span>
+                    </button>
                   </div>
 
                 </div>
