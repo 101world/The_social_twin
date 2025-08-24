@@ -53,7 +53,20 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const cfg = await getRunpodConfig().catch(()=>null);
-    const runpodUrl = pickRunpodUrlFromConfig({ provided: (typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg }) || '';
+    const runpodUrl = pickRunpodUrlFromConfig({ provided: (typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg });
+
+    // Log URL resolution for debugging
+    console.log('URL Resolution Debug:', {
+      provided: runpodUrlRaw,
+      mode,
+      config: cfg,
+      resolved_url: runpodUrl,
+      env_fallback: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL
+    });
+
+    if (!runpodUrl) {
+      return NextResponse.json({ error: 'No RunPod URL configured for mode: ' + mode }, { status: 500 });
+    }
 
     // Validate mode and calculate costs
     if (!mode || !['text', 'image', 'image-modify', 'video'].includes(mode)) {
