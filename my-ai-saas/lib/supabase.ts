@@ -38,18 +38,25 @@ export function pickRunpodUrlFromConfig(opts: {
   config?: any | null;
 }): string | undefined {
   const { provided, mode = 'image', config } = opts || {};
+  
+  // First priority: user-provided URL (e.g., from localStorage)
   if (provided && typeof provided === 'string' && provided.trim()) return provided;
-  const envByMode = {
-    text: process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL,
-    image: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
-    'image-modify': process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
-    video: process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL,
-  } as Record<string, string | undefined>;
-  const cfgByMode = config ? {
-    text: config.text_url,
-    image: config.image_url,
-    'image-modify': config.image_modify_url || config.image_url,
-    video: config.video_url,
-  } : {} as any;
-  return (cfgByMode as any)[mode] || envByMode[mode];
+  
+  // Second priority: admin config from database
+  if (config) {
+    const cfgByMode = {
+      text: config.text_url,
+      image: config.image_url,
+      'image-modify': config.image_modify_url || config.image_url,
+      video: config.video_url,
+    };
+    
+    const adminUrl = cfgByMode[mode];
+    if (adminUrl && typeof adminUrl === 'string' && adminUrl.trim()) {
+      return adminUrl;
+    }
+  }
+  
+  // No fallback to environment variables - admin config is now the source of truth
+  return undefined;
 }
