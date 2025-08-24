@@ -1349,6 +1349,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     console.log('Effects on:', effectsOn);
     console.log('Video model:', videoModel);
     console.log('User ID:', userId);
+    console.log('🔧 MOBILE GENERATION DEBUG - Will proceed even without activeEndpoint');
     console.log('Call stack:', new Error().stack);
     
     const trimmed = input.trim();
@@ -1400,7 +1401,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    if (!activeEndpoint) {
+    // Allow generation even without activeEndpoint - server has fallback config
+    const shouldBlockForMissingEndpoint = false; // Set to true only if you want strict client-side validation
+    if (!activeEndpoint && shouldBlockForMissingEndpoint) {
       setMessages((prev) => [
         ...prev,
         { id: generateId(), role: "error", content: `No endpoint configured for '${mode}'. Open settings to set a URL.` },
