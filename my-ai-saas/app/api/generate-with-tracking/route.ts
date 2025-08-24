@@ -258,18 +258,65 @@ export async function POST(req: NextRequest) {
   const mediaType = aiVideo || firstVideo ? 'video' : (aiImage ? 'image' : null);
   const mediaUrl = resultUrl;
 
+    // Auto-save to Supabase Storage for permanent access
+    let permanentUrl = resultUrl;
+    if (resultUrl && saveToLibrary) {
+      try {
+        console.log('💾 Auto-saving to Supabase Storage:', resultUrl);
+        
+        // Determine bucket and content type
+        const bucket = mediaType === 'video' ? 'generated-videos' : 'generated-images';
+        
+        // Create bucket if it doesn't exist
+        try { 
+          await supabase.storage.createBucket(bucket, { public: false }).catch(() => {}); 
+        } catch {}
+        
+        // Download from RunPod
+        const response = await fetch(resultUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          const data = new Uint8Array(arrayBuffer);
+          const contentType = response.headers.get('content-type') || 
+            (mediaType === 'video' ? 'video/mp4' : 'image/png');
+          
+          // Generate unique filename
+          const ext = mediaType === 'video' ? '.mp4' : '.png';
+          const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+          const storagePath = `${userId}/${fileName}`;
+          
+          // Upload to Supabase Storage
+          const uploadResult = await supabase.storage
+            .from(bucket)
+            .upload(storagePath, data, { contentType, upsert: false });
+          
+          if (!uploadResult.error) {
+            permanentUrl = `storage:${bucket}/${storagePath}`;
+            console.log('✅ Successfully saved to Supabase Storage:', permanentUrl);
+          } else {
+            console.error('❌ Failed to upload to Supabase Storage:', uploadResult.error);
+          }
+        }
+      } catch (storageError) {
+        console.error('💥 Storage save error:', storageError);
+        // Continue with original URL if storage fails
+      }
+    }
+
     await supabase
         .from('media_generations')
         .update({
-          result_url: resultUrl,
-          media_url: mediaUrl,
+          result_url: permanentUrl, // Use storage URL if available, otherwise RunPod URL
+          media_url: permanentUrl,
           media_type: mediaType,
-          thumbnail_url: resultUrl,
+          thumbnail_url: permanentUrl,
           status: 'completed',
           completed_at: new Date().toISOString(),
           generation_params: {
             ...generationRecord.generation_params,
             status: 'completed',
+            saved_to_storage: permanentUrl?.startsWith('storage:') || false,
+            original_runpod_url: resultUrl, // Keep original for reference
             batch_results: {
               images: batchImages,
               videos: batchVideos,

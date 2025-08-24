@@ -4350,9 +4350,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ) : (
                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
                   {libraryContent.map((item, index) => {
-                    // Use result_url if media_url doesn't exist
-                    const imageUrl = item.media_url || item.result_url;
+                    // Use display_url (signed Supabase URL) if available, fallback to media_url/result_url
+                    const imageUrl = item.display_url || item.media_url || item.result_url;
                     const isVideo = item.type === 'video' || (imageUrl && /\.(mp4|webm)(\?|$)/i.test(imageUrl));
+                    const isPermanent = item.is_permanent || imageUrl?.includes('supabase') || false;
                     
                     if (!imageUrl) return null; // Skip items without media
                     
@@ -4360,6 +4361,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <div key={item.id || index} className={`
                       rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
                       ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
+                      ${isPermanent ? 'ring-1 ring-green-200 dark:ring-green-800' : ''}
                     `}>
                       {!isVideo && imageUrl && (
                         <div className={`${isMobile ? 'aspect-square' : 'aspect-square'} relative group`}>
@@ -4380,7 +4382,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24" class="mb-2">
                                     <path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                   </svg>
-                                  <p class="text-xs text-center px-2">Image unavailable</p>
+                                  <p class="text-xs text-center px-2">${isPermanent ? 'Loading...' : 'Image expired'}</p>
                                   <p class="text-xs text-center px-2 text-gray-300 dark:text-gray-600">${item.type || 'Generated'}</p>
                                 `;
                                 parent.appendChild(placeholder);
@@ -4429,7 +4431,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                           <div className="absolute top-2 right-2">
                             <span className={`px-1.5 py-0.5 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
-                              IMG
+                              {isPermanent ? '💾 IMG' : 'IMG'}
                             </span>
                           </div>
                         </div>
@@ -4491,7 +4493,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                           <div className="absolute top-2 right-2">
                             <span className={`px-1.5 py-0.5 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
-                              VID
+                              {isPermanent ? '💾 VID' : 'VID'}
                             </span>
                           </div>
                         </div>

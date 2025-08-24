@@ -44,7 +44,42 @@ export async function GET(request: NextRequest) {
       created_at: data[0].created_at
     } : 'No data');
     
-    return NextResponse.json(data || []);
+    // Process data to convert storage URLs to signed URLs
+    const processedData = await Promise.all((data || []).map(async (item) => {
+      let displayUrl = item.media_url || item.result_url;
+      
+      // Convert storage URLs to signed URLs
+      if (displayUrl && displayUrl.startsWith('storage:')) {
+        try {
+          const storagePath = displayUrl.replace(/^storage:/, '');
+          const [bucket, ...pathParts] = storagePath.split('/');
+          const path = pathParts.join('/');
+          
+          const { data: signedUrlData, error: signedError } = await supabase.storage
+            .from(bucket)
+            .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
+          
+          if (!signedError && signedUrlData?.signedUrl) {
+            displayUrl = signedUrlData.signedUrl;
+            console.log('✅ Converted storage URL to signed URL for item:', item.id);
+          } else {
+            console.error('❌ Failed to create signed URL:', signedError);
+          }
+        } catch (storageError) {
+          console.error('💥 Storage URL conversion error:', storageError);
+        }
+      }
+      
+      return {
+        ...item,
+        // Use display_url for frontend, keep original URLs for reference
+        display_url: displayUrl,
+        media_url: displayUrl, // Update media_url for backward compatibility
+        is_permanent: displayUrl?.startsWith('storage:') || displayUrl?.includes('supabase')
+      };
+    }));
+    
+    return NextResponse.json(processedData);
   } catch (error) {
     console.error('💥 API error in library endpoint:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
