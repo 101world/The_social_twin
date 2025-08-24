@@ -3249,6 +3249,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       </section>
       {/* Mobile Features menu (lightweight) */}
+    {/* Updated: August 25, 2025 - Mobile UI optimizations live */}
       {featureMenuOpen && (
         <>
           {/* click-away to close */}
