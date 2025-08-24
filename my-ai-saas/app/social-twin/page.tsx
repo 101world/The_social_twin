@@ -2863,67 +2863,27 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {(mode === 'image' || mode === 'image-modify') && (
                       <>
-                        {/* Advanced Controls Toggle */}
-                        <button
-                          onClick={() => setShowAdvancedControls(!showAdvancedControls)}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-blue-500 border-blue-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
-                          title="Advanced Controls"
+                        {/* Character LoRA */}
+                        <select
+                          value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === 'None') setLoraName('');
+                            else if (v === 'Custom...') setLoraName(loraName || '');
+                            else setLoraName(v);
+                          }}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Character"
                         >
-                          <div className="flex items-center gap-1">
-                            <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            {!isMobile && <span>Style</span>}
-                          </div>
-                        </button>
-
-                        {showAdvancedControls && (
-                          <>
-                            {/* Effects LoRA (Power Loader) */}
-                            <select
-                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setEffectLora('');
-                                else if (v === 'Custom...') setEffectLora(effectLora || '');
-                                else setEffectLora(v);
-                              }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                              title="Effects LoRA"
-                            >
-                              {(['None','Custom...'] as const).map((opt) => (
-                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                                </option>
-                              ))}
-                            </select>
-
-                            {/* Character LoRA */}
-                            <select
-                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setLoraName('');
-                                else if (v === 'Custom...') setLoraName(loraName || '');
-                                else setLoraName(v);
-                              }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                              title="Character LoRA"
-                            >
-                              {(['None','Custom...'] as const).map((opt) => (
-                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                                </option>
-                              ))}
-                            </select>
-                          </>
-                        )}
+                          {(['None','Custom...'] as const).map((opt) => (
+                            <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                          ))}
+                          {availableLoras.map((lora) => (
+                            <option key={lora.filename} value={lora.filename}>
+                              {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                            </option>
+                          ))}
+                        </select>
 
                         {/* Batch size */}
                         <select
