@@ -1861,9 +1861,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   return (
   <main className={`
-    relative h-screen w-screen overflow-hidden max-w-full
+    relative w-screen max-w-full
     ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'}
-    ${isMobile ? 'h-[100dvh]' : 'h-screen-dvh'}
+    ${isMobile ? 'h-[100dvh] overflow-hidden' : 'h-screen overflow-hidden'}
   `}
   style={{
     // Prevent zoom and improve mobile viewport handling
@@ -2007,7 +2007,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Save Project moved to bottom next to More */}
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '120px' : 'calc(var(--composer-h, 64px))' }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : 'calc(var(--composer-h, 64px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -2742,9 +2742,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right - animated hide/show */}
-                <div className={`transition-all duration-300 ease-in-out transform ${createToolsOpen ? 'opacity-100 translate-y-0 mb-2' : 'opacity-0 -translate-y-4 h-0 overflow-hidden'}`}>
-                  <div className="flex items-center gap-2 justify-between">
+                {/* Mode buttons row with Save Project on right - animated hide/show - MOBILE OPTIMIZED */}
+                <div className={`transition-all duration-300 ease-in-out transform relative z-[10020] ${createToolsOpen ? 'opacity-100 translate-y-0 mb-2' : 'opacity-0 -translate-y-4 h-0 overflow-hidden'}`}>
+                  <div className={`flex items-center gap-2 justify-between p-2 rounded-lg ${darkMode ? 'bg-neutral-800/90 backdrop-blur-sm border border-neutral-700' : 'bg-white/90 backdrop-blur-sm border border-neutral-200'} shadow-lg`}>
                   <div className="flex items-center gap-1 flex-wrap">
                     {/* Mode buttons */}
                     <button 
@@ -2956,20 +2956,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                   />
                   
-                  {/* Button grid takes 10% width - LARGE ICONS, COMPACT HEIGHT */}
+                  {/* Button grid takes 10% width - LARGE ICONS, MOBILE OPTIMIZED */}
                   <div 
                     className="grid grid-cols-2 gap-1 h-fit"
                     style={{ 
                       width: '10%',
                       flexShrink: 0,
-                      height: '38px' // Keep compact height regardless of icon size
+                      height: isMobile ? '44px' : '38px' // Larger touch targets on mobile
                     }}
                   >
                     {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative h-[18px] cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      style={{ height: isMobile ? '20px' : '18px' }}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -2980,7 +2981,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Cost badge */}
                       <span className={`absolute -top-0.5 -right-0.5 rounded-full px-1 py-0.5 text-[7px] leading-none font-medium ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10 shadow-sm`}>~{generationCost}</span>
                     </button>
-                    <label className="group cursor-pointer rounded-md px-1 h-[18px] flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach image/video/pdf">
+                    <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" style={{ height: isMobile ? '20px' : '18px' }} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -3004,11 +3005,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {/* Bottom row: Create button + Library button */}
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`h-[18px] cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
                           ? `${darkMode ? 'bg-blue-600/20 border border-blue-500/50 text-blue-300' : 'bg-blue-100 border border-blue-300 text-blue-700'} shadow-md` 
                           : `hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`
                       }`}
+                      style={{ height: isMobile ? '20px' : '18px' }}
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
@@ -3018,7 +3020,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`h-[18px] cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 hover:bg-emerald-500/10 ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
+                      style={{ height: isMobile ? '20px' : '18px' }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
