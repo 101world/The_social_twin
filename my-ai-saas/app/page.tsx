@@ -53,15 +53,18 @@ export default function Home() {
               : 'opacity-0 translate-y-4'
           }`}
         >
-          <button className={`${inter.className} px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors duration-300 text-sm tracking-wide`}>
-            invest in ONE
-          </button>
-          
           <Link 
             href="/social-twin" 
+            className={`${inter.className} px-8 py-3 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-colors duration-300 text-sm tracking-wide`}
+          >
+            Creator
+          </Link>
+          
+          <Link 
+            href="/news" 
             className={`${inter.className} px-8 py-3 border border-white text-white font-semibold rounded-full hover:bg-white hover:text-black transition-colors duration-300 text-sm tracking-wide`}
           >
-            Sign in
+            News
           </Link>
         </div>
       </div>
