@@ -1,5 +1,15 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "rootDirectory": "my-ai-saas"
+  "builds": [
+    {
+      "src": "my-ai-saas/package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "my-ai-saas/$1"
+    }
+  ]
 }
