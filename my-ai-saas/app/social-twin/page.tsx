@@ -1879,7 +1879,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
-      {/* Chat panel docked right (collapsible) - enhanced mobile responsiveness */}
+      {/* Chat panel docked right (collapsible) - EXACT REPLICA FOR MOBILE & DESKTOP */}
       <section
         className={`
           absolute z-[10010] pointer-events-auto flex flex-col overflow-hidden min-w-0
@@ -2011,7 +2011,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Save Project moved to bottom next to More */}
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '120px' : 'calc(var(--composer-h, 64px))' }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -2933,14 +2933,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 </div>
 
-                {/* Enhanced responsive prompt box with pulsating glow effect - NO BACKGROUND */}
+                {/* Enhanced responsive prompt box with pulsating glow effect - EXACT REPLICA */}
                 <div 
-                  className={`
-                    flex gap-3 items-end
-                    ${isMobile ? 'fixed bottom-4 left-2 right-2' : ''}
-                    rounded-xl p-3 backdrop-blur-sm transition-all duration-200 border-0
-                    ${isMobile ? '' : ''}
-                  `}
+                  className="flex gap-3 items-end rounded-xl p-3 backdrop-blur-sm transition-all duration-200 border-0"
                   style={{
                     // Dynamic pulsating shadow based on typing speed - NO BACKGROUND, JUST GLOW
                     background: 'transparent',
@@ -4161,11 +4156,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         dark={darkMode}
       />
       
-      {/* Library Modal - Shows all generated content */}
+      {/* Library Modal - Shows all generated content - MOBILE OPTIMIZED */}
       {libraryOpen && (
         <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className={`
-            relative w-full max-w-4xl h-[80vh] m-4 rounded-xl shadow-xl overflow-hidden
+            relative w-full h-full ${isMobile ? '' : 'max-w-4xl h-[80vh] m-4 rounded-xl'} shadow-xl overflow-hidden
             ${darkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-neutral-200'}
           `}>
             {/* Header */}
@@ -4191,17 +4186,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </button>
             </div>
             
-            {/* Content */}
-            <div className="h-full overflow-y-auto p-4">
+            {/* Content with proper vertical scrolling */}
+            <div className="flex-1 overflow-y-auto" style={{ height: 'calc(100% - 73px)' }}>
+              <div className="p-4">
               {libraryLoading ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="flex flex-col items-center justify-center h-64 text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-4"></div>
                   <p className={`text-sm ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
                     Loading your content...
                   </p>
                 </div>
               ) : libraryContent.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="flex flex-col items-center justify-center h-64 text-center">
                   <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={`mb-4 ${darkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
@@ -4213,69 +4209,67 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
                   {libraryContent.map((item, index) => (
                     <div key={item.id || index} className={`
                       rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
                       ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
                     `}>
                       {item.media_type === 'image' && item.media_url && (
-                        <div className="aspect-square relative">
+                        <div className={`${isMobile ? 'aspect-square' : 'aspect-square'} relative group`}>
                           <img
                             src={item.media_url}
                             alt={item.prompt || 'Generated image'}
-                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                            className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
                             onClick={() => setViewer({ open: true, src: item.media_url! })}
                           />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+                                <path d="M12 9a3 3 0 100 6 3 3 0 000-6z"/>
+                                <path fillRule="evenodd" d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zM3 12a9 9 0 1118 0 9 9 0 01-18 0z"/>
+                              </svg>
+                            </div>
+                          </div>
                           <div className="absolute top-2 right-2">
-                            <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
-                              Image
+                            <span className={`px-1.5 py-0.5 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
+                              IMG
                             </span>
                           </div>
                         </div>
                       )}
                       {item.media_type === 'video' && item.media_url && (
-                        <div className="aspect-video relative">
+                        <div className={`${isMobile ? 'aspect-square' : 'aspect-square'} relative group`}>
                           <video
                             src={item.media_url}
                             className="w-full h-full object-cover cursor-pointer"
-                            controls
+                            muted
+                            playsInline
+                            onClick={() => setViewer({ open: true, src: item.media_url! })}
                           />
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <div className="bg-white/80 rounded-full p-2">
+                              <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                              </svg>
+                            </div>
+                          </div>
                           <div className="absolute top-2 right-2">
-                            <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
-                              Video
+                            <span className={`px-1.5 py-0.5 text-xs rounded-full ${darkMode ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'}`}>
+                              VID
                             </span>
                           </div>
                         </div>
                       )}
                       {item.prompt && (
-                        <div className="p-3">
-                          <p className={`text-sm line-clamp-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
+                        <div className={`p-2 ${isMobile ? 'p-1.5' : 'p-2'}`}>
+                          <p className={`text-xs line-clamp-1 ${darkMode ? 'text-neutral-300' : 'text-gray-700'} ${isMobile ? 'text-xs' : 'text-sm'}`}>
                             {item.prompt}
                           </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className={`text-xs ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>
-                              {new Date(item.created_at || Date.now()).toLocaleDateString()}
+                          <div className="flex items-center justify-between mt-1">
+                            <span className={`text-xs ${darkMode ? 'text-neutral-500' : 'text-gray-500'} ${isMobile ? 'text-xs' : 'text-xs'}`}>
+                              {new Date(item.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
-                            <button
-                              onClick={() => {
-                                if (item.media_url) {
-                                  folderModalPayload.current = { 
-                                    url: item.media_url, 
-                                    type: item.media_type === 'video' ? 'video' : 'image', 
-                                    prompt: item.prompt 
-                                  };
-                                  setFolderModalOpen(true);
-                                }
-                              }}
-                              className={`text-xs px-2 py-1 rounded transition-colors ${
-                                darkMode 
-                                  ? 'text-emerald-400 hover:bg-emerald-400/10' 
-                                  : 'text-emerald-600 hover:bg-emerald-50'
-                              }`}
-                            >
-                              Save
-                            </button>
                           </div>
                         </div>
                       )}
@@ -4283,6 +4277,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   ))}
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>
