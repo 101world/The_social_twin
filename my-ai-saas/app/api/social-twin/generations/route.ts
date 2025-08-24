@@ -18,15 +18,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 401 });
     }
 
-    // Fetch completed generations with media from media_generations table
+    // Fetch ALL recent generations - don't filter by media_url since it might not exist
     const { data, error } = await supabase
       .from('media_generations')
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'completed') // Only show completed generations
-      .not('media_url', 'is', null) // Only show items with actual media
       .order('created_at', { ascending: false })
-      .limit(100); // Limit to last 100 generations
+      .limit(50); // Limit to last 50 generations
 
     if (error) {
       console.error('Supabase error:', error);

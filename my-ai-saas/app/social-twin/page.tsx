@@ -2992,20 +2992,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     ref={bottomInputRef}
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px', // Prevents zoom on iOS
-                      width: '90%',
+                      width: isMobile ? '75%' : '90%', // Mobile: 75% to make room for buttons
                       flexShrink: 0,
-                      minHeight: isMobile ? '44px' : '32px', // Match button grid height on mobile
+                      minHeight: isMobile ? '44px' : '32px',
                       alignSelf: isMobile ? 'center' : 'flex-end'
                     }}
                   />
                   
-                  {/* Button grid takes 10% width - CLEAN NO BACKGROUNDS, BETTER SPACING */}
+                  {/* Button grid - MOBILE: 4 buttons in a row, DESKTOP: 2x2 grid */}
                   <div 
-                    className="grid grid-cols-2 gap-3 h-fit"
+                    className={isMobile ? "flex gap-2 h-fit" : "grid grid-cols-2 gap-3 h-fit"}
                     style={{ 
-                      width: '10%',
+                      width: isMobile ? '25%' : '10%',
                       flexShrink: 0,
-                      height: isMobile ? '44px' : '56px', // Much larger desktop buttons
+                      height: isMobile ? '44px' : '56px',
                       alignSelf: isMobile ? 'center' : 'flex-end'
                     }}
                   >
@@ -4233,18 +4233,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
               ) : (
                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
-                  {libraryContent.map((item, index) => (
+                  {libraryContent.map((item, index) => {
+                    // Use result_url if media_url doesn't exist
+                    const imageUrl = item.media_url || item.result_url;
+                    const isVideo = item.type === 'video' || (imageUrl && /\.(mp4|webm)(\?|$)/i.test(imageUrl));
+                    
+                    if (!imageUrl) return null; // Skip items without media
+                    
+                    return (
                     <div key={item.id || index} className={`
                       rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
                       ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
                     `}>
-                      {item.media_type === 'image' && item.media_url && (
+                      {!isVideo && imageUrl && (
                         <div className={`${isMobile ? 'aspect-square' : 'aspect-square'} relative group`}>
                           <img
-                            src={item.media_url}
+                            src={imageUrl}
                             alt={item.prompt || 'Generated image'}
                             className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
-                            onClick={() => setViewer({ open: true, src: item.media_url! })}
+                            onClick={() => setViewer({ open: true, src: imageUrl })}
                           />
                           <div className={`absolute inset-0 bg-black/0 ${isMobile ? 'bg-black/10' : 'group-hover:bg-black/20'} transition-colors flex items-center justify-center`}>
                             <div className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex gap-2`}>
@@ -4256,7 +4263,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     id: generateId(),
                                     role: 'assistant',
                                     content: 'Added from library',
-                                    imageUrl: item.media_url,
+                                    imageUrl: imageUrl,
                                     createdAt: new Date().toISOString()
                                   }]);
                                   setLibraryOpen(false);
@@ -4273,7 +4280,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const link = document.createElement('a');
-                                  link.href = item.media_url!;
+                                  link.href = imageUrl;
                                   link.download = `generated-image-${Date.now()}.jpg`;
                                   link.click();
                                 }}
@@ -4293,14 +4300,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                         </div>
                       )}
-                      {item.media_type === 'video' && item.media_url && (
+                      {isVideo && imageUrl && (
                         <div className={`${isMobile ? 'aspect-square' : 'aspect-square'} relative group`}>
                           <video
-                            src={item.media_url}
+                            src={imageUrl}
                             className="w-full h-full object-cover cursor-pointer"
                             muted
                             playsInline
-                            onClick={() => setViewer({ open: true, src: item.media_url! })}
+                            onClick={() => setViewer({ open: true, src: imageUrl })}
                           />
                           <div className={`absolute inset-0 bg-black/20 flex items-center justify-center`}>
                             <div className={`${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity flex gap-2`}>
@@ -4312,7 +4319,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     id: generateId(),
                                     role: 'assistant',
                                     content: 'Added from library',
-                                    videoUrl: item.media_url,
+                                    videoUrl: imageUrl,
                                     createdAt: new Date().toISOString()
                                   }]);
                                   setLibraryOpen(false);
@@ -4329,7 +4336,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const link = document.createElement('a');
-                                  link.href = item.media_url!;
+                                  link.href = imageUrl;
                                   link.download = `generated-video-${Date.now()}.mp4`;
                                   link.click();
                                 }}
@@ -4368,7 +4375,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
               </div>
