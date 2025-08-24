@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCredits } from '@/lib/credits-context';
+import { useSafeCredits } from '@/hooks/useSafeCredits';
 
 interface CreditCost {
   text: number;
@@ -29,7 +29,7 @@ export default function GenerationCostDisplay({
   refreshToken,
   hideUI = false,
 }: GenerationCostDisplayProps) {
-  const { creditInfo, loading } = useCredits();
+  const { creditInfo, loading } = useSafeCredits();
   const currentCredits = creditInfo?.credits || 0;
 
   const CREDIT_COSTS: CreditCost = {

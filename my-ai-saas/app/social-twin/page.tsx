@@ -1539,9 +1539,35 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Make sure Save Project button is available after generation
   setShowSaveProject(true);
     } catch (err: any) {
+      console.log('❌ GENERATION ERROR:', err);
+      console.log('Error type:', typeof err);
+      console.log('Error name:', err?.name);
+      console.log('Error message:', err?.message);
+      console.log('Error stack:', err?.stack);
+      console.log('Network status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
+      console.log('User agent:', navigator.userAgent);
+      console.log('Is mobile:', isMobile);
+      
+      // More detailed error message for mobile users
+      const isMobileDevice = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      let errorMessage = `Request failed: ${err?.message ?? "Unknown error"}`;
+      
+      if (isMobileDevice) {
+        errorMessage += `\n\n🔧 Mobile Debug Info:\n`;
+        errorMessage += `• Device: ${isMobileDevice ? 'Mobile' : 'Desktop'}\n`;
+        errorMessage += `• Network: ${navigator.onLine ? 'Online' : 'Offline'}\n`;
+        errorMessage += `• User ID: ${userId ? 'Set' : 'Missing'}\n`;
+        errorMessage += `• Credits: ${creditInfo?.credits || 'Unknown'}\n`;
+        errorMessage += `• Mode: ${mode}\n`;
+        
+        if (err?.name === 'TypeError' && err?.message?.includes('fetch')) {
+          errorMessage += `\n⚠️ This looks like a network connectivity issue on mobile. Try refreshing the page.`;
+        }
+      }
+      
       setMessages((prev) => [
         ...prev,
-        { id: generateId(), role: "error", content: `Request failed: ${err?.message ?? "Unknown error"}` },
+        { id: generateId(), role: "error", content: errorMessage },
       ]);
     }
   }
@@ -2148,10 +2174,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 hideUI
                 onCostCalculated={(cost, canAfford) => {
                   setGenerationCost(cost);
-                  // Mobile-safe: handle undefined credits gracefully
-                  const hasCredits = creditInfo?.credits !== undefined && creditInfo?.credits !== null;
-                  const actualCanAfford = hasCredits ? canAfford : true; // Allow generation if credits are loading
-                  setCanAffordGeneration(actualCanAfford);
+                  // Handle credit loading state properly
+                  const hasValidCredits = creditInfo?.credits !== undefined && creditInfo?.credits !== null;
+                  
+                  if (hasValidCredits) {
+                    // Use the calculated canAfford if we have valid credit data
+                    setCanAffordGeneration(canAfford);
+                  } else {
+                    // If credits are still loading or failed, allow generation but log warning
+                    console.warn('Credits unavailable, allowing generation with server-side validation');
+                    setCanAffordGeneration(true);
+                  }
                 }}
               />
 
@@ -3079,7 +3112,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                     {isMobile ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           console.log('=== MOBILE DEBUG INFO ===');
                           console.log('User agent:', navigator.userAgent);
                           console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
@@ -3097,11 +3130,45 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           console.log('Image URL:', imageUrl);
                           console.log('Image Modify URL:', imageModifyUrl);
                           console.log('User ID:', userId);
+                          
+                          // Test API connectivity
+                          try {
+                            console.log('Testing mobile API connectivity...');
+                            const testResponse = await fetch('/api/debug/mobile-test', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                testType: 'mobile-generation-debug',
+                                userAgent: navigator.userAgent,
+                                windowSize: { width: window.innerWidth, height: window.innerHeight },
+                                currentState: {
+                                  mode,
+                                  credits: creditInfo?.credits,
+                                  canAfford: canAffordGeneration,
+                                  activeEndpoint,
+                                  userId
+                                }
+                              })
+                            });
+                            
+                            if (testResponse.ok) {
+                              const testData = await testResponse.json();
+                              console.log('✅ Mobile API test successful:', testData);
+                              alert(`✅ Mobile API Test: ${testData.success ? 'SUCCESS' : 'FAILED'}\n\nUser: ${testData.data?.userId || 'Not authenticated'}\nEndpoint: Working\nCredits: ${creditInfo?.credits || 'Unknown'}`);
+                            } else {
+                              console.log('❌ Mobile API test failed:', testResponse.status);
+                              alert(`❌ Mobile API Test FAILED\nStatus: ${testResponse.status}\nThis might be why generation is failing!`);
+                            }
+                          } catch (error) {
+                            console.log('❌ Mobile API test error:', error);
+                            alert(`❌ Mobile API Test ERROR\n${error}\nThis is likely why generation fails!`);
+                          }
+                          
                           const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
-                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
+                          console.log(`Debug Summary: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
                         }}
                         className={`flex items-center justify-center rounded transition-all hover:scale-105 ${darkMode ? 'hover:bg-neutral-700/50' : 'hover:bg-gray-200/50'}`}
-                        title="Debug info"
+                        title="Debug info + API test"
                       >
                         <svg width={isMobile ? "16" : "14"} height={isMobile ? "16" : "14"} viewBox="0 0 24 24" fill="none">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>

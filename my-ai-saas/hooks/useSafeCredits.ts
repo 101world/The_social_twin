@@ -29,24 +29,20 @@ export function useSafeCredits() {
         setCreditInfo(data);
         setError(null);
       } else {
-        console.warn('Failed to fetch credits:', response.status);
-        setError('Failed to fetch credits');
-        // Set default values for failed credit fetch
-        setCreditInfo({ 
-          credits: 100, // Default credits for mobile
-          subscription_active: false,
-          subscription_plan: null 
-        });
+        console.warn('Failed to fetch credits:', response.status, await response.text());
+        setError(`Failed to fetch credits: ${response.status}`);
+        // Don't set default credits - keep existing or null
+        if (!creditInfo) {
+          setCreditInfo(null);
+        }
       }
     } catch (err) {
       console.warn('Credits fetch error:', err);
-      setError('Network error');
-      // Set default values for network errors
-      setCreditInfo({ 
-        credits: 100, // Default credits for mobile
-        subscription_active: false,
-        subscription_plan: null 
-      });
+      setError('Network error fetching credits');
+      // Don't set default credits - keep existing or null  
+      if (!creditInfo) {
+        setCreditInfo(null);
+      }
     } finally {
       setLoading(false);
     }
