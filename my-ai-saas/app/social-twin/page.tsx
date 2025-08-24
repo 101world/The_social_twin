@@ -2937,7 +2937,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   ${darkMode ? 'bg-neutral-900/95 border border-neutral-700 shadow-black/30' : 'bg-white/95 border border-neutral-200 shadow-gray-200/60'}
                   ${isMobile ? 'mx-2 mb-2' : ''}
                 `}>
-                  {/* Textarea takes 90% width for mobile optimization */}
+                  {/* Textarea takes 90% width - UNIVERSAL DESKTOP & MOBILE */}
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -2956,13 +2956,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                   />
                   
-                  {/* Button grid takes 10% width - OPTIMIZED FOR MOBILE */}
+                  {/* Button grid takes 10% width - LARGE ICONS, COMPACT HEIGHT */}
                   <div 
                     className="grid grid-cols-2 gap-1 h-fit"
                     style={{ 
                       width: '10%',
                       flexShrink: 0,
-                      height: '38px' // Match textarea min-height for sleek alignment
+                      height: '38px' // Keep compact height regardless of icon size
                     }}
                   >
                     {/* Top row: Send + Attach */}
