@@ -96,6 +96,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  // Create/Library UI state
+  const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
+  const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -3156,6 +3159,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </button>
                     )}
                   </div>
+                  {isMobile && (
+                    <div className="flex gap-3 justify-center mt-2 px-2">
+                      <button
+                        onClick={() => setCreateToolsOpen(v => !v)}
+                        className="rounded-lg bg-blue-600 text-white px-4 py-2 font-semibold shadow-lg"
+                        title="Toggle creation tools"
+                        aria-pressed={createToolsOpen}
+                      >
+                        Create
+                      </button>
+                      <button
+                        onClick={() => setLibraryOpen(true)}
+                        className="rounded-lg bg-emerald-600 text-white px-4 py-2 font-semibold shadow-lg"
+                        title="Open Library"
+                        aria-label="Library"
+                      >
+                        Library
+                      </button>
+                    </div>
+                  )}
                 </div>
                 {attached ? (
                   <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
