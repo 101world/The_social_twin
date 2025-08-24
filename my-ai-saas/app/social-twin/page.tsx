@@ -112,19 +112,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
-  
-  // Effects and styling
-  const [effectsPreset, setEffectsPreset] = useState<'off'|'subtle'|'cinematic'|'stylized'>('off');
-  const [effectsOn, setEffectsOn] = useState<boolean>(false);
-  
-  // Video model selection
-  const [videoModel, setVideoModel] = useState<'ltxv'|'wan'|'kling'>('ltxv');
-  
-  // Generation states
-  const [isGeneratingBatch, setIsGeneratingBatch] = useState<boolean>(false);
-  
-  // UI tab states
-  const [imgTab, setImgTab] = useState<'character' | 'settings' | null>(null);
   // Workflow popover and tweakable settings
   const [showWorkflowPopoverFor, setShowWorkflowPopoverFor] = useState<'image'|'image-modify'|null>(null);
   const [useFluxDev, setUseFluxDev] = useState<boolean>(true);
@@ -235,34 +222,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const BATCH_CHOICES = [1,2,4,6,8] as const;
   const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
   const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
-  
-  // Canvas and generation helpers
-  const addToCanvas = (url: string, type: 'image' | 'video') => {
-    const newItem: CanvasItem = {
-      id: generateId(),
-      type,
-      url,
-      x: 40 + (canvasItems.length % 5) * 40,
-      y: 40 + (canvasItems.length % 5) * 30,
-      w: type === 'video' ? 360 : 320,
-      h: type === 'video' ? 240 : 320,
-    };
-    setCanvasItems(prev => [...prev, newItem]);
-  };
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-  
-  // Credit and generation cost calculation
-  const CREDIT_COSTS = {
-    text: 1,
-    image: 5,
-    video: 10,
-    'image-modify': 3,
-  };
-  
-  const generationCost = CREDIT_COSTS[mode] || CREDIT_COSTS.text;
-  const canAffordGeneration = creditInfo && creditInfo.available >= generationCost;
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
@@ -367,129 +329,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
   // Reveal bottom composer only after user starts typing in center box (empty state)
   const [composerShown, setComposerShown] = useState<boolean>(false);
-
-  // Main message sending function with mobile support and dropdown parameters
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    if (!canAffordGeneration) return;
-    if (isGeneratingBatch) return;
-
-    // Clear input immediately for better UX
-    const prompt = input.trim();
-    setInput('');
-
-    // Add user message to chat
-    const userMessage: ChatMessage = {
-      id: generateId(),
-      role: 'user',
-      content: prompt,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-
-    // Add loading message
-    const loadingMessage: ChatMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content: '',
-      loading: true,
-      pendingType: mode,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages(prev => [...prev, loadingMessage]);
-
-    try {
-      // Prepare generation parameters including dropdown values
-      const generationParams = {
-        prompt,
-        mode,
-        provider: textProvider,
-        userId,
-        batch_size: batchSize || 1,
-        attachment: attached ? {
-          name: attached.name,
-          type: attached.type,
-          dataUrl: attached.dataUrl,
-        } : undefined,
-        // Dropdown parameters for image/video generation
-        lora: loraName || undefined,
-        lora_scale: loraScale || 0.8,
-        aspect_ratio: aspectRatio || (mode === 'video' ? '16:9' : '1:1'),
-        effects_preset: effectsPreset || 'off',
-        effects_on: effectsOn,
-        video_model: mode === 'video' ? videoModel : undefined,
-        denoise: denoise || undefined,
-        seed: seed || undefined,
-        // Pass appropriate RunPod URL based on mode
-        runpodUrl: mode === 'text' ? textUrl :
-                  mode === 'image' ? imageUrl :
-                  mode === 'image-modify' ? imageModifyUrl :
-                  mode === 'video' ? (videoModel === 'wan' ? videoWanUrl : 
-                                     videoModel === 'kling' ? videoKlingUrl : videoUrl) :
-                  undefined,
-      };
-
-      console.log('Sending generation request with params:', generationParams);
-
-      const response = await fetch('/api/generate-with-tracking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': userId || '',
-        },
-        body: JSON.stringify(generationParams),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}`);
-      }
-
-      // Update loading message with result
-      setMessages(prev => prev.map(msg => 
-        msg.id === loadingMessage.id ? {
-          ...msg,
-          loading: false,
-          content: result.content || 'Generation completed',
-          imageUrl: result.imageUrl,
-          videoUrl: result.videoUrl,
-          images: result.images,
-        } : msg
-      ));
-
-      // Add to canvas if sendToCanvas is enabled and we have media
-      if (sendToCanvas && (result.imageUrl || result.videoUrl || result.images?.length)) {
-        const mediaUrl = result.imageUrl || result.videoUrl || result.images?.[0];
-        const mediaType = result.videoUrl ? 'video' : 'image';
-        
-        if (mediaUrl) {
-          addToCanvas(mediaUrl, mediaType);
-        }
-      }
-
-      // Clear attachment after successful generation
-      setAttached(null);
-
-      // Refresh credits after successful generation
-      refreshCredits();
-
-    } catch (error: any) {
-      console.error('Generation error:', error);
-      
-      // Update loading message with error
-      setMessages(prev => prev.map(msg => 
-        msg.id === loadingMessage.id ? {
-          id: msg.id,
-          role: 'error' as const,
-          content: `Generation failed: ${error.message || 'Unknown error'}`,
-          createdAt: msg.createdAt,
-        } : msg
-      ));
-    }
-  };
   const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
   
   // Linking preview state for canvas connections
@@ -1516,6 +1355,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
               guidance: typeof guidance === 'number' ? guidance : undefined,
               steps: typeof steps === 'number' ? steps : undefined,
+              effects_preset: effectsPreset || undefined,
+              effects_on: effectsOn || undefined,
               video_model: mode==='video' ? videoModel : undefined,
               video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
           userId: userId || undefined,
