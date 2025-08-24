@@ -2108,6 +2108,36 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       onClick={()=>{ setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] }); }}
                                     >Compare</button>
                                   ) : null}
+                                  {/* Send to Chat Button */}
+                                  <button
+                                    className="rounded border px-2 py-0.5 text-xs"
+                                    onClick={() => {
+                                      const newMessage = { 
+                                        id: generateId(), 
+                                        role: 'user' as const, 
+                                        content: m.content, 
+                                        imageUrl: m.imageUrl,
+                                        createdAt: new Date().toISOString() 
+                                      };
+                                      setMessages(prev => [...prev, newMessage]);
+                                    }}
+                                    title="Send to Chat"
+                                  >
+                                    💭 Send to chat
+                                  </button>
+                                  {/* Download Button */}
+                                  <button
+                                    className="rounded border px-2 py-0.5 text-xs"
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = m.imageUrl!;
+                                      link.download = `generated-image-${Date.now()}.jpg`;
+                                      link.click();
+                                    }}
+                                    title="Download"
+                                  >
+                                    ⬇️ Download
+                                  </button>
                                 </div>
                               </div>
                             ) : null}
@@ -3796,6 +3826,36 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }
                 setMenu({ open:false, x:0, y:0, targetId:null });
               }}>Send to Storyboard</button>
+                {/* Send to Chat and Download buttons */}
+                <div className="border-t my-1" />
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                  if (menu.targetId) {
+                    const canvasItem = canvasItems.find(i=> i.id===menu.targetId);
+                    if (canvasItem && (canvasItem.type === 'image' || canvasItem.type === 'video')) {
+                      const newMessage = { 
+                        id: generateId(), 
+                        role: 'user' as const, 
+                        content: canvasItem.text || 'From canvas', 
+                        imageUrl: canvasItem.url,
+                        createdAt: new Date().toISOString() 
+                      };
+                      setMessages(prev => [...prev, newMessage]);
+                    }
+                  }
+                  setMenu({ open:false, x:0, y:0, targetId:null });
+                }}>💭 Send to Chat</button>
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                  if (menu.targetId) {
+                    const canvasItem = canvasItems.find(i=> i.id===menu.targetId);
+                    if (canvasItem && (canvasItem.type === 'image' || canvasItem.type === 'video')) {
+                      const link = document.createElement('a');
+                      link.href = canvasItem.url || '';
+                      link.download = `canvas-item-${Date.now()}.${canvasItem.type === 'video' ? 'mp4' : 'jpg'}`;
+                      link.click();
+                    }
+                  }
+                  setMenu({ open:false, x:0, y:0, targetId:null });
+                }}>⬇️ Download</button>
                 {/* Export submenu */}
                 <div className="border-t my-1" />
                 <div className="px-3 py-1 text-xs opacity-70">Export</div>

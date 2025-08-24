@@ -110,15 +110,20 @@ const Navbar = () => {
   }, []);
 
   return (
-  <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 top-0 z-[20000] flex h-8 sm:h-10 items-center justify-center p-1 sm:p-2 transition-opacity duration-500" style={{ opacity: hidden ? 0 : 1 }}>
+  <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 z-[20000] flex items-center justify-center transition-opacity duration-500" style={{ 
+    opacity: hidden ? 0 : 1,
+    top: '12px', // Mobile: lower positioning instead of top-0
+    height: '28px', // Mobile: more compact than h-8 sm:h-10
+    padding: '4px 8px' // More compact padding
+  }}>
       {(() => {
         // Always use white icons for consistency
         const iconClass = 'text-white';
         const linkClass = `${iconClass} hover:opacity-90 cursor-pointer pointer-events-auto`;
         return (
           <nav className="pointer-events-auto relative flex w-full items-center">
-            {/* Balance display in top right corner */}
-            <div className="absolute right-2 top-0 pointer-events-auto">
+            {/* Balance display in top right corner - HIGHER Z-INDEX FOR MOBILE */}
+            <div className="absolute right-2 top-0 pointer-events-auto z-[50000]">
               <SignedIn>
                 {(credits !== null || oneMaxBalance !== null) && (
                   <div className={`px-2 py-1 rounded-b-md text-xs font-medium transition-all duration-300 ${
