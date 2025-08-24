@@ -2826,11 +2826,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           className={`min-h-[28px] max-h-[60px] flex-1 resize-none rounded-lg p-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
           ref={bottomInputRef}
                   />
-                   <div className="flex items-center gap-1">
+                   <div className={`${isMobile ? 'grid grid-cols-2 gap-1' : 'flex items-center gap-1'}`}>
+                    {/* Top row mobile: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
-                      className={`group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative ${isMobile ? 'h-8 w-full' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
@@ -2841,7 +2842,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Cost badge */}
                       <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[9px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                    <label className={`group cursor-pointer rounded-lg p-1.5 ${isMobile ? 'w-full' : ''} flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -2861,6 +2862,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
+                    
+                    {/* Bottom row mobile: Create button spanning full width */}
+                    {isMobile && (
+                      <button
+                        onClick={() => setQuickCreateOpen(true)}
+                        className={`col-span-2 h-8 w-full cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}
+                        title="Show creation tools (modes, settings, effects)"
+                      >
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                        </svg>
+                        <span className="text-xs font-medium">Create</span>
+                      </button>
+                    )}
                   </div>
 
                 </div>
@@ -3423,13 +3438,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               reader.readAsDataURL(f);
             }} />
           </label>
-          {/* Generate via current mini-prompt/input */}
-          <button className="rounded-full p-3 shadow" title="Generate" onClick={()=>{ handleSend(); if (quickCreateOpen) setQuickCreateOpen(false); }}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-              <path d="M4 12h10M9 7l5 5-5 5" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              <rect x="16" y="6" width="4" height="12" rx="1.2" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
-            </svg>
-          </button>
+          {/* Generate via current mini-prompt/input - HIDE ON MOBILE */}
+          {!isMobile && (
+            <button className="rounded-full p-3 shadow" title="Generate" onClick={()=>{ handleSend(); if (quickCreateOpen) setQuickCreateOpen(false); }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
+                <path d="M4 12h10M9 7l5 5-5 5" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <rect x="16" y="6" width="4" height="12" rx="1.2" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
+              </svg>
+            </button>
+          )}
           <button className="rounded-full p-3 shadow" title="Create"
             onClick={()=> setQuickCreateOpen(true)}
           >
