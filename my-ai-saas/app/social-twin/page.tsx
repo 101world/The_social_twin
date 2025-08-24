@@ -1952,16 +1952,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
-                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                        <div className="rounded-lg border p-2">
-                          <textarea
-                            value={input}
-                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                            placeholder=""
-                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
-                          />
-                        </div>
+                      <div className="text-center opacity-50">
+                        <p>Use the prompt box below to get started</p>
                       </div>
                     ) : 'Start by entering a prompt below.'}
                   </div>
@@ -2526,120 +2518,98 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
 
                     {/* Character & Style Control */}
-                    {(mode === 'image' || mode === 'image-modify' || mode === 'video') && (
-                      <div className="space-y-3">
-                        <label className="text-xs font-semibold opacity-90">Character & Style</label>
+                    {showAdvancedControls && (mode === 'image' || mode === 'image-modify' || mode === 'video') && (
+                      <div className="space-y-4">
+                        <label className="text-sm font-semibold opacity-90">LoRA Selection</label>
                         
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Character LoRA {lorasLoading && '(loading...)'}</label>
-                            <select
-                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setLoraName('');
-                                else if (v === 'Custom...') setLoraName(loraName || '');
-                                else setLoraName(v);
-                              }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
-                              disabled={lorasLoading}
-                            >
-                              {LORA_CHOICES.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {lora.name} ({lora.type})
-                                </option>
-                              ))}
-                            </select>
-                            
-                            {loraName && !isPresetLoRa(loraName) && (
-                              <input
-                                type="text"
-                                placeholder="custom-character.safetensors"
-                                value={loraName}
-                                onChange={(e) => setLoraName(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
-                              />
-                            )}
-                          </div>
+                        {/* Single LoRA Selector */}
+                        <div className="space-y-3">
+                          <select
+                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === 'None') {
+                                setLoraName('');
+                                setEffectLora('');
+                              } else if (v === 'Custom...') {
+                                setLoraName(loraName || '');
+                              } else {
+                                setLoraName(v);
+                                setEffectLora(v); // Set both to the same LoRA
+                              }
+                            }}
+                            className={`w-full rounded-lg border px-3 py-2 text-sm transition-colors ${darkMode ? 'bg-neutral-900 border-neutral-700 hover:border-neutral-600' : 'bg-white border-neutral-300 hover:border-neutral-400'} ${lorasLoading ? 'opacity-50' : ''}`}
+                            disabled={lorasLoading}
+                          >
+                            {LORA_CHOICES.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt} {lorasLoading && opt === 'None' ? '(loading...)' : ''}
+                              </option>
+                            ))}
+                            {availableLoras.map((lora) => (
+                              <option key={lora.filename} value={lora.filename}>
+                                {lora.name} ({lora.type})
+                              </option>
+                            ))}
+                          </select>
                           
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Character Strength</label>
-                            <div className="space-y-1">
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={loraScale || 0.8}
-                                onChange={(e) => setLoraScale(Number(e.target.value))}
-                                className="w-full"
-                              />
-                              <div className="flex justify-between text-xs opacity-60">
-                                <span>0.0</span>
-                                <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
-                                <span>1.0</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Effects LoRA */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Effects LoRA {lorasLoading && '(loading...)'}</label>
-                            <select
-                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                          {loraName && !isPresetLoRa(loraName) && (
+                            <input
+                              type="text"
+                              placeholder="custom-lora.safetensors"
+                              value={loraName}
                               onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setEffectLora('');
-                                else if (v === 'Custom...') setEffectLora(effectLora || '');
-                                else setEffectLora(v);
+                                setLoraName(e.target.value);
+                                setEffectLora(e.target.value); // Keep both in sync
                               }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
-                              disabled={lorasLoading}
-                            >
-                              {LORA_CHOICES.map((opt) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {lora.name} ({lora.type})
-                                </option>
-                              ))}
-                            </select>
-                            {effectLora && !isPresetLoRa(effectLora) && (
-                              <input
-                                type="text"
-                                placeholder="effects-style.safetensors"
-                                value={effectLora}
-                                onChange={(e) => setEffectLora(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
-                              />
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Effects Strength</label>
-                            <div className="space-y-1">
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={effectLoraScale || 0.6}
-                                onChange={(e) => setEffectLoraScale(Number(e.target.value))}
-                                className="w-full"
-                              />
-                              <div className="flex justify-between text-xs opacity-60">
-                                <span>0.0</span>
-                                <span className="font-medium">{(effectLoraScale || 0.6).toFixed(2)}</span>
-                                <span>1.0</span>
+                              className={`w-full rounded-lg border px-3 py-2 text-sm font-mono transition-colors ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-300'}`}
+                            />
+                          )}
+                        </div>
+                        
+                        {/* LoRA Strength Controls */}
+                        {(loraName || effectLora) && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium opacity-80">Character Strength</label>
+                              <div className="space-y-1">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.01"
+                                  value={loraScale || 0.8}
+                                  onChange={(e) => setLoraScale(Number(e.target.value))}
+                                  className="w-full accent-blue-500"
+                                />
+                                <div className="flex justify-between text-xs opacity-60">
+                                  <span>0.0</span>
+                                  <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
+                                  <span>1.0</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium opacity-80">Effects Strength</label>
+                              <div className="space-y-1">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.01"
+                                  value={effectLoraScale || 0.6}
+                                  onChange={(e) => setEffectLoraScale(Number(e.target.value))}
+                                  className="w-full accent-purple-500"
+                                />
+                                <div className="flex justify-between text-xs opacity-60">
+                                  <span>0.0</span>
+                                  <span className="font-medium">{(effectLoraScale || 0.6).toFixed(2)}</span>
+                                  <span>1.0</span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Style Presets */}
                         <div className="space-y-2">

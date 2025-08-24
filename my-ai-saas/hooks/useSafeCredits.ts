@@ -18,7 +18,7 @@ export function useSafeCredits() {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/credits', {
+      const response = await fetch('/api/user/credits', {
         headers: {
           'X-User-Id': userId
         }
@@ -64,13 +64,12 @@ export function useSafeCredits() {
     if (!userId || !creditInfo?.credits) return false;
     
     try {
-      const response = await fetch('/api/credits/deduct', {
+      const response = await fetch('/api/users/credits', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-User-Id': userId
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({ action: 'deduct', amount })
       });
       
       if (response.ok) {
