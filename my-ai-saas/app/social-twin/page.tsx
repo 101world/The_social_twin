@@ -3082,25 +3082,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                   />
                   
-                  {/* Button grid - MOBILE: 4 buttons in a row, DESKTOP: 2x2 grid */}
+                  {/* Send + Attach buttons */}
                   <div 
-                    className={isMobile ? "flex gap-2 h-fit" : "grid grid-cols-2 gap-3 h-fit"}
+                    className="flex gap-2 h-fit"
                     style={{ 
-                      width: isMobile ? '25%' : '10%',
+                      width: isMobile ? 'auto' : '10%',
                       flexShrink: 0,
-                      height: isMobile ? '44px' : '56px',
                       alignSelf: isMobile ? 'center' : 'flex-end'
                     }}
                   >
-                    {/* Top row: Send + Attach */}
                     <button
                       onClick={handleSend}
                       disabled={!canAffordGeneration}
                       className={`group relative cursor-pointer rounded-md flex items-center justify-center transition-all hover:scale-105 px-1 ${canAffordGeneration ? 'opacity-70 hover:opacity-100' : 'cursor-not-allowed opacity-30'}`}
                       style={{ 
-                        height: isMobile ? '20px' : '26px',
+                        height: isMobile ? '32px' : '26px',
                         background: 'transparent',
-                        border: 'none'
+                        border: 'none',
+                        minWidth: isMobile ? '32px' : 'auto'
                       }}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
@@ -3114,7 +3113,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                     <label className="group cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 opacity-70 hover:opacity-100" 
                       style={{ 
-                        height: isMobile ? '20px' : '26px',
+                        height: isMobile ? '32px' : '26px',
                         background: 'transparent',
                         border: 'none'
                       }} 
@@ -3138,43 +3137,59 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
-                    
-                    {/* Bottom row: Create button + Library button - BIGGER AND MORE VISIBLE */}
+                  </div>
+                </div>
+                
+                {/* CREATE & LIBRARY BUTTONS - SEPARATE ROW BELOW - ALWAYS VISIBLE */}
+                {isMobile && (
+                  <div 
+                    className="flex gap-3 justify-center mt-2 px-4"
+                    style={{ 
+                      width: '100%'
+                    }}
+                  >
                     <button
                       onClick={() => setCreateToolsOpen(v => !v)}
-                      className={`cursor-pointer rounded-lg px-2 py-2 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                      className={`cursor-pointer rounded-lg px-4 py-3 flex items-center justify-center gap-2 transition-all duration-200 hover:scale-105 ${
                         createToolsOpen 
                           ? `${darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'} opacity-100` 
                           : `${darkMode ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'} opacity-90 hover:opacity-100`
                       }`}
                       style={{ 
-                        height: isMobile ? '36px' : '32px',
-                        minWidth: isMobile ? '36px' : '32px',
-                        border: '1px solid rgba(59, 130, 246, 0.3)'
+                        height: '44px',
+                        minWidth: '100px',
+                        border: '2px solid rgba(59, 130, 246, 0.5)',
+                        fontSize: '14px',
+                        fontWeight: '600'
                       }}
                       title="Toggle creation tools"
                       aria-pressed={createToolsOpen}
                     >
-                      <svg width={isMobile ? "20" : "18"} height={isMobile ? "20" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+                      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
+                      <span>Create</span>
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`cursor-pointer rounded-lg px-2 py-2 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'} opacity-90 hover:opacity-100`}
+                      className={`cursor-pointer rounded-lg px-4 py-3 flex items-center justify-center gap-2 transition-all hover:scale-105 ${darkMode ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'} opacity-90 hover:opacity-100`}
                       style={{ 
-                        height: isMobile ? '36px' : '32px',
-                        minWidth: isMobile ? '36px' : '32px',
-                        border: '1px solid rgba(16, 185, 129, 0.3)'
+                        height: '44px',
+                        minWidth: '100px',
+                        border: '2px solid rgba(16, 185, 129, 0.5)',
+                        fontSize: '14px',
+                        fontWeight: '600'
                       }}
                       title="Open Library - View all generated content"
                       aria-label="Library"
                     >
-                      <svg width={isMobile ? "20" : "18"} height={isMobile ? "20" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
+                      <span>Library</span>
                     </button>
                   </div>
+                )}
 
                 </div>
                 {attached ? (
