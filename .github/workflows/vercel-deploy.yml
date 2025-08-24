@@ -1,0 +1,52 @@
+name: Deploy to Vercel (my-ai-saas)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    if: ${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && secrets.VERCEL_TOKEN && secrets.VERCEL_PROJECT_ID && secrets.VERCEL_ORG_ID }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: my-ai-saas
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pull Vercel env
+        run: npx vercel pull --yes --environment=production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      - name: Build
+        run: npx vercel build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      - name: Deploy (production)
+        run: npx vercel deploy --prebuilt --prod
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+  no-secrets:
+    if: ${{ !(secrets.VERCEL_TOKEN && secrets.VERCEL_PROJECT_ID && secrets.VERCEL_ORG_ID) }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Vercel secrets missing; configure VERCEL_TOKEN, VERCEL_PROJECT_ID, VERCEL_ORG_ID in repository settings to enable CI deploys."
