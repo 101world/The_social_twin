@@ -98,6 +98,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   // Mobile features popover
   const [featureMenuOpen, setFeatureMenuOpen] = useState<boolean>(false);
+  // Create tools toggle state
+  const [createToolsOpen, setCreateToolsOpen] = useState<boolean>(false);
   // Library modal state
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [libraryContent, setLibraryContent] = useState<any[]>([]);
@@ -1480,7 +1482,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         });
       }
       // 📱 MOBILE: Enhanced request with timeout and retry logic
-      const timeoutMs = isMobile ? 60000 : 30000; // Longer timeout for mobile
+      const timeoutMs = isMobile ? 120000 : 45000; // 2 minutes for mobile, 45s for desktop
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
@@ -3139,17 +3141,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {/* Bottom row: Create button + Library button - NO BACKGROUNDS */}
                     <button
-                      onClick={() => setLibraryOpen(true)}
-                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`}
+                      onClick={() => setCreateToolsOpen(v => !v)}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+                        createToolsOpen 
+                          ? `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-90` 
+                          : `${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`
+                      }`}
                       style={{ 
                         height: isMobile ? '20px' : '26px',
                         background: 'transparent',
                         border: 'none'
                       }}
-                      title="Open Library"
-                      aria-label="Open Library"
+                      title="Toggle creation tools"
+                      aria-pressed={createToolsOpen}
                     >
-                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24" className="transition-transform duration-200" style={{ transform: createToolsOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
@@ -3171,69 +3177,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
 
                 </div>
-                
-
-                  <div className={`mt-3 p-3 rounded-lg border ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex flex-col gap-2">
-                      <div className={`text-xs font-medium mb-2 ${darkMode ? 'text-neutral-300' : 'text-gray-700'}`}>
-                        🎨 Quick Create
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => {
-                            setInput("A beautiful landscape");
-                            setCreateToolsOpen(false);
-                          }}
-                          className={`p-2 rounded text-left text-xs transition-colors ${
-                            darkMode 
-                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
-                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}
-                        >
-                          🏞️ Landscape
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInput("A professional portrait");
-                            setCreateToolsOpen(false);
-                          }}
-                          className={`p-2 rounded text-left text-xs transition-colors ${
-                            darkMode 
-                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
-                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}
-                        >
-                          👤 Portrait
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInput("A futuristic city");
-                            setCreateToolsOpen(false);
-                          }}
-                          className={`p-2 rounded text-left text-xs transition-colors ${
-                            darkMode 
-                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
-                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}
-                        >
-                          🏙️ Futuristic
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInput("Abstract art");
-                            setCreateToolsOpen(false);
-                          }}
-                          className={`p-2 rounded text-left text-xs transition-colors ${
-                            darkMode 
-                              ? 'bg-neutral-700 hover:bg-neutral-600 text-neutral-200' 
-                              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200'
-                          }`}
-                        >
-                          🎭 Abstract
-                        </button>
-                      </div>
-                    </div>
-                
                 {attached ? (
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-2 rounded border p-2">
@@ -4407,12 +4350,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ) : (
                 <div className={`grid gap-3 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
                   {libraryContent.map((item, index) => {
-                    // Use display_url (signed Supabase URL) if available, fallback to media_url/result_url
+                    // Use the best available URL - prefer display_url from API processing
                     const imageUrl = item.display_url || item.media_url || item.result_url;
                     const isVideo = item.type === 'video' || (imageUrl && /\.(mp4|webm)(\?|$)/i.test(imageUrl));
-                    const isPermanent = item.is_permanent || imageUrl?.includes('supabase') || false;
+                    const isPermanent = item.is_permanent || (imageUrl && imageUrl.includes('supabase'));
                     
-                    if (!imageUrl) return null; // Skip items without media
+                    if (!imageUrl) {
+                      // Show placeholder for items without URLs but with prompts
+                      return (
+                        <div key={item.id || index} className={`
+                          rounded-lg overflow-hidden shadow-sm border transition-all hover:shadow-md
+                          ${darkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}
+                        `}>
+                          <div className="aspect-square flex flex-col items-center justify-center p-4 text-center">
+                            <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24" className={`mb-2 ${darkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
+                              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p className={`text-xs ${darkMode ? 'text-neutral-500' : 'text-gray-500'}`}>No media URL</p>
+                            {item.prompt && (
+                              <p className={`text-xs mt-1 line-clamp-2 ${darkMode ? 'text-neutral-400' : 'text-gray-600'}`}>
+                                {item.prompt}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
                     
                     return (
                     <div key={item.id || index} className={`
