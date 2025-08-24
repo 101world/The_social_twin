@@ -1482,7 +1482,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         });
       }
       // 📱 MOBILE: Enhanced request with timeout and retry logic
-      const timeoutMs = isMobile ? 120000 : 45000; // 2 minutes for mobile, 45s for desktop
+      const timeoutMs = 299000; // 299 seconds (almost 5 minutes) for both mobile and desktop
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
@@ -3172,6 +3172,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     >
                       <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setCreateToolsOpen(!createToolsOpen)}
+                      className={`cursor-pointer rounded-md px-1 flex items-center justify-center transition-all hover:scale-105 ${darkMode ? 'text-blue-300' : 'text-blue-700'} opacity-70 hover:opacity-100`}
+                      style={{ 
+                        height: isMobile ? '20px' : '26px',
+                        background: 'transparent',
+                        border: 'none'
+                      }}
+                      title="Open Create Tools - Quick generation options"
+                      aria-label="Create"
+                    >
+                      <svg width={isMobile ? "15" : "18"} height={isMobile ? "15" : "18"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                     </button>
                   </div>
