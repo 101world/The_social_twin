@@ -57,23 +57,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Format messages for the frontend
-    const formattedMessages = (data || []).map(message => ({
-      id: message.id,
-      content: message.content,
-      messageType: message.message_type,
-      aiGenerationData: message.ai_generation_data,
-      mediaUrls: message.media_urls,
-      replyToId: message.reply_to_id,
-      timestamp: new Date(message.created_at).toLocaleTimeString(),
-      createdAt: message.created_at,
-      sender: {
-        id: message.sender.id,
-        clerkId: message.sender.clerk_id,
-        username: message.sender.username,
-        displayName: message.sender.display_name,
-        avatarUrl: message.sender.avatar_url
-      }
-    }));
+    const formattedMessages = (data || []).map(message => {
+      // Handle sender data - it might be an object or array depending on the query
+      const senderData = Array.isArray(message.sender) ? message.sender[0] : message.sender;
+      
+      return {
+        id: message.id,
+        content: message.content,
+        messageType: message.message_type,
+        aiGenerationData: message.ai_generation_data,
+        mediaUrls: message.media_urls,
+        replyToId: message.reply_to_id,
+        timestamp: new Date(message.created_at).toLocaleTimeString(),
+        createdAt: message.created_at,
+        sender: senderData ? {
+          id: senderData.id,
+          clerkId: senderData.clerk_id,
+          username: senderData.username,
+          displayName: senderData.display_name,
+          avatarUrl: senderData.avatar_url
+        } : null
+      };
+    });
 
     return NextResponse.json(formattedMessages);
   } catch (error) {
