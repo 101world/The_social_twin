@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   MessageCircle, 
   Users, 
-  Hash, 
   ChevronDown, 
   ChevronRight, 
   Send,
@@ -26,7 +25,6 @@ import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
 // Enhanced messenger component with full chat interface
 export default function SimpleMessengerComponent() {
   const [friendsCollapsed, setFriendsCollapsed] = useState(false);
-  const [groupsCollapsed, setGroupsCollapsed] = useState(false);
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -83,11 +81,6 @@ export default function SimpleMessengerComponent() {
     { id: '3', name: 'Charlie Code', avatar: 'C', isOnline: false, status: 'Coding the future' }
   ];
 
-  const testGroups = [
-    { id: '4', name: 'General Chat', avatar: '#', members: 127, description: 'Main community discussion' },
-    { id: '5', name: 'AI Creators', avatar: '#', members: 89, description: 'AI enthusiasts and creators' }
-  ];
-
   // Load real friends from database
   const loadFriends = async () => {
     try {
@@ -99,14 +92,32 @@ export default function SimpleMessengerComponent() {
 
       if (response.ok) {
         const friendsData = await response.json();
-        setFriends(friendsData);
+        console.log('📞 Real friends loaded:', friendsData);
+        
+        // Combine real friends with test friends for demo
+        const allFriends = [
+          ...friendsData.friends.map((f: any) => ({
+            id: f.id,
+            name: f.display_name || f.username,
+            avatar: f.avatar_url ? undefined : (f.display_name || f.username)[0].toUpperCase(),
+            avatarUrl: f.avatar_url,
+            isOnline: true, // Could be dynamic based on last_seen
+            status: f.bio || 'Online',
+            clerkId: f.clerk_id // Add clerk_id for real messaging
+          })),
+          ...testFriends
+        ];
+        
+        setFriends(allFriends);
       } else {
         console.error('Failed to load friends');
-        setFriends([]);
+        // Fall back to test friends
+        setFriends(testFriends);
       }
     } catch (error) {
-      console.error('Load friends error:', error);
-      setFriends([]);
+      console.error('Error loading friends:', error);
+      // Fall back to test friends
+      setFriends(testFriends);
     } finally {
       setLoadingFriends(false);
     }
@@ -115,88 +126,89 @@ export default function SimpleMessengerComponent() {
   // Load friends on component mount
   useEffect(() => {
     loadFriends();
-  }, [currentUserClerkId]);
+  }, []);
 
-  // Real messaging functions
-  const startChatWithUser = async (friendClerkId: string) => {
+  // Start real chat with a user
+  const startChatWithUser = async (userClerkId: string) => {
     try {
-      setLoadingMessages(true);
-      const response = await fetch('/api/messenger/get-or-create-dm-room', {
+      const response = await fetch('/api/messenger/start-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user1ClerkId: currentUserClerkId,
-          user2ClerkId: friendClerkId
+          user2ClerkId: userClerkId,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setCurrentRoomId(data.roomId);
-        await loadMessages(data.roomId);
+        const chatData = await response.json();
+        console.log('💬 Chat started:', chatData);
+        setCurrentRoomId(chatData.roomId);
+        setMessages([]); // Clear messages, real-time will populate
+        setLoadingMessages(true);
+        
+        // Load existing messages
+        const messagesResponse = await fetch('/api/messenger/get-messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId: chatData.roomId }),
+        });
+        
+        if (messagesResponse.ok) {
+          const messagesData = await messagesResponse.json();
+          console.log('📩 Messages loaded:', messagesData);
+          
+          const formattedMessages = messagesData.messages.map((msg: any) => ({
+            id: msg.id,
+            content: msg.content,
+            messageType: msg.message_type,
+            timestamp: new Date(msg.created_at).toLocaleTimeString(),
+            createdAt: msg.created_at,
+            isOwn: msg.sender?.clerk_id === currentUserClerkId,
+            sender: {
+              id: msg.sender?.id,
+              clerkId: msg.sender?.clerk_id,
+              username: msg.sender?.username,
+              displayName: msg.sender?.display_name,
+              avatarUrl: msg.sender?.avatar_url
+            }
+          }));
+          
+          setMessages(formattedMessages);
+        }
       } else {
-        console.error('Failed to create/get DM room');
-        alert('Failed to start conversation. Please try again.');
+        console.error('Failed to start chat');
       }
     } catch (error) {
-      console.error('Start chat error:', error);
-      alert('Failed to start conversation. Please try again.');
+      console.error('Error starting chat:', error);
     } finally {
       setLoadingMessages(false);
     }
   };
 
-  const loadMessages = async (roomId: string) => {
-    try {
-      const response = await fetch('/api/messenger/get-messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, limit: 50, offset: 0 }),
-      });
-
-      if (response.ok) {
-        const messages = await response.json();
-        const transformedMessages = messages.map((msg: any) => ({
-          id: msg.id,
-          content: msg.content,
-          timestamp: msg.timestamp,
-          isOwn: msg.sender.clerkId === currentUserClerkId,
-          sender: msg.sender
-        }));
-        setMessages(transformedMessages);
-      } else {
-        console.error('Failed to load messages');
-        setMessages([]);
-      }
-    } catch (error) {
-      console.error('Load messages error:', error);
-      setMessages([]);
-    }
-  };
-
+  // Send real message to database
   const sendRealMessage = async () => {
     if (!messageInput.trim() || !currentRoomId || sendingMessage) return;
-
-    setSendingMessage(true);
-    const messageContent = messageInput.trim();
+    
+    const messageContent = messageInput;
     setMessageInput('');
     setIsTyping(false);
-
+    setSendingMessage(true);
+    
     try {
       const response = await fetch('/api/messenger/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderClerkId: currentUserClerkId,
           roomId: currentRoomId,
+          senderClerkId: currentUserClerkId,
           content: messageContent,
-          messageType: aiMode ? 'ai_generation' : privacyMode ? 'encrypted' : 'text',
-          aiGenerationData: aiMode ? { type: 'shared_generation' } : null
+          messageType: 'text',
         }),
       });
 
       if (!response.ok) {
-        console.error('Failed to send message');
+        // Restore message input on failure
         setMessageInput(messageContent);
         alert('Failed to send message. Please try again.');
       }
@@ -285,17 +297,92 @@ export default function SimpleMessengerComponent() {
   };
 
   return (
-    <div className="h-full bg-black text-white flex flex-col">
-      {/* Top Navigation - Friends/Groups Collapsible Bars */}
-      <div className="bg-gray-900 border-b border-gray-800">
-        {/* Friends Bar */}
+    <div className="h-full bg-black text-white flex">
+      {/* Desktop: Friends Sidebar on Left */}
+      <div className="hidden lg:flex w-80 bg-gray-900 border-r border-gray-800 flex-col">
+        {/* Friends Section Header */}
+        <div className="p-4 border-b border-gray-800">
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-white" />
+            <span className="font-semibold text-white">Friends</span>
+            <span className="text-sm text-gray-400">({friends.length})</span>
+          </div>
+        </div>
+        
+        {/* Friend Requests Panel */}
+        <FriendRequestsPanel 
+          currentUserClerkId={currentUserClerkId}
+          onRequestsChange={() => {
+            loadFriends();
+            console.log('Friend requests updated - refreshing friends list');
+          }}
+        />
+        
+        {/* Friends List */}
+        <div className="flex-1 overflow-y-auto">
+          {loadingFriends ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="ml-2 text-sm text-gray-400">Loading friends...</span>
+            </div>
+          ) : friends.length > 0 ? (
+            friends.map((friend) => (
+              <button
+                key={friend.id}
+                onClick={() => handleSelectChat(friend)}
+                className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
+                  selectedChat?.id === friend.id ? 'border-white bg-gray-800' : 'border-transparent'
+                }`}
+              >
+                <div className="relative">
+                  <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                    {friend.avatarUrl ? (
+                      <img
+                        src={friend.avatarUrl}
+                        alt={friend.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm text-white">{friend.avatar}</span>
+                    )}
+                  </div>
+                  {friend.isOnline && (
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full border-2 border-black"></div>
+                  )}
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-medium text-white">{friend.name}</div>
+                  <div className="text-xs text-gray-400 truncate">{friend.status}</div>
+                </div>
+              </button>
+            ))
+          ) : (
+            <div className="p-4 text-center text-gray-500 text-sm">
+              No friends yet. Add some friends to start chatting!
+            </div>
+          )}
+        </div>
+        
+        {/* Add Friend Button at Bottom */}
+        <div className="p-4 border-t border-gray-800">
+          <button
+            onClick={() => setShowFriendSearch(true)}
+            className="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Add Friend
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile: Collapsible Friends Bar */}
+      <div className="lg:hidden w-full bg-gray-900 border-b border-gray-800">
         <div className="border-b border-gray-800">
           <button
             onClick={() => setFriendsCollapsed(!friendsCollapsed)}
             className="w-full flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-blue-600" />
+              <Users className="w-5 h-5 text-white" />
               <span className="font-semibold text-white">Friends</span>
               <span className="text-sm text-gray-400">({friends.length})</span>
             </div>
@@ -308,7 +395,6 @@ export default function SimpleMessengerComponent() {
               <FriendRequestsPanel 
                 currentUserClerkId={currentUserClerkId}
                 onRequestsChange={() => {
-                  // Refresh friends list when a request is accepted
                   loadFriends();
                   console.log('Friend requests updated - refreshing friends list');
                 }}
@@ -318,7 +404,7 @@ export default function SimpleMessengerComponent() {
               <div className="max-h-32 overflow-y-auto bg-gray-900">
                 {loadingFriends ? (
                   <div className="flex items-center justify-center py-4">
-                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     <span className="ml-2 text-sm text-gray-400">Loading friends...</span>
                   </div>
                 ) : friends.length > 0 ? (
@@ -327,7 +413,7 @@ export default function SimpleMessengerComponent() {
                       key={friend.id}
                       onClick={() => handleSelectChat(friend)}
                       className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
-                        selectedChat?.id === friend.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
+                        selectedChat?.id === friend.id ? 'border-white bg-gray-800' : 'border-transparent'
                       }`}
                     >
                       <div className="relative">
@@ -343,7 +429,7 @@ export default function SimpleMessengerComponent() {
                           )}
                         </div>
                         {friend.isOnline && (
-                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-black"></div>
+                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white rounded-full border-2 border-black"></div>
                         )}
                       </div>
                       <div className="flex-1 text-left">
@@ -361,47 +447,10 @@ export default function SimpleMessengerComponent() {
             </div>
           )}
         </div>
-
-        {/* Groups Bar */}
-        <div>
-          <button
-            onClick={() => setGroupsCollapsed(!groupsCollapsed)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Hash className="w-5 h-5 text-blue-600" />
-              <span className="font-semibold text-white">Groups</span>
-              <span className="text-sm text-gray-400">({testGroups.length})</span>
-            </div>
-            {groupsCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-          </button>
-          
-          {!groupsCollapsed && (
-            <div className="max-h-32 overflow-y-auto bg-gray-900">
-              {testGroups.map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() => handleSelectChat(group)}
-                  className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
-                    selectedChat?.id === group.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
-                  }`}
-                >
-                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
-                    <Hash className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="text-sm font-medium text-white">{group.name}</div>
-                    <div className="text-xs text-gray-400">{group.members} members</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* Main Chat Area - Positioned to match chat tab structure */}
+      <div className="flex-1 flex flex-col min-h-0 relative">
         {selectedChat ? (
           <div className="flex flex-col h-full">
             {/* Chat Header */}
@@ -446,12 +495,12 @@ export default function SimpleMessengerComponent() {
               </div>
             </div>
 
-            {/* Messages Container */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-black">
+            {/* Messages Container - Uses same structure as chat tab */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-black" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center text-gray-400">
-                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     <p className="text-sm">Loading messages...</p>
                   </div>
                 </div>
@@ -464,7 +513,7 @@ export default function SimpleMessengerComponent() {
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                         message.isOwn
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-white text-black'
                           : 'bg-gray-800 text-white border border-gray-700'
                       }`}
                     >
@@ -483,16 +532,9 @@ export default function SimpleMessengerComponent() {
               )}
             </div>
 
-            {/* FIXED PROMPT BOX - Always visible at bottom */}
-            <div className="flex-shrink-0 border-t border-gray-800 bg-black">
-              <div 
-                className="p-4"
-                style={{
-                  boxShadow: isTyping 
-                    ? '0 0 20px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.2)' 
-                    : '0 0 10px rgba(0, 0, 0, 0.3)'
-                }}
-              >
+            {/* FIXED PROMPT BOX - Positioned exactly like chat tab */}
+            <div className="lg:fixed lg:bottom-0 lg:left-80 lg:right-0 absolute bottom-0 left-0 right-0 bg-black border-t border-gray-800">
+              <div className="max-w-4xl mx-auto p-4">
                 <div className="flex items-start gap-3">
                   <textarea
                     ref={bottomInputRef}
@@ -509,7 +551,7 @@ export default function SimpleMessengerComponent() {
                           ? "Encrypted message..." 
                           : "Type a message..."
                     }
-                    className="flex-1 resize-none rounded-lg p-3 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600/50 border border-gray-700 bg-gray-900 text-white placeholder-gray-400 min-h-[48px] max-h-[120px]"
+                    className="flex-1 resize-none rounded-lg p-3 transition-all focus:outline-none focus:ring-2 focus:ring-white/20 border border-gray-700 bg-gray-900 text-white placeholder-gray-400 min-h-[48px] max-h-[120px]"
                     style={{ fontSize: '14px' }}
                     rows={1}
                   />
@@ -522,13 +564,13 @@ export default function SimpleMessengerComponent() {
                       disabled={!messageInput.trim() || sendingMessage}
                       className={`group relative h-10 w-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                         messageInput.trim() && !sendingMessage
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
+                          ? 'bg-white text-black shadow-lg' 
                           : 'bg-gray-700 text-gray-400'
                       }`}
                       title={sendingMessage ? "Sending..." : "Send message"}
                     >
                       {sendingMessage ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <Send className="w-4 h-4" />
                       )}
@@ -537,12 +579,12 @@ export default function SimpleMessengerComponent() {
                       onClick={() => setAiMode(!aiMode)}
                       className={`h-10 w-10 rounded-lg transition-all duration-300 flex items-center justify-center ${
                         aiMode
-                          ? 'bg-blue-600/20 scale-110 ring-2 ring-blue-600/30'
+                          ? 'bg-white/20 scale-110 ring-2 ring-white/30'
                           : 'hover:bg-gray-800 hover:scale-105 bg-gray-700'
                       }`}
                       title="AI Mode - Share generations"
                     >
-                      <Sparkles className={`w-4 h-4 transition-colors ${aiMode ? 'text-blue-400' : 'text-white'}`} />
+                      <Sparkles className={`w-4 h-4 transition-colors ${aiMode ? 'text-white' : 'text-white'}`} />
                     </button>
                     
                     {/* Bottom row: Privacy + Attach */}
@@ -551,11 +593,11 @@ export default function SimpleMessengerComponent() {
                       onClick={() => setPrivacyMode(!privacyMode)}
                       className={`h-10 w-10 rounded-lg transition-all duration-300 flex items-center justify-center ${
                         privacyMode
-                          ? 'bg-blue-600/20 scale-110 ring-2 ring-blue-600/30'
+                          ? 'bg-white/20 scale-110 ring-2 ring-white/30'
                           : 'hover:bg-gray-800 hover:scale-105 bg-gray-700'
                       }`}
                     > 
-                      <Lock className={`w-4 h-4 transition-colors ${privacyMode ? 'text-blue-400' : 'text-white'}`} />
+                      <Lock className={`w-4 h-4 transition-colors ${privacyMode ? 'text-white' : 'text-white'}`} />
                     </button>
                     <button 
                       className="h-10 w-10 rounded-lg border transition-colors bg-gray-700 border-gray-600 text-white hover:bg-gray-600 flex items-center justify-center" 
@@ -570,13 +612,13 @@ export default function SimpleMessengerComponent() {
                 {(privacyMode || aiMode) && (
                   <div className="mt-2 space-y-1">
                     {privacyMode && (
-                      <div className="flex items-center gap-2 text-xs text-blue-400">
+                      <div className="flex items-center gap-2 text-xs text-white">
                         <Lock className="w-3 h-3" />
                         <span>Privacy mode enabled - Messages encrypted</span>
                       </div>
                     )}
                     {aiMode && (
-                      <div className="flex items-center gap-2 text-xs text-blue-400">
+                      <div className="flex items-center gap-2 text-xs text-white">
                         <Sparkles className="w-3 h-3" />
                         <span>AI mode enabled - Ready to share generations</span>
                       </div>
@@ -594,12 +636,12 @@ export default function SimpleMessengerComponent() {
                 Select a conversation
               </h3>
               <p className="text-gray-400 mb-4">
-                Choose a friend or group to start messaging
+                Choose a friend to start messaging
               </p>
               <div className="mt-6 space-y-3">
                 <button 
                   onClick={() => setShowFriendSearch(true)}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="w-full px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Start New Chat
                 </button>
@@ -611,16 +653,16 @@ export default function SimpleMessengerComponent() {
                 </button>
                 <button 
                   onClick={() => setShowTestPanel(true)}
-                  className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                  className="w-full px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm"
                 >
                   🧪 Test All Functions
                 </button>
               </div>
-              <div className="text-xs text-blue-400 mt-4">
-                ✅ Black/White theme with deep blue highlights<br/>
-                ✅ Friends/Groups collapsible bars working<br/>
-                ✅ Full chat interface with docked prompt box<br/>
-                ✅ All messenger functions ready
+              <div className="text-xs text-gray-400 mt-4">
+                ✅ Black/White theme - No blue colors<br/>
+                ✅ Friends sidebar on desktop<br/>
+                ✅ Centered prompt box with proper width<br/>
+                ✅ Groups functionality removed
               </div>
             </div>
           </div>
