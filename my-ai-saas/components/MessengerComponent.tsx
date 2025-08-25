@@ -28,12 +28,6 @@ import {
   Plus
 } from 'lucide-react';
 
-// Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 interface MessengerUser {
   id: string;
   clerk_id: string;
@@ -70,6 +64,9 @@ export default function MessengerComponent() {
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   
+  // Initialize Supabase client-side only
+  const [supabase, setSupabase] = useState<any>(null);
+  
   // State
   const [activeSection, setActiveSection] = useState<'friends' | 'groups'>('friends');
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
@@ -88,25 +85,40 @@ export default function MessengerComponent() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Initialize Supabase client-side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (supabaseUrl && supabaseKey) {
+        const client = createClient(supabaseUrl, supabaseKey);
+        setSupabase(client);
+      }
+    }
+  }, []);
+
   // Initialize user in database
   useEffect(() => {
-    if (isSignedIn && user) {
+    if (isSignedIn && user && supabase) {
       initializeUser();
     }
-  }, [isSignedIn, user]);
+  }, [isSignedIn, user, supabase]);
 
   const initializeUser = async () => {
-    if (!user) return;
+    if (!user || !supabase) return;
     
     try {
       const token = await getToken({ template: 'supabase' });
-      supabase.auth.setSession({
-        access_token: token || '',
-        refresh_token: '',
-      });
+      if (token) {
+        supabase.auth.setSession({
+          access_token: token,
+          refresh_token: '',
+        });
+      }
 
       // Upsert user in messenger database
-      const { error } = await supabase.rpc('upsert_messenger_user', {
+      const { error } = await supabase.rpc('messenger_upsert_user', {
         p_clerk_id: user.id,
         p_username: user.username || user.firstName || 'User',
         p_display_name: user.fullName,
@@ -126,11 +138,12 @@ export default function MessengerComponent() {
   };
 
   const loadFriends = async () => {
+    if (!supabase || !user) return;
     // Load friends from database
     const { data, error } = await supabase
       .from('messenger_users')
       .select('*')
-      .neq('clerk_id', user?.id)
+      .neq('clerk_id', user.id)
       .limit(20);
     
     if (!error && data) {
@@ -139,6 +152,7 @@ export default function MessengerComponent() {
   };
 
   const loadChatRooms = async () => {
+    if (!supabase || !user) return;
     // Load user's chat rooms
     const { data, error } = await supabase
       .from('chat_rooms')
@@ -152,14 +166,15 @@ export default function MessengerComponent() {
       .order('updated_at', { ascending: false });
     
     if (!error && data) {
-      const directChats = data.filter(room => room.room_type === 'direct');
-      const groupChats = data.filter(room => room.room_type === 'group');
+      const directChats = data.filter((room: any) => room.room_type === 'direct');
+      const groupChats = data.filter((room: any) => room.room_type === 'group');
       setChatRooms(directChats);
       setGroups(groupChats);
     }
   };
 
   const loadMessages = async (roomId: string) => {
+    if (!supabase) return;
     const { data, error } = await supabase
       .from('messages')
       .select(`
@@ -177,7 +192,7 @@ export default function MessengerComponent() {
   };
 
   const sendMessage = async () => {
-    if (!messageInput.trim() || !selectedRoom || !user) return;
+    if (!messageInput.trim() || !selectedRoom || !user || !supabase) return;
     
     try {
       const { data, error } = await supabase.rpc('send_message', {
@@ -198,7 +213,7 @@ export default function MessengerComponent() {
   };
 
   const startDirectMessage = async (friendId: string) => {
-    if (!user) return;
+    if (!user || !supabase) return;
     
     try {
       const { data: roomId, error } = await supabase.rpc('get_or_create_dm_room', {
@@ -242,7 +257,7 @@ export default function MessengerComponent() {
 
   // Subscribe to real-time messages
   useEffect(() => {
-    if (selectedRoom) {
+    if (selectedRoom && supabase) {
       loadMessages(selectedRoom.id);
       
       const channel = supabase
@@ -252,7 +267,7 @@ export default function MessengerComponent() {
           schema: 'public',
           table: 'messages',
           filter: `room_id=eq.${selectedRoom.id}`
-        }, (payload) => {
+        }, (payload: any) => {
           loadMessages(selectedRoom.id);
         })
         .subscribe();
@@ -261,7 +276,7 @@ export default function MessengerComponent() {
         supabase.removeChannel(channel);
       };
     }
-  }, [selectedRoom]);
+  }, [selectedRoom, supabase]);
 
   useEffect(() => {
     scrollToBottom();
@@ -274,6 +289,18 @@ export default function MessengerComponent() {
           <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Sign in to use Messenger</h2>
           <p className="text-gray-400">Connect with friends securely</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!supabase) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gray-900 text-white">
+        <div className="text-center">
+          <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold mb-2">Loading Messenger...</h2>
+          <p className="text-gray-400">Initializing secure connection</p>
         </div>
       </div>
     );
