@@ -105,7 +105,13 @@ export async function POST(req: NextRequest) {
   const cfg = await getRunpodConfig().catch(()=>null);
   // Always prefer server-configured URL; ignore client value unless explicitly allowed
   const allowClientRunpod = process.env.ALLOW_CLIENT_RUNPOD_URL === 'true';
-  const runpodUrl = pickRunpodUrlFromConfig({ provided: (allowClientRunpod && typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg });
+  const useCloudflareProxy = process.env.NEXT_PUBLIC_USE_CLOUDFLARE_PROXY !== 'false'; // default true
+  const runpodUrl = pickRunpodUrlFromConfig({ 
+    provided: (allowClientRunpod && typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), 
+    mode, 
+    config: cfg,
+    useCloudflareProxy
+  });
 
     // Log URL resolution for debugging
     console.log('URL Resolution Debug:', {

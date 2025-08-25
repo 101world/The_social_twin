@@ -36,13 +36,23 @@ export function pickRunpodUrlFromConfig(opts: {
   provided?: string | null;
   mode?: 'text' | 'image' | 'image-modify' | 'video';
   config?: any | null;
+  useCloudflareProxy?: boolean;
 }): string | undefined {
-  const { provided, mode = 'image', config } = opts || {};
+  const { provided, mode = 'image', config, useCloudflareProxy = true } = opts || {};
   
-  // First priority: user-provided URL (e.g., from localStorage)
+  // PRIORITY 1: Cloudflare Proxy (Stable URL for mobile/web compatibility)
+  if (useCloudflareProxy) {
+    const cloudflareProxyUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_RUNPOD_PROXY;
+    if (cloudflareProxyUrl && typeof cloudflareProxyUrl === 'string' && cloudflareProxyUrl.trim()) {
+      // Return proxy URL with mode path: https://runpod.yourdomain.com/image
+      return cloudflareProxyUrl.replace(/\/$/, '') + '/' + mode;
+    }
+  }
+  
+  // PRIORITY 2: User-provided URL (e.g., from localStorage)
   if (provided && typeof provided === 'string' && provided.trim()) return provided;
   
-  // Second priority: admin config from database
+  // PRIORITY 3: Admin config from database
   if (config) {
     const cfgByMode = {
       text: config.text_url,
@@ -57,7 +67,7 @@ export function pickRunpodUrlFromConfig(opts: {
     }
   }
   
-  // Third priority: environment variables (fallback)
+  // PRIORITY 4: Environment variables (fallback)
   const envByMode = {
     text: process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL,
     image: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,
