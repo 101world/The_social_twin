@@ -3,5 +3,11 @@
   "framework": "nextjs",
   "buildCommand": "cd my-ai-saas && npm install && npm run build",
   "installCommand": "cd my-ai-saas && npm install",
-  "outputDirectory": "my-ai-saas/.next"
+  "outputDirectory": "my-ai-saas/.next",
+  "crons": [
+    {
+      "path": "/api/cron/scrape-news",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
