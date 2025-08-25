@@ -241,10 +241,10 @@ export default function NewsComponent() {
   return (
     <div className="h-full bg-black text-white overflow-y-auto">
       {/* Main Content - No navbar as this is embedded */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8">
+      <div className="h-full flex flex-col">
         
         {/* Search Bar */}
-        <div className="mb-8 md:mb-12">
+        <div className="flex-shrink-0 p-4 md:p-6">
           <div className="relative max-w-2xl mx-auto">
             <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
             <input
@@ -278,8 +278,8 @@ export default function NewsComponent() {
           )}
         </div>
 
-        {/* Headlines Sections */}
-        <div onClick={() => setIsSearchOpen(false)}>
+        {/* Headlines Sections - Takes remaining space */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-8" onClick={() => setIsSearchOpen(false)}>
           
           {/* Breaking News - Hero Layout */}
           <HeadlinesSection 

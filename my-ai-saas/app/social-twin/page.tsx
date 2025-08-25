@@ -2168,7 +2168,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </div>
           </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: activeTab === 'chat' ? 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' : '0px' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -2384,7 +2384,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 border-t p-2'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''} ${activeTab === 'news' || activeTab === 'messenger' || activeTab === 'dashboard' ? 'hidden' : ''}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 border-t p-2'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''} ${activeTab !== 'chat' ? 'hidden' : ''}`}
           style={{ 
             bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))'
           }}>
