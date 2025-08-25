@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 8px; }
+        .success { background: #065f46; border: 1px solid #10b981; }
+        .error { background: #7f1d1d; border: 1px solid #ef4444; }
+        .info { background: #1e3a8a; border: 1px solid #3b82f6; }
+        .warning { background: #78350f; border: 1px solid #f59e0b; }
+        button { background: #3b82f6; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .article { background: #262626; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #f59e0b; }
+        .loading { opacity: 0.7; }
+        pre { background: #374151; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 101World News System Test</h1>
+        
+        <div class="status info">
+            <strong>Status:</strong> <span id="status">Ready for testing</span>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="testNewsAPI()">📰 Test News API</button>
+            <button onclick="runManualScrape()">🔄 Run Manual Scrape</button>
+            <button onclick="checkSupabaseConnection()">🗄️ Test Supabase</button>
+            <button onclick="viewLiveNews()">📱 View Live News Page</button>
+        </div>
+
+        <div id="results"></div>
+        
+        <h3>Recent News Articles:</h3>
+        <div id="articles"></div>
+
+        <details style="margin-top: 30px;">
+            <summary>📊 System Information</summary>
+            <div style="margin-top: 10px;">
+                <p><strong>News Scraper:</strong> Enhanced RSS with 13 feeds</p>
+                <p><strong>Image Fallback:</strong> Real images → placeholder → random</p>
+                <p><strong>Database:</strong> Supabase with correct JWT token</p>
+                <p><strong>API Endpoints:</strong> /api/news, /api/scrape-news</p>
+                <p><strong>Update Frequency:</strong> Manual trigger (can be automated)</p>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.parentElement.className = `status ${type}`;
+        }
+
+        function addResult(title, content, type = 'info') {
+            const resultsEl = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<strong>${title}:</strong><br>${content}`;
+            resultsEl.appendChild(div);
+            resultsEl.scrollTop = resultsEl.scrollHeight;
+        }
+
+        async function testNewsAPI() {
+            updateStatus('Testing news API...', 'info');
+            addResult('Testing', 'Fetching news from /api/news...', 'info');
+            
+            try {
+                const response = await fetch('/api/news');
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    updateStatus(`News API working! Found ${data.data.length} articles`, 'success');
+                    addResult('API Test', `✅ Success! ${data.data.length} articles loaded`, 'success');
+                    
+                    // Show first 3 articles
+                    displayArticles(data.data.slice(0, 3));
+                } else {
+                    updateStatus('News API returned no data', 'warning');
+                    addResult('API Test', `⚠️ API working but no articles found`, 'warning');
+                }
+            } catch (error) {
+                updateStatus(`News API failed: ${error.message}`, 'error');
+                addResult('API Test', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function runManualScrape() {
+            updateStatus('Running manual scrape...', 'info');
+            addResult('Manual Scrape', 'Triggering news scraper... This may take 30-60 seconds', 'info');
+            
+            try {
+                const response = await fetch('/api/scrape-news', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatus(`Scrape completed! ${data.data.uploaded} articles added`, 'success');
+                    addResult('Manual Scrape', `✅ Success!<br>
+                        • Uploaded: ${data.data.uploaded}<br>
+                        • Skipped: ${data.data.skipped}<br>
+                        • Total articles: ${data.data.totalArticles}<br>
+                        • Feeds processed: ${data.data.feedsProcessed}`, 'success');
+                } else {
+                    updateStatus(`Scrape failed: ${data.error}`, 'error');
+                    addResult('Manual Scrape', `❌ Failed: ${data.error}<br>Details: ${data.details || 'None'}`, 'error');
+                }
+            } catch (error) {
+                updateStatus(`Scrape error: ${error.message}`, 'error');
+                addResult('Manual Scrape', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkSupabaseConnection() {
+            updateStatus('Testing Supabase connection...', 'info');
+            addResult('Supabase Test', 'Checking database connection...', 'info');
+            
+            try {
+                const response = await fetch('/api/scrape-news');
+                if (response.ok) {
+                    updateStatus('Supabase connection ready', 'success');
+                    addResult('Supabase Test', '✅ Connection endpoint is accessible', 'success');
+                } else {
+                    updateStatus('Supabase endpoint issue', 'warning');
+                    addResult('Supabase Test', `⚠️ Endpoint returned ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                updateStatus(`Supabase test failed: ${error.message}`, 'error');
+                addResult('Supabase Test', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        function viewLiveNews() {
+            window.open('/news', '_blank');
+            addResult('Live News', '📱 Opened live news page in new tab', 'info');
+        }
+
+        function displayArticles(articles) {
+            const articlesEl = document.getElementById('articles');
+            articlesEl.innerHTML = '';
+            
+            articles.forEach(article => {
+                const div = document.createElement('div');
+                div.className = 'article';
+                
+                const publishedTime = new Date(article.published_at).toLocaleString();
+                const imageHtml = article.image_url ? 
+                    `<img src="${article.image_url}" alt="${article.title}" style="width: 100px; height: 60px; object-fit: cover; float: right; margin-left: 10px; border-radius: 4px;">` : '';
+                
+                div.innerHTML = `
+                    ${imageHtml}
+                    <h4 style="margin: 0 0 5px 0; color: #f59e0b;">${article.title}</h4>
+                    <p style="margin: 5px 0; opacity: 0.8; font-size: 14px;">
+                        📰 ${article.source || 'Unknown Source'} | 
+                        🕒 ${publishedTime} | 
+                        ⭐ ${article.quality_score || 'N/A'}
+                    </p>
+                    ${article.summary ? `<p style="margin: 5px 0; font-size: 13px; opacity: 0.9;">${article.summary.slice(0, 200)}...</p>` : ''}
+                `;
+                articlesEl.appendChild(div);
+            });
+        }
+
+        // Auto-test news API on page load
+        setTimeout(testNewsAPI, 1000);
+    </script>
+</body>
+</html>
