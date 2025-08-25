@@ -349,6 +349,23 @@ ALTER TABLE messenger_story_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messenger_polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messenger_shared_generations ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (safe deployment)
+DROP POLICY IF EXISTS "messenger_users_policy" ON messenger_users;
+DROP POLICY IF EXISTS "messenger_users_select" ON messenger_users;
+DROP POLICY IF EXISTS "messenger_users_update" ON messenger_users;
+DROP POLICY IF EXISTS "messenger_users_insert" ON messenger_users;
+DROP POLICY IF EXISTS "messenger_chat_rooms_policy" ON messenger_chat_rooms;
+DROP POLICY IF EXISTS "messenger_room_participants_policy" ON messenger_room_participants;
+DROP POLICY IF EXISTS "messenger_messages_policy" ON messenger_messages;
+DROP POLICY IF EXISTS "messenger_friendships_policy" ON messenger_friendships;
+DROP POLICY IF EXISTS "messenger_read_status_policy" ON messenger_read_status;
+DROP POLICY IF EXISTS "messenger_voice_messages_policy" ON messenger_voice_messages;
+DROP POLICY IF EXISTS "messenger_calls_policy" ON messenger_calls;
+DROP POLICY IF EXISTS "messenger_stories_policy" ON messenger_stories;
+DROP POLICY IF EXISTS "messenger_story_views_policy" ON messenger_story_views;
+DROP POLICY IF EXISTS "messenger_polls_policy" ON messenger_polls;
+DROP POLICY IF EXISTS "messenger_shared_generations_policy" ON messenger_shared_generations;
+
 -- Simple, working user policies
 CREATE POLICY "messenger_users_select" ON messenger_users
   FOR SELECT USING (
@@ -510,6 +527,7 @@ CREATE POLICY "messenger_shared_generations_policy" ON messenger_shared_generati
 -- ============================================================================
 
 -- Enhanced user upsert with profile features
+DROP FUNCTION IF EXISTS messenger_upsert_user(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION messenger_upsert_user(
   p_clerk_id TEXT,
   p_username TEXT,
@@ -540,6 +558,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enhanced direct message room creation
+DROP FUNCTION IF EXISTS messenger_get_or_create_dm_room(TEXT, TEXT);
 CREATE OR REPLACE FUNCTION messenger_get_or_create_dm_room(user1_clerk_id TEXT, user2_clerk_id TEXT)
 RETURNS UUID AS $$
 DECLARE
@@ -584,6 +603,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enhanced message sending with AI generation support
+DROP FUNCTION IF EXISTS messenger_send_message(TEXT, UUID, TEXT, TEXT, UUID, JSONB, TEXT[]);
 CREATE OR REPLACE FUNCTION messenger_send_message(
   sender_clerk_id TEXT,
   room_id UUID,
@@ -640,6 +660,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Get user's friends with enhanced info
+DROP FUNCTION IF EXISTS messenger_get_friends(TEXT);
 CREATE OR REPLACE FUNCTION messenger_get_friends(user_clerk_id TEXT)
 RETURNS TABLE(
   id UUID,
@@ -680,6 +701,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create or join group
+DROP FUNCTION IF EXISTS messenger_create_group(TEXT, TEXT, TEXT, BOOLEAN);
 CREATE OR REPLACE FUNCTION messenger_create_group(
   creator_clerk_id TEXT,
   group_name TEXT,
@@ -724,6 +746,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Share AI generation to messenger
+DROP FUNCTION IF EXISTS messenger_share_ai_generation(TEXT, UUID, TEXT, TEXT, TEXT, JSONB);
 CREATE OR REPLACE FUNCTION messenger_share_ai_generation(
   sender_clerk_id TEXT,
   room_id UUID,
@@ -786,6 +809,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Update user presence
+DROP FUNCTION IF EXISTS messenger_update_presence(TEXT, BOOLEAN, TEXT);
 CREATE OR REPLACE FUNCTION messenger_update_presence(
   user_clerk_id TEXT,
   is_online BOOLEAN DEFAULT true,
@@ -810,6 +834,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- Clean expired messages and stories
+DROP FUNCTION IF EXISTS messenger_cleanup_expired_content();
 CREATE OR REPLACE FUNCTION messenger_cleanup_expired_content()
 RETURNS INTEGER AS $$
 DECLARE
@@ -843,6 +868,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- Get user chat statistics
+DROP FUNCTION IF EXISTS messenger_get_user_stats(TEXT);
 CREATE OR REPLACE FUNCTION messenger_get_user_stats(user_clerk_id TEXT)
 RETURNS JSONB AS $$
 DECLARE
@@ -888,34 +914,110 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 🎉 SUCCESS MESSAGE & SAMPLE DATA
 -- ============================================================================
 
--- Insert enhanced test users
+-- Insert enhanced test users (using only core required columns)
 INSERT INTO messenger_users (
-  clerk_id, username, display_name, email, bio, custom_status
+  clerk_id, username
 ) VALUES
-  ('test_user_1', 'alice_101', 'Alice AI', 'alice@101world.com', '🤖 AI enthusiast & creative director', 'Building the future'),
-  ('test_user_2', 'bob_crypto', 'Bob Security', 'bob@101world.com', '🔐 Blockchain security expert', 'Available'),
-  ('test_user_3', 'charlie_dev', 'Charlie Code', 'charlie@101world.com', '💻 Full-stack developer', 'Coding...')
+  ('test_user_1', 'alice_101'),
+  ('test_user_2', 'bob_crypto'),
+  ('test_user_3', 'charlie_dev')
 ON CONFLICT (clerk_id) DO NOTHING;
 
--- Create test friendships
-INSERT INTO messenger_friendships (
-  requester_id, 
-  addressee_id, 
-  status,
-  friend_since,
-  is_favorite
-) 
-SELECT 
-  (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1'),
-  (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2'),
-  'accepted',
-  NOW() - INTERVAL '30 days',
-  true
-WHERE NOT EXISTS (
-  SELECT 1 FROM messenger_friendships 
-  WHERE requester_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1')
-  AND addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2')
-);
+-- Update additional information safely (wrapped in DO blocks to handle missing columns)
+DO $$
+BEGIN
+  -- Try to update test_user_1 with additional info
+  BEGIN
+    UPDATE messenger_users SET 
+      display_name = 'Alice AI',
+      email = 'alice@101world.com',
+      custom_status = 'Building the future',
+      bio = '🤖 AI enthusiast & creative director'
+    WHERE clerk_id = 'test_user_1';
+  EXCEPTION 
+    WHEN undefined_column THEN
+      -- If columns don't exist, just update what we can
+      UPDATE messenger_users SET 
+        display_name = 'Alice AI',
+        email = 'alice@101world.com'
+      WHERE clerk_id = 'test_user_1';
+  END;
+  
+  -- Try to update test_user_2 with additional info
+  BEGIN
+    UPDATE messenger_users SET 
+      display_name = 'Bob Security',
+      email = 'bob@101world.com',
+      custom_status = 'Available',
+      bio = '🔐 Blockchain security expert'
+    WHERE clerk_id = 'test_user_2';
+  EXCEPTION 
+    WHEN undefined_column THEN
+      UPDATE messenger_users SET 
+        display_name = 'Bob Security',
+        email = 'bob@101world.com'
+      WHERE clerk_id = 'test_user_2';
+  END;
+  
+  -- Try to update test_user_3 with additional info
+  BEGIN
+    UPDATE messenger_users SET 
+      display_name = 'Charlie Code',
+      email = 'charlie@101world.com',
+      custom_status = 'Coding...',
+      bio = '💻 Full-stack developer'
+    WHERE clerk_id = 'test_user_3';
+  EXCEPTION 
+    WHEN undefined_column THEN
+      UPDATE messenger_users SET 
+        display_name = 'Charlie Code',
+        email = 'charlie@101world.com'
+      WHERE clerk_id = 'test_user_3';
+  END;
+END $$;
+
+-- Create test friendships (safe with exception handling)
+DO $$
+BEGIN
+  -- Try to create friendship with all columns
+  BEGIN
+    INSERT INTO messenger_friendships (
+      requester_id, 
+      addressee_id, 
+      status,
+      friend_since,
+      is_favorite
+    ) 
+    SELECT 
+      (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1'),
+      (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2'),
+      'accepted',
+      NOW() - INTERVAL '30 days',
+      true
+    WHERE NOT EXISTS (
+      SELECT 1 FROM messenger_friendships 
+      WHERE requester_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1')
+      AND addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2')
+    );
+  EXCEPTION 
+    WHEN undefined_column THEN
+      -- Fallback to basic friendship creation
+      INSERT INTO messenger_friendships (
+        requester_id, 
+        addressee_id, 
+        status
+      ) 
+      SELECT 
+        (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1'),
+        (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2'),
+        'accepted'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM messenger_friendships 
+        WHERE requester_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_1')
+        AND addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = 'test_user_2')
+      );
+  END;
+END $$;
 
 -- Create test group
 DO $$
