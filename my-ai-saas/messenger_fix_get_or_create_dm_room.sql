@@ -1,6 +1,34 @@
 -- Fix: Robust DM room creation aligned to messenger_* schema
 -- Safe to run in Supabase SQL editor
 
+-- Prereqs
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Lightweight discoverability additions
+-- 1) Add a shareable code (PIN) and helpful indexes
+ALTER TABLE IF EXISTS messenger_users
+  ADD COLUMN IF NOT EXISTS share_code TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_m_users_clerk_id ON messenger_users(clerk_id);
+CREATE INDEX IF NOT EXISTS idx_m_users_username_ci ON messenger_users((lower(username)));
+CREATE INDEX IF NOT EXISTS idx_m_users_email_ci ON messenger_users((lower(email)));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_m_users_share_code ON messenger_users(share_code);
+
+-- 2) Helper to generate short share codes
+DROP FUNCTION IF EXISTS messenger_generate_share_code();
+CREATE OR REPLACE FUNCTION messenger_generate_share_code()
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  code TEXT;
+BEGIN
+  -- 8-hex code; very low collision probability; protected by UNIQUE index
+  code := lower(substr(encode(gen_random_bytes(4), 'hex'), 1, 8));
+  RETURN code;
+END;
+$$;
+
 DROP FUNCTION IF EXISTS messenger_get_or_create_dm_room(text, text);
 DROP FUNCTION IF EXISTS messenger_get_or_create_dm_room(varchar, varchar);
 
@@ -82,13 +110,15 @@ SET search_path = public
 AS $$
 DECLARE
   v_user_id UUID;
+  v_share_code TEXT;
 BEGIN
   -- Try fetch existing
   SELECT id INTO v_user_id FROM messenger_users WHERE clerk_id = p_clerk_id LIMIT 1;
 
   IF v_user_id IS NULL THEN
-    INSERT INTO messenger_users (clerk_id, username, display_name, email, avatar_url)
-    VALUES (p_clerk_id, p_username, p_display_name, p_email, p_avatar_url)
+    v_share_code := messenger_generate_share_code();
+    INSERT INTO messenger_users (clerk_id, username, display_name, email, avatar_url, share_code)
+    VALUES (p_clerk_id, p_username, p_display_name, p_email, p_avatar_url, v_share_code)
     RETURNING id INTO v_user_id;
   ELSE
     UPDATE messenger_users
@@ -98,6 +128,11 @@ BEGIN
       email = COALESCE(p_email, email),
       avatar_url = COALESCE(p_avatar_url, avatar_url),
       updated_at = NOW()
+    WHERE id = v_user_id;
+
+    -- Ensure share_code exists
+    UPDATE messenger_users
+    SET share_code = COALESCE(share_code, messenger_generate_share_code())
     WHERE id = v_user_id;
   END IF;
 
@@ -172,7 +207,8 @@ RETURNS TABLE (
   display_name TEXT,
   avatar_url TEXT,
   clerk_id TEXT,
-  is_friend BOOLEAN
+  is_friend BOOLEAN,
+  share_code TEXT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -203,17 +239,59 @@ BEGIN
     u.display_name,
     u.avatar_url,
     u.clerk_id,
-    COALESCE((SELECT r.is_friend FROM rel r WHERE r.other_id = u.id LIMIT 1), 0) = 1 AS is_friend
+    COALESCE((SELECT r.is_friend FROM rel r WHERE r.other_id = u.id LIMIT 1), 0) = 1 AS is_friend,
+    u.share_code
   FROM messenger_users u
   WHERE u.clerk_id <> current_user_clerk_id
     AND (
       u.username ILIKE '%' || search_term || '%'
       OR COALESCE(u.display_name, '') ILIKE '%' || search_term || '%'
+      OR (position('@' in search_term) > 0 AND COALESCE(u.email, '') ILIKE '%' || search_term || '%')
+      OR COALESCE(u.share_code, '') ILIKE '%' || search_term || '%'
     )
   ORDER BY is_friend DESC, LOWER(u.username)
   LIMIT GREATEST(limit_count, 1);
 END;
 $$;
 GRANT EXECUTE ON FUNCTION messenger_search_users(text, text, integer) TO anon, authenticated, service_role;
+
+-- 3) RLS policies to allow discovery (read-only)
+-- Enable RLS if not already enabled
+ALTER TABLE IF EXISTS messenger_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS messenger_friendships ENABLE ROW LEVEL SECURITY;
+
+-- Allow authenticated to read basic messenger_users (for discovery)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'messenger_users' AND policyname = 'messenger_users_read_profiles'
+  ) THEN
+    CREATE POLICY messenger_users_read_profiles
+      ON messenger_users
+      FOR SELECT
+      TO authenticated
+      USING (true);
+  END IF;
+END$$;
+
+-- Allow authenticated to read friendships where they are a participant (for is_friend flag)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'messenger_friendships' AND policyname = 'messenger_friendships_read_own'
+  ) THEN
+    CREATE POLICY messenger_friendships_read_own
+      ON messenger_friendships
+      FOR SELECT
+      TO authenticated
+      USING (
+        EXISTS (
+          SELECT 1 FROM messenger_users mu 
+          WHERE (mu.id = messenger_friendships.requester_id OR mu.id = messenger_friendships.addressee_id)
+            AND mu.clerk_id = auth.uid()::text
+        )
+      );
+  END IF;
+END$$;
 
 -- End of fix pack

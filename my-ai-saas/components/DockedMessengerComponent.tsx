@@ -51,6 +51,7 @@ interface MessengerUser {
   custom_status?: string;
   is_favorite?: boolean;
   custom_nickname?: string;
+  share_code?: string;
 }
 
 interface ChatRoom {
@@ -228,6 +229,7 @@ export default function DockedMessengerComponent() {
             custom_status: undefined,
             is_favorite: false,
             custom_nickname: undefined,
+            share_code: u.share_code || undefined,
           }));
           setSearchResults(mapped);
         }
@@ -478,7 +480,7 @@ export default function DockedMessengerComponent() {
                   <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search people..."
+                    placeholder="Search people by name, email, or code..."
                     className="w-full pl-8 pr-2 py-1.5 text-sm rounded bg-gray-700 border border-gray-600 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -530,7 +532,7 @@ export default function DockedMessengerComponent() {
                     </div>
                   )}
                   <div className="space-y-1">
-                    {searchResults.map((p) => (
+        {searchResults.map((p) => (
                       <div key={p.id} className="flex items-center gap-3 p-2 rounded hover:bg-gray-700">
                         <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
                           {p.avatar_url ? (
@@ -541,7 +543,7 @@ export default function DockedMessengerComponent() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{p.display_name || p.username}</div>
-                          <div className="text-xs text-gray-400 truncate">@{p.username}</div>
+          <div className="text-xs text-gray-400 truncate">@{p.username}{p.share_code ? ` • ${p.share_code}` : ''}</div>
                         </div>
                         <button
                           onClick={() => startDirectMessage(p)}
