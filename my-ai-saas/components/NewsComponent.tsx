@@ -1,6 +1,6 @@
  'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, TrendingUp, ExternalLink, Clock, Filter, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Loader2, Play, Send } from 'lucide-react';
 
 interface NewsArticle {
@@ -19,6 +19,45 @@ interface NewsArticle {
   image_url?: string;
 }
 
+// Perplexity-like subtle 3D tilt wrapper with mouse-position parallax
+const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: { children: React.ReactNode; className?: string; disabled?: boolean; maxTilt?: number }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;   // 0..1
+    const py = (e.clientY - rect.top) / rect.height;   // 0..1
+    const rx = (py - 0.5) * -2 * maxTilt; // invert Y for natural tilt
+    const ry = (px - 0.5) * 2 * maxTilt;
+    el.style.transform = `perspective(1000px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
+  };
+
+  const onLeave = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+  };
+
+  // Disable tilt on touch devices / small screens
+  const isSmall = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false;
+  const off = disabled || isSmall;
+
+  return (
+    <div
+      ref={ref}
+      className={`will-change-transform transition-transform duration-300 ${className}`}
+      style={{ transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg)' } as React.CSSProperties}
+      onMouseMove={off ? undefined : onMove}
+      onMouseLeave={off ? undefined : onLeave}
+    >
+      {children}
+    </div>
+  );
+};
+
 // Build a resilient image URL (placeholder if missing) like the standalone News page
 function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
   if (article.image_url) return article.image_url;
@@ -33,7 +72,7 @@ function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large
 }
 
 // Modern news card with mobile-optimized smaller thumbnails and high quality images
-const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
+const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { article: NewsArticle; layout?: "default" | "large" | "compact"; onOpenArticle: (article: NewsArticle) => void }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -49,39 +88,38 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
 
   const openSource = () => {
     const url = article.source_url || article.url;
-    if (url) {
-      window.open(url, '_blank');
-    }
+    if (url) onOpenArticle(article);
   };
 
   const sourceName = article.source_name || article.source || 'Unknown Source';
 
   if (layout === "large") {
     return (
-      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 relative">
+  <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 relative">
         <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'large')} 
             alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 filter brightness-[1.08] contrast-110 saturate-110"
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = `https://picsum.photos/640/360?random=${article.id || Math.random()}`;
             }}
           />
-          {/* Subtle top gradient like Perplexity Discover */}
-          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
+          {/* Subtle gradient overlays like Perplexity Discover */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none bg-gradient-to-t from-black/70 to-transparent" />
         </div>
         
         <div className="p-4 md:p-6">
-          <h2 className="font-bold text-white text-lg md:text-xl leading-tight mb-3 group-hover:text-orange-400 transition-colors">
+          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-3 group-hover:text-orange-400 transition-colors" style={{} as React.CSSProperties}>
             {article.title}
           </h2>
           
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 text-sm text-gray-400">
-              <span className="font-semibold text-gray-200">{sourceName}</span>
+              <span className="font-medium text-gray-200">{sourceName}</span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatDate(article.published_at)}
@@ -105,18 +143,18 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
             </div>
           </div>
         </div>
-      </div>
+      </TiltCard>
     );
   }
 
   return (
-    <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
-      <div className="flex gap-3 md:gap-4 p-3 md:p-4">
+    <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
+  <div className="flex gap-3 md:gap-4 p-3 md:p-4">
         <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 filter brightness-100 contrast-110 saturate-110"
+            className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-300 filter brightness-[1.05] contrast-110 saturate-110"
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -126,7 +164,7 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-white text-sm md:text-base leading-tight mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
+          <h3 className="font-semibold tracking-tight text-white text-sm md:text-base leading-snug mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
             {article.title}
           </h3>
           
@@ -158,11 +196,11 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
           </div>
         </div>
       </div>
-    </div>
+    </TiltCard>
   );
 };
 
-const HeadlinesSection = ({ title, articles, layout = "default" }: { title: string; articles: NewsArticle[]; layout?: "default" | "hero" | "two-col" | "three-col" }) => {
+const HeadlinesSection = ({ title, articles, layout = "default", onOpenArticle }: { title: string; articles: NewsArticle[]; layout?: "default" | "hero" | "two-col" | "three-col"; onOpenArticle: (article: NewsArticle) => void }) => {
   if (articles.length === 0) return null;
 
   const getGridClass = () => {
@@ -181,12 +219,13 @@ const HeadlinesSection = ({ title, articles, layout = "default" }: { title: stri
         <div className="h-px bg-gray-800 flex-1"></div>
       </div>
       
-      <div className={`grid ${getGridClass()} gap-3 md:gap-4`}>
+  <div className={`grid ${getGridClass()} gap-3 md:gap-4`}>
         {articles.map(article => (
           <ModernNewsCard 
             key={article.id} 
-            article={article} 
+    article={article} 
             layout={layout === "hero" ? "large" : "default"}
+    onOpenArticle={onOpenArticle}
           />
         ))}
       </div>
@@ -195,7 +234,7 @@ const HeadlinesSection = ({ title, articles, layout = "default" }: { title: stri
 };
 
 // Horizontal scrolling strip for full-width layout
-const HorizontalStrip = ({ title, articles, large = false }: { title: string; articles: NewsArticle[]; large?: boolean }) => {
+const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { title: string; articles: NewsArticle[]; large?: boolean; onOpenArticle: (article: NewsArticle) => void }) => {
   if (!articles.length) return null;
   return (
     <section className="mb-6">
@@ -206,12 +245,77 @@ const HorizontalStrip = ({ title, articles, large = false }: { title: string; ar
         <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
             <div key={a.id} className={large ? 'min-w-[360px] max-w-[360px]' : 'min-w-[300px] max-w-[300px]'}>
-              <ModernNewsCard article={a} layout={large ? 'large' : 'default'} />
+              <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
             </div>
           ))}
         </div>
       </div>
     </section>
+  );
+};
+
+// Simple article modal (in-app viewer). Falls back to external if site blocks iframes.
+const ArticleModal = ({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) => {
+  if (!article) return null;
+  const url = article.source_url || article.url;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 md:p-6" role="dialog" aria-modal="true">
+      <div className="relative w-full h-full md:h-[85vh] md:w-[min(100%,980px)] bg-black border border-gray-800 rounded-none md:rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-3 md:px-4 py-3 border-b border-gray-800 bg-black/80">
+          <div className="min-w-0 pr-2">
+            <h3 className="text-white text-sm md:text-base font-semibold truncate">{article.title}</h3>
+            <p className="text-xs text-gray-400 truncate">{article.source_name || article.source || 'Source'} • {new Date(article.published_at).toLocaleString()}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {url && (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="px-2 py-1.5 md:px-3 md:py-1.5 text-xs font-medium rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700">Open in new tab</a>
+            )}
+            <button onClick={onClose} className="px-2 py-1.5 md:px-3 md:py-1.5 text-xs font-medium rounded-lg bg-orange-600 text-white hover:bg-orange-500">Close</button>
+          </div>
+        </div>
+        <div className="w-full h-[calc(100%-48px)] md:h-[calc(100%-56px)]">
+          {url ? (
+            <iframe src={url} title={article.title} className="w-full h-full" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400">No URL available</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tiny widgets: quick filters and top sources
+const Widgets = ({ articles, onPickFilter, compact }: { articles: NewsArticle[]; onPickFilter: (query: string) => void; compact?: boolean }) => {
+  const chips = ['AI', 'Business', 'Science', 'Sports', 'Crypto', 'Space', 'World', 'Politics'];
+  const sourceCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of articles) {
+      const s = (a.source_name || a.source || 'Unknown').trim();
+      map.set(s, (map.get(s) || 0) + 1);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  }, [articles]);
+
+  return (
+    <div className="space-y-3 md:space-y-4">
+      <div>
+        <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Quick filters</div>
+        <div className={`flex ${compact ? 'flex-wrap gap-2' : 'gap-2 overflow-x-auto'} scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent`}>
+          {chips.map(c => (
+            <button key={c} onClick={() => onPickFilter(c)} className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-900 border border-gray-800 text-gray-200 hover:border-orange-500 whitespace-nowrap">{c}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Top sources</div>
+        <div className={`flex ${compact ? 'flex-wrap gap-2' : 'gap-2 overflow-x-auto'} scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent`}>
+          {sourceCounts.map(([name, count]) => (
+            <span key={name} className="px-3 py-1.5 rounded-full text-xs bg-black border border-gray-800 text-gray-300 whitespace-nowrap">{name} • {count}</span>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -223,6 +327,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const [detectedSimple, setDetectedSimple] = useState<boolean>(false);
   const [continent, setContinent] = useState<string>('');
   const [country, setCountry] = useState<string>('');
+  const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
 
   // Load real news from API
   useEffect(() => {
@@ -328,7 +433,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const renderHorizontal = mode === 'horizontal' ? true : mode === 'vertical' ? false : !detectedSimple;
 
   return (
-    <div className="h-full bg-black text-white overflow-y-auto">
+    <div className={`h-full bg-black text-white overflow-y-auto overflow-x-hidden ${activeArticle ? 'md:overflow-hidden' : ''}`}>
       <div className="h-full flex flex-col">
         {/* Filters */}
   <div className="flex-shrink-0 p-3 md:p-5">
@@ -454,6 +559,10 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3 text-sm md:text-base bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
             />
           </div>
+          {/* Widgets: quick filters + top sources (compact in docked) */}
+          <div className="max-w-3xl mx-auto mt-3 md:mt-4">
+            <Widgets articles={articles} compact={!renderHorizontal} onPickFilter={(q) => setSearchQuery(q)} />
+          </div>
           {isSearchOpen && searchQuery && (
             <div className="relative max-w-2xl mx-auto mt-1">
               <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
@@ -475,27 +584,29 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
         </div>
 
         {/* Content */}
-  <div className="flex-1 overflow-y-auto px-3 md:px-4 pb-4" onClick={() => setIsSearchOpen(false)}>
+  <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 pb-4" onClick={() => setIsSearchOpen(false)}>
           {renderHorizontal ? (
             <>
-              <HorizontalStrip title="Breaking News" articles={articles.slice(0, 6)} large />
-              <HorizontalStrip title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 10)} />
-              <HorizontalStrip title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 10)} />
-              <HorizontalStrip title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 10)} />
-              <HorizontalStrip title="Latest" articles={articles.slice(6, 20)} />
+              <HorizontalStrip title="Breaking News" articles={articles.slice(0, 6)} large onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Latest" articles={articles.slice(6, 20)} onOpenArticle={(a) => setActiveArticle(a)} />
             </>
           ) : (
             <>
-  <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" />
-  <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" />
-  <HeadlinesSection title="World" articles={articles.filter(a => (a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world'))).slice(0, 6)} layout="three-col" />
-  <HeadlinesSection title="Technology" articles={articles.filter(a => (a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech'))).slice(0, 4)} layout="two-col" />
-  <HeadlinesSection title="Business" articles={articles.filter(a => (a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business'))).slice(0, 6)} layout="three-col" />
-  <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" />
+  <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="World" articles={articles.filter(a => (a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world'))).slice(0, 6)} layout="three-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Technology" articles={articles.filter(a => (a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech'))).slice(0, 4)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Business" articles={articles.filter(a => (a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business'))).slice(0, 6)} layout="three-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
             </>
           )}
         </div>
       </div>
+      {/* In-app modal viewer */}
+      <ArticleModal article={activeArticle} onClose={() => setActiveArticle(null)} />
     </div>
   );
 }
