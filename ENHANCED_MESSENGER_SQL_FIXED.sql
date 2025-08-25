@@ -1,11 +1,10 @@
 -- ============================================================================
--- 📱 101Messenger Enhanced Database Schema
+-- 📱 101Messenger Enhanced Database Schema - FULLY CORRECTED VERSION
 -- Compatible with existing AI generation system - SAFE to deploy
 -- ============================================================================
 
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "vector" CASCADE;
 
 -- ============================================================================
 -- 🔧 MESSENGER CORE TABLES (Enhanced from previous version)
@@ -144,9 +143,6 @@ CREATE TABLE IF NOT EXISTS messenger_messages (
   is_deleted BOOLEAN DEFAULT false,
   deleted_at TIMESTAMP WITH TIME ZONE,
   is_pinned BOOLEAN DEFAULT false,
-  
-  -- Search & Discovery
-  content_vector vector(1536), -- For semantic search
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -310,17 +306,17 @@ CREATE TABLE IF NOT EXISTS messenger_shared_generations (
 -- Core indexes
 CREATE INDEX IF NOT EXISTS idx_messenger_users_clerk_id ON messenger_users(clerk_id);
 CREATE INDEX IF NOT EXISTS idx_messenger_users_username ON messenger_users(username);
-CREATE INDEX IF NOT EXISTS idx_messenger_users_online ON messenger_users(is_online) WHERE is_online = true;
+CREATE INDEX IF NOT EXISTS idx_messenger_users_online ON messenger_users(is_online);
 
 -- Message indexes for fast retrieval
 CREATE INDEX IF NOT EXISTS idx_messenger_messages_room_time ON messenger_messages(room_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messenger_messages_sender ON messenger_messages(sender_id);
-CREATE INDEX IF NOT EXISTS idx_messenger_messages_thread ON messenger_messages(reply_to_id) WHERE reply_to_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messenger_messages_thread ON messenger_messages(reply_to_id);
 CREATE INDEX IF NOT EXISTS idx_messenger_messages_search ON messenger_messages USING GIN(to_tsvector('english', content));
 
 -- Room and participant indexes
-CREATE INDEX IF NOT EXISTS idx_messenger_room_participants_room ON messenger_room_participants(room_id) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_messenger_room_participants_user ON messenger_room_participants(user_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_messenger_room_participants_room ON messenger_room_participants(room_id);
+CREATE INDEX IF NOT EXISTS idx_messenger_room_participants_user ON messenger_room_participants(user_id);
 CREATE INDEX IF NOT EXISTS idx_messenger_chat_rooms_type ON messenger_chat_rooms(room_type);
 
 -- Friendship indexes
@@ -353,28 +349,31 @@ ALTER TABLE messenger_story_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messenger_polls ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messenger_shared_generations ENABLE ROW LEVEL SECURITY;
 
--- Enhanced user policies
-CREATE POLICY "messenger_users_policy" ON messenger_users
-  FOR ALL USING (
+-- Simple, working user policies
+CREATE POLICY "messenger_users_select" ON messenger_users
+  FOR SELECT USING (
     clerk_id = auth.jwt() ->> 'sub' OR
-    (
-      show_online_status = true AND
-      id IN (
-        SELECT CASE 
-          WHEN requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') 
-          THEN addressee_id 
-          ELSE requester_id 
-        END
-        FROM messenger_friendships 
-        WHERE status = 'accepted' AND (
-          requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
-          addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
-        )
+    id IN (
+      SELECT CASE 
+        WHEN requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') 
+        THEN addressee_id 
+        ELSE requester_id 
+      END
+      FROM messenger_friendships 
+      WHERE status = 'accepted' AND (
+        requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+        addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
       )
     )
   );
 
--- Enhanced room policies
+CREATE POLICY "messenger_users_update" ON messenger_users
+  FOR UPDATE USING (clerk_id = auth.jwt() ->> 'sub');
+
+CREATE POLICY "messenger_users_insert" ON messenger_users
+  FOR INSERT WITH CHECK (clerk_id = auth.jwt() ->> 'sub');
+
+-- Room policies
 CREATE POLICY "messenger_chat_rooms_policy" ON messenger_chat_rooms
   FOR ALL USING (
     id IN (
@@ -384,7 +383,18 @@ CREATE POLICY "messenger_chat_rooms_policy" ON messenger_chat_rooms
     )
   );
 
--- Enhanced message policies with AI generation support
+-- Room participants policies  
+CREATE POLICY "messenger_room_participants_policy" ON messenger_room_participants
+  FOR ALL USING (
+    user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+    room_id IN (
+      SELECT room_id FROM messenger_room_participants 
+      WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+      AND is_active = true
+    )
+  );
+
+-- Message policies
 CREATE POLICY "messenger_messages_policy" ON messenger_messages
   FOR ALL USING (
     room_id IN (
@@ -395,12 +405,56 @@ CREATE POLICY "messenger_messages_policy" ON messenger_messages
     (is_deleted = false OR sender_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub'))
   );
 
+-- Friendship policies
+CREATE POLICY "messenger_friendships_policy" ON messenger_friendships
+  FOR ALL USING (
+    requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+    addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+  );
+
+-- Read status policies
+CREATE POLICY "messenger_read_status_policy" ON messenger_read_status
+  FOR ALL USING (
+    user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+    message_id IN (
+      SELECT id FROM messenger_messages 
+      WHERE room_id IN (
+        SELECT room_id FROM messenger_room_participants 
+        WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+        AND is_active = true
+      )
+    )
+  );
+
+-- Voice message policies
+CREATE POLICY "messenger_voice_messages_policy" ON messenger_voice_messages
+  FOR ALL USING (
+    message_id IN (
+      SELECT id FROM messenger_messages 
+      WHERE room_id IN (
+        SELECT room_id FROM messenger_room_participants 
+        WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+        AND is_active = true
+      )
+    )
+  );
+
+-- Call policies
+CREATE POLICY "messenger_calls_policy" ON messenger_calls
+  FOR ALL USING (
+    room_id IN (
+      SELECT room_id FROM messenger_room_participants 
+      WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+      AND is_active = true
+    )
+  );
+
 -- Story policies
 CREATE POLICY "messenger_stories_policy" ON messenger_stories
   FOR ALL USING (
     user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
-    (visibility = 'public' AND expires_at > NOW()) OR
-    (visibility = 'friends' AND expires_at > NOW() AND user_id IN (
+    (visibility = 'public') OR
+    (visibility = 'friends' AND user_id IN (
       SELECT CASE 
         WHEN requester_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') 
         THEN addressee_id 
@@ -412,6 +466,43 @@ CREATE POLICY "messenger_stories_policy" ON messenger_stories
         addressee_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
       )
     ))
+  );
+
+-- Story view policies
+CREATE POLICY "messenger_story_views_policy" ON messenger_story_views
+  FOR ALL USING (
+    viewer_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+    story_id IN (
+      SELECT id FROM messenger_stories 
+      WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+    )
+  );
+
+-- Poll policies
+CREATE POLICY "messenger_polls_policy" ON messenger_polls
+  FOR ALL USING (
+    message_id IN (
+      SELECT id FROM messenger_messages 
+      WHERE room_id IN (
+        SELECT room_id FROM messenger_room_participants 
+        WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+        AND is_active = true
+      )
+    )
+  );
+
+-- Shared generation policies
+CREATE POLICY "messenger_shared_generations_policy" ON messenger_shared_generations
+  FOR ALL USING (
+    shared_by = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub') OR
+    message_id IN (
+      SELECT id FROM messenger_messages 
+      WHERE room_id IN (
+        SELECT room_id FROM messenger_room_participants 
+        WHERE user_id = (SELECT id FROM messenger_users WHERE clerk_id = auth.jwt() ->> 'sub')
+        AND is_active = true
+      )
+    )
   );
 
 -- ============================================================================
@@ -878,5 +969,5 @@ BEGIN
   RAISE NOTICE '🚀 READY FOR: Enhanced UI integration with docked chat design!';
   RAISE NOTICE '🔗 COMPATIBLE: Fully compatible with existing AI generation system';
   RAISE NOTICE '';
-  RAISE NOTICE '⭐ Deploy this schema and copy the new MessengerComponent for the complete experience!';
+  RAISE NOTICE '⭐ Deploy this schema and your enhanced messenger is ready!';
 END $$;
