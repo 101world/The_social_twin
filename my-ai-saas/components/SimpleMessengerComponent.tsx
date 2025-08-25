@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   MessageCircle, 
   Users, 
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import FriendSearchModal from './FriendSearchModal';
 import FriendRequestsPanel from './FriendRequestsPanel';
+import { useRealtimeMessages } from '../hooks/useRealtimeMessages';
 
 // Enhanced messenger component with full chat interface
 export default function SimpleMessengerComponent() {
@@ -36,11 +37,43 @@ export default function SimpleMessengerComponent() {
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(true);
   
   // Mock current user clerk ID (in real app, get from useUser())
   const currentUserClerkId = "user_12345"; // This would come from Clerk auth
   
   const bottomInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Real-time message subscription
+  const { isConnected } = useRealtimeMessages({
+    roomId: currentRoomId,
+    currentUserClerkId,
+    onNewMessage: (message) => {
+      setMessages(prev => {
+        // Avoid duplicates by checking if message already exists
+        if (prev.some(m => m.id === message.id)) {
+          return prev;
+        }
+        return [...prev, message];
+      });
+      
+      // Auto-scroll to bottom when new message arrives
+      setTimeout(() => {
+        if (bottomInputRef.current) {
+          bottomInputRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    },
+    onMessageUpdate: (message) => {
+      setMessages(prev => 
+        prev.map(m => m.id === message.id ? { ...m, ...message } : m)
+      );
+    },
+    onMessageDelete: (messageId) => {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    }
+  });
 
   const testFriends = [
     { id: '1', name: 'Alice AI', avatar: 'A', isOnline: true, status: 'Building amazing AI models' },
@@ -52,6 +85,35 @@ export default function SimpleMessengerComponent() {
     { id: '4', name: 'General Chat', avatar: '#', members: 127, description: 'Main community discussion' },
     { id: '5', name: 'AI Creators', avatar: '#', members: 89, description: 'AI enthusiasts and creators' }
   ];
+
+  // Load real friends from database
+  const loadFriends = async () => {
+    try {
+      const response = await fetch('/api/messenger/get-friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userClerkId: currentUserClerkId }),
+      });
+
+      if (response.ok) {
+        const friendsData = await response.json();
+        setFriends(friendsData);
+      } else {
+        console.error('Failed to load friends');
+        setFriends([]);
+      }
+    } catch (error) {
+      console.error('Load friends error:', error);
+      setFriends([]);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
+
+  // Load friends on component mount
+  useEffect(() => {
+    loadFriends();
+  }, [currentUserClerkId]);
 
   // Real messaging functions
   const startChatWithUser = async (friendClerkId: string) => {
@@ -131,13 +193,12 @@ export default function SimpleMessengerComponent() {
         }),
       });
 
-      if (response.ok) {
-        await loadMessages(currentRoomId);
-      } else {
+      if (!response.ok) {
         console.error('Failed to send message');
         setMessageInput(messageContent);
         alert('Failed to send message. Please try again.');
       }
+      // Note: No need to reload messages - real-time subscription will handle the new message
     } catch (error) {
       console.error('Send message error:', error);
       setMessageInput(messageContent);
@@ -234,7 +295,7 @@ export default function SimpleMessengerComponent() {
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-blue-600" />
               <span className="font-semibold text-white">Friends</span>
-              <span className="text-sm text-gray-400">({testFriends.length})</span>
+              <span className="text-sm text-gray-400">({friends.length})</span>
             </div>
             {friendsCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
           </button>
@@ -245,35 +306,55 @@ export default function SimpleMessengerComponent() {
               <FriendRequestsPanel 
                 currentUserClerkId={currentUserClerkId}
                 onRequestsChange={() => {
-                  // Could refresh friends list here when requests are accepted
-                  console.log('Friend requests updated');
+                  // Refresh friends list when a request is accepted
+                  loadFriends();
+                  console.log('Friend requests updated - refreshing friends list');
                 }}
               />
               
               {/* Friends List */}
               <div className="max-h-32 overflow-y-auto bg-gray-900">
-                {testFriends.map((friend) => (
-                  <button
-                    key={friend.id}
-                    onClick={() => handleSelectChat(friend)}
-                    className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
-                      selectedChat?.id === friend.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
-                    }`}
-                  >
-                    <div className="relative">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
-                        <span className="text-sm text-white">{friend.avatar}</span>
+                {loadingFriends ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="ml-2 text-sm text-gray-400">Loading friends...</span>
+                  </div>
+                ) : friends.length > 0 ? (
+                  friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      onClick={() => handleSelectChat(friend)}
+                      className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
+                        selectedChat?.id === friend.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
+                      }`}
+                    >
+                      <div className="relative">
+                        <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                          {friend.avatarUrl ? (
+                            <img
+                              src={friend.avatarUrl}
+                              alt={friend.username}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm text-white">{friend.avatar}</span>
+                          )}
+                        </div>
+                        {friend.isOnline && (
+                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-black"></div>
+                        )}
                       </div>
-                      {friend.isOnline && (
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-black"></div>
-                      )}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="text-sm font-medium text-white">{friend.name}</div>
-                      <div className="text-xs text-gray-400 truncate">{friend.status}</div>
-                    </div>
-                  </button>
-                ))}
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-medium text-white">{friend.name}</div>
+                        <div className="text-xs text-gray-400 truncate">{friend.status}</div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-gray-500 text-sm">
+                    No friends yet. Add some friends to start chatting!
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -330,8 +411,14 @@ export default function SimpleMessengerComponent() {
                   </div>
                   <div>
                     <div className="font-semibold text-white">{selectedChat.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-400 flex items-center gap-2">
                       {selectedChat.members ? `${selectedChat.members} members` : 'Online'}
+                      {currentRoomId && (
+                        <span className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-500'}`}></div>
+                          {isConnected ? 'Live' : 'Offline'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
