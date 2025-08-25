@@ -280,6 +280,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
   const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'dashboard'>('chat');
+  
+  // Centralized dropdown state
+  const [selectedProject, setSelectedProject] = useState<string>('Default Project');
+  const [selectedTopic, setSelectedTopic] = useState<string>('All Topics');
+  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  
   // Dashboard collapsibles
   const [dashOverviewOpen, setDashOverviewOpen] = useState(true);
   const [dashSettingsOpen, setDashSettingsOpen] = useState(false);
@@ -297,10 +303,50 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Hover state for showing video controls only on hover in Generated grid
   const [hoverVideoIds, setHoverVideoIds] = useState<Set<string>>(() => new Set());
 
+  // Dropdown options based on active tab
+  const projectOptions = [
+    'Default Project',
+    'AI Assistant',
+    'Image Generator',
+    'Video Creator',
+    'Content Writer',
+    'Research Helper'
+  ];
+  
+  const topicOptions = [
+    'All Topics',
+    'Breaking News',
+    'Technology', 
+    'Business',
+    'Science',
+    'Sports',
+    'Entertainment',
+    'Health',
+    'Politics',
+    'World News'
+  ];
+
   // Reset viewer details when opening a new item
   useEffect(() => {
     if (viewerOpen) setViewerDetailsOpen(false);
   }, [viewerOpen, viewerItem]);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [dropdownOpen]);
   
   // Typing indicator for pulsating shadow effect
   useEffect(() => {
@@ -2008,8 +2054,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - always visible; scrollable on mobile */}
+        {/* Top Navigation with centralized dropdown */}
           <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+            {/* Left: Tab Navigation */}
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
@@ -2034,7 +2081,70 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ))}
             </div>
             
-            {/* Top bar clean - no action buttons */}
+            {/* Center: Context-Aware Dropdown */}
+            <div className="flex-1 flex justify-center px-4">
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDropdownOpen(!dropdownOpen);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-lg border transition-colors min-w-40 justify-between ${
+                    darkMode
+                      ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
+                      : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
+                  }`}
+                >
+                  <span className="truncate">
+                    {activeTab === 'chat' ? selectedProject : 
+                     activeTab === 'news' ? selectedTopic : 
+                     'Settings'}
+                  </span>
+                  <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {dropdownOpen && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
+                      darkMode
+                        ? 'bg-neutral-800 border-neutral-700'
+                        : 'bg-white border-neutral-300'
+                    }`}
+                  >
+                    {(activeTab === 'chat' ? projectOptions : 
+                      activeTab === 'news' ? topicOptions : 
+                      ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => {
+                          if (activeTab === 'chat') {
+                            setSelectedProject(option);
+                          } else if (activeTab === 'news') {
+                            setSelectedTopic(option);
+                          }
+                          setDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 transition-colors ${
+                          darkMode
+                            ? 'hover:bg-white text-neutral-100'
+                            : 'hover:bg-black text-neutral-900'
+                        } ${(activeTab === 'chat' && option === selectedProject) || 
+                             (activeTab === 'news' && option === selectedTopic)
+                            ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
+                            : ''}`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Right: Clean top bar */}
             <div className="flex items-center gap-2">
               {/* Clean top bar */}
             </div>
