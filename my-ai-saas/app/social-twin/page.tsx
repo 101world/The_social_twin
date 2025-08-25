@@ -1361,6 +1361,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       console.log('❌ Empty input, returning');
       return;
     }
+
+    // Check authentication before allowing generation
+    if (!userId) {
+      console.log('❌ No userId, user not authenticated');
+      setMessages((prev) => [
+        ...prev,
+        { id: generateId(), role: "error", content: "Please sign in to generate content" },
+      ]);
+      return;
+    }
+
+    // Skip credit check on mobile if credits are loading (mobile-friendly)
+    if (!canAffordGeneration && !isMobile) {
+      console.log('❌ Cannot afford generation (desktop check)');
+      setMessages((prev) => [
+        ...prev,
+        { id: generateId(), role: "error", content: `Need ${generationCost} credits for this generation` },
+      ]);
+      return;
+    }
+
+    // On mobile, allow generation even if credit check is uncertain
+    if (isMobile && creditInfo?.credits === undefined) {
+      console.log('📱 MOBILE: Allowing generation despite uncertain credit status');
+    }
     // Chat commands: save project / create project <title>
     const lower = trimmed.toLowerCase();
     if (lower === 'save project' || lower === 'create project') {
@@ -1424,18 +1449,43 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       };
       setMessages((prev)=> [...prev, placeholder]);
       
-      // Use the new tracking API endpoint
-  const res = await fetch("/api/generate-with-tracking", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Id": userId || "",
-          // Mark mobile requests explicitly to enable server-side optimizations
-          "X-Mobile-Request": isMobile ? "true" : "false",
-        },
-        body: JSON.stringify({
+      // Use the new tracking API endpoint with mobile-specific handling
+      console.log('📱 MOBILE DEBUG - About to fetch with:', {
+        isMobile,
+        userId: userId ? 'SET' : 'MISSING',
+        mode,
+        prompt_length: trimmed.length,
+        navigator_ua: navigator.userAgent,
+        window_width: window.innerWidth
+      });
+
+      // Create AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutMs = 299000; // 299 seconds to match server
+      const timeoutId = setTimeout(() => {
+        console.log('📱 MOBILE: Client timeout at 299s');
+        controller.abort();
+      }, timeoutMs);
+
+      let res: Response;
+      try {
+        res = await fetch("/api/generate-with-tracking", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": userId || "",
+            // Mark mobile requests explicitly to enable server-side optimizations
+            "X-Mobile-Request": isMobile ? "true" : "false",
+            // Add additional mobile debugging headers
+            "X-Window-Width": window.innerWidth.toString(),
+            "X-User-Agent-Mobile": navigator.userAgent,
+          },
+          body: JSON.stringify({
           prompt: trimmed,
           mode,
+          // Add userId to body as fallback for mobile auth issues
+          userId: userId || undefined,
           // Do NOT pass client runpodUrl by default; always prefer server-side config
           // If you need to allow manual overrides, wire a dedicated "override" toggle and send conditionally
           provider: textProvider,
@@ -1470,6 +1520,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           saveToLibrary: saveToLibrary === true,
         }),
       });
+
+      clearTimeout(timeoutId);
+      console.log('📱 MOBILE DEBUG - Fetch completed:', {
+        status: res.status,
+        ok: res.ok,
+        headers: Object.fromEntries(res.headers.entries())
+      });
+
+      } catch (error) {
+        clearTimeout(timeoutId);
+        const fetchError = error as any;
+        console.error('📱 MOBILE FETCH ERROR:', fetchError);
+        
+        if (fetchError?.name === 'AbortError') {
+          setMessages((prev) => [
+            ...prev,
+            { id: generateId(), role: "error", content: "Request timed out after 299 seconds. Please try again." },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { id: generateId(), role: "error", content: `Network error: ${fetchError?.message || 'Unknown error'}` },
+          ]);
+        }
+        return;
+      }
 
       console.log('🌐 API Response status:', res.status);
       console.log('🌐 API Response headers:', res.headers);
@@ -3053,7 +3129,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
-                {/* Prompt input area - match desktop layout on mobile; no bg behind icons */}
+                {/* Prompt input area - unified desktop feel */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
                   <textarea
                     value={input}
@@ -3067,23 +3143,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                     disabled={isGeneratingBatch}
                   />
-                  {/* Action buttons inline (desktop layout) with no bg behind icons */}
-                  <div className="flex items-center gap-2 self-center pl-1">
+                    {/* Action buttons in 2x2 grid for more text box space */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} cursor-pointer flex items-center justify-center transition-transform hover:scale-105 ${(!canAffordGeneration || !input.trim() || isGeneratingBatch) ? 'opacity-50 cursor-not-allowed' : ''} text-neutral-600 dark:text-neutral-300 hover:text-blue-600`}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none">
-                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-500">
+                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    <label className={`group cursor-pointer flex items-center justify-center`} title="Attach image/video/pdf" aria-label="Attach">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="text-neutral-600 dark:text-neutral-300 group-hover:text-neutral-500">
-                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
+                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
                         type="file"
@@ -3101,13 +3178,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
+                    
+                    {/* Bottom row: Folder + Debug (mobile only) */}
                     <button
                       onClick={() => setFolderModalOpen(true)}
-                      className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
+                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                       title="Organize in folder"
-                      aria-label="Folder"
                     >
-                      <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
+                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
                       </svg>
                     </button>
@@ -3134,11 +3212,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
                           alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
                         }}
-                        className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
+                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                         title="Debug info"
-                        aria-label="Debug"
                       >
-                        <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
                           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                           <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
                           <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
@@ -3147,15 +3224,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     ) : (
                       <button
                         onClick={() => {
+                          // Simple save functionality - could be enhanced later
                           const data = { messages, input, mode };
                           console.log('Saving conversation:', data);
                         }}
                         disabled={!messages.length}
-                        className={`flex items-center justify-center ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} text-neutral-600 dark:text-neutral-300 hover:text-neutral-800 dark:hover:text-neutral-100`}
+                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                         title="Save as recipe"
-                        aria-label="Save"
                       >
-                        <svg width={isMobile ? "16" : "16"} height={isMobile ? "16" : "16"} viewBox="0 0 24 24" fill="none">
+                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
                           <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
                           <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>

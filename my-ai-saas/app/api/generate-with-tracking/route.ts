@@ -48,10 +48,24 @@ export async function POST(req: NextRequest) {
       const hdrUid = req.headers.get('x-user-id');
       const bodyUid = typeof body?.userId === 'string' ? body.userId : undefined;
       userId = (hdrUid || bodyUid || null) as string | null;
+      
+      if (isMobileRequest && userId) {
+        console.log('📱 MOBILE: Using fallback auth with userId:', userId);
+      }
     }
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('❌ No userId found - auth failed');
+      return NextResponse.json({ 
+        error: 'Authentication required', 
+        details: 'Please sign in to generate content',
+        mobile_debug: isMobileRequest ? {
+          clerk_auth: authRes.userId ? 'present' : 'missing',
+          header_uid: !!req.headers.get('x-user-id'),
+          body_uid: !!body?.userId,
+          timestamp: new Date().toISOString()
+        } : undefined
+      }, { status: 401 });
     }
     
     // Log the complete request for debugging
