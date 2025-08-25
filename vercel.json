@@ -1,9 +1,6 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "installCommand": "npm ci --prefix my-ai-saas || npm install --prefix my-ai-saas",
-  "buildCommand": "npm run build --prefix my-ai-saas",
-  "outputDirectory": "my-ai-saas/.next",
   "functions": {
     "my-ai-saas/app/api/**/*.ts": {
       "maxDuration": 300
