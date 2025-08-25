@@ -279,11 +279,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'dashboard'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'messenger' | 'dashboard'>('chat');
   
   // Centralized dropdown state
   const [selectedProject, setSelectedProject] = useState<string>('Default Project');
   const [selectedTopic, setSelectedTopic] = useState<string>('All Topics');
+  const [selectedMessengerFilter, setSelectedMessengerFilter] = useState<string>('All Conversations');
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   
   // Dashboard collapsibles
@@ -324,6 +325,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     'Health',
     'Politics',
     'World News'
+  ];
+  
+  const messengerOptions = [
+    'All Conversations',
+    'Friends Only',
+    'Communities',
+    'Archived',
+    'Unread',
+    'Privacy Mode'
   ];
 
   // Reset viewer details when opening a new item
@@ -2061,6 +2071,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
           { id: 'news', label: 'News', icon: '📰' },
+          { id: 'messenger', label: 'Messenger', icon: '💌' },
           { id: 'dashboard', label: 'Dashboard', icon: '📊' }
         ].map((tab) => (
                 <button
@@ -2098,6 +2109,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <span className="truncate">
                     {activeTab === 'chat' ? selectedProject : 
                      activeTab === 'news' ? selectedTopic : 
+                     activeTab === 'messenger' ? selectedMessengerFilter :
                      'Settings'}
                   </span>
                   <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2116,6 +2128,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   >
                     {(activeTab === 'chat' ? projectOptions : 
                       activeTab === 'news' ? topicOptions : 
+                      activeTab === 'messenger' ? messengerOptions :
                       ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
                       <button
                         key={option}
@@ -2124,6 +2137,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             setSelectedProject(option);
                           } else if (activeTab === 'news') {
                             setSelectedTopic(option);
+                          } else if (activeTab === 'messenger') {
+                            setSelectedMessengerFilter(option);
                           }
                           setDropdownOpen(false);
                         }}
@@ -2132,7 +2147,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             ? 'hover:bg-white text-neutral-100'
                             : 'hover:bg-black text-neutral-900'
                         } ${(activeTab === 'chat' && option === selectedProject) || 
-                             (activeTab === 'news' && option === selectedTopic)
+                             (activeTab === 'news' && option === selectedTopic) ||
+                             (activeTab === 'messenger' && option === selectedMessengerFilter)
                             ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
                             : ''}`}
                       >
@@ -3408,6 +3424,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   className="w-full h-full border-0"
                   title="News"
                   allow="web-share"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'messenger' && (
+            <div className="flex-1 overflow-hidden">
+              {/* Messenger page embed */}
+              <div className="h-full w-full">
+                <iframe 
+                  src="/messenger"
+                  className="w-full h-full border-0"
+                  title="101Messenger"
+                  allow="camera; microphone; geolocation"
                 />
               </div>
             </div>
