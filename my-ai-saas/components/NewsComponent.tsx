@@ -1,0 +1,438 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { Search, TrendingUp, ExternalLink, Clock, Filter, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Loader2, Play, Send } from 'lucide-react';
+
+interface NewsArticle {
+  id: string;
+  title: string;
+  content?: string;
+  snippet?: string;
+  summary?: string;
+  published_at: string;
+  source_name?: string;
+  source?: string;
+  source_url?: string;
+  url?: string;
+  category: string;
+  quality_score: number;
+  image_url?: string;
+}
+
+// Modern news card with mobile-optimized smaller thumbnails and high quality images
+const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleTrend = () => {
+    console.log('Trending:', article.title);
+  };
+
+  const openSource = () => {
+    const url = article.source_url || article.url;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const sourceName = article.source_name || article.source || 'Unknown Source';
+
+  if (layout === "large") {
+    return (
+      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500">
+        {article.image_url && (
+          <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden">
+            <img 
+              src={article.image_url} 
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+              loading="lazy"
+              style={{ imageRendering: 'auto' }}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="p-4 md:p-6">
+          <h2 className="font-bold text-white text-lg md:text-xl leading-tight mb-3 group-hover:text-orange-400 transition-colors">
+            {article.title}
+          </h2>
+          
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 text-sm text-gray-400">
+              <span className="font-semibold text-gray-200">{sourceName}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(article.published_at)}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleTrend}
+                className="flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
+              >
+                <TrendingUp className="w-3 h-3" />
+                <span className="hidden md:inline">Trend</span>
+              </button>
+              <button 
+                onClick={openSource}
+                className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
+      <div className="flex gap-3 md:gap-4 p-3 md:p-4">
+        {article.image_url && (
+          <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden">
+            <img 
+              src={article.image_url} 
+              alt={article.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 filter brightness-100 contrast-110 saturate-110"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white text-sm md:text-base leading-tight mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
+            {article.title}
+          </h3>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="font-medium text-gray-300">{sourceName}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(article.published_at)}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={handleTrend}
+                className="p-1.5 text-orange-500 hover:bg-orange-500/10 rounded-full transition-colors"
+                title="Trend this"
+              >
+                <TrendingUp className="w-3 h-3" />
+              </button>
+              <button 
+                onClick={openSource}
+                className="p-1.5 text-gray-400 hover:text-orange-500 transition-colors"
+                title="View source"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HeadlinesSection = ({ title, articles, layout = "default" }: { title: string; articles: NewsArticle[]; layout?: "default" | "hero" | "two-col" | "three-col" }) => {
+  if (articles.length === 0) return null;
+
+  const getGridClass = () => {
+    switch (layout) {
+      case "hero": return "grid-cols-1";
+      case "two-col": return "grid-cols-1 md:grid-cols-2";
+      case "three-col": return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+      default: return "grid-cols-1";
+    }
+  };
+
+  return (
+    <div className="mb-8 md:mb-12">
+      <div className="flex items-center gap-3 mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+        <div className="h-px bg-gray-800 flex-1"></div>
+      </div>
+      
+      <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+        {articles.map(article => (
+          <ModernNewsCard 
+            key={article.id} 
+            article={article} 
+            layout={layout === "hero" ? "large" : "default"}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default function NewsComponent() {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Mock data for development
+  useEffect(() => {
+    // Simulate API call
+    setTimeout(() => {
+      setArticles([
+        {
+          id: '1',
+          title: 'AI Revolution Continues: New Language Models Achieve Human-Level Performance',
+          published_at: new Date().toISOString(),
+          source_name: 'TechCrunch',
+          category: 'technology',
+          quality_score: 95,
+          image_url: '/api/placeholder/400/250'
+        },
+        {
+          id: '2',
+          title: 'Cryptocurrency Market Sees Major Gains Amid Institutional Adoption',
+          published_at: new Date(Date.now() - 3600000).toISOString(),
+          source_name: 'CoinDesk',
+          category: 'finance',
+          quality_score: 88,
+          image_url: '/api/placeholder/400/250'
+        },
+        {
+          id: '3',
+          title: 'Climate Tech Startups Raise Record $10B in Funding This Quarter',
+          published_at: new Date(Date.now() - 7200000).toISOString(),
+          source_name: 'Reuters',
+          category: 'environment',
+          quality_score: 92,
+          image_url: '/api/placeholder/400/250'
+        },
+        {
+          id: '4',
+          title: 'Meta Unveils Next-Generation VR Headset with Haptic Feedback',
+          published_at: new Date(Date.now() - 10800000).toISOString(),
+          source_name: 'The Verge',
+          category: 'technology',
+          quality_score: 87,
+          image_url: '/api/placeholder/400/250'
+        },
+        {
+          id: '5',
+          title: 'Global Supply Chain Disruptions Show Signs of Recovery',
+          published_at: new Date(Date.now() - 14400000).toISOString(),
+          source_name: 'Wall Street Journal',
+          category: 'business',
+          quality_score: 90,
+          image_url: '/api/placeholder/400/250'
+        },
+        {
+          id: '6',
+          title: 'Space Tourism Industry Reaches New Milestone with 100th Commercial Flight',
+          published_at: new Date(Date.now() - 18000000).toISOString(),
+          source_name: 'Space News',
+          category: 'science',
+          quality_score: 85,
+          image_url: '/api/placeholder/400/250'
+        },
+      ]);
+      setLoading(false);
+    }, 1000);
+  }, []);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery) return [];
+    return articles.filter(article => 
+      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.source_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, articles]);
+
+  if (loading) {
+    return (
+      <div className="h-full bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading latest news...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full bg-black text-white overflow-y-auto">
+      {/* Main Content - No navbar as this is embedded */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8">
+        
+        {/* Search Bar */}
+        <div className="mb-8 md:mb-12">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
+            <input
+              type="text"
+              placeholder="Search breaking news... Powered by 101World"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-3 md:py-4 text-base md:text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
+            />
+          </div>
+          
+          {/* Search Dropdown */}
+          {isSearchOpen && searchQuery && (
+            <div className="relative max-w-2xl mx-auto mt-2">
+              <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
+                <div className="p-4 border-b border-gray-800">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
+                </div>
+                {searchResults.slice(0, 5).map(article => (
+                  <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
+                    <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
+                    <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+                <div className="p-3 text-center border-t border-gray-800">
+                  <span className="text-xs text-gray-500">Powered by 101World</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Headlines Sections */}
+        <div onClick={() => setIsSearchOpen(false)}>
+          
+          {/* Breaking News - Hero Layout */}
+          <HeadlinesSection 
+            title="Breaking News" 
+            articles={articles.filter(a => a.image_url).slice(0, 1)} 
+            layout="hero" 
+          />
+          
+          {/* Top Stories - Two Column */}
+          <HeadlinesSection 
+            title="Top Stories" 
+            articles={articles.filter(a => a.image_url).slice(1, 3)} 
+            layout="two-col" 
+          />
+          
+          {/* World News - Three Column */}
+          <HeadlinesSection 
+            title="World News" 
+            articles={articles.filter(a => a.image_url).slice(3, 6)} 
+            layout="three-col" 
+          />
+          
+          {/* Technology - Two Column */}
+          <HeadlinesSection 
+            title="Technology" 
+            articles={articles.filter(a => 
+              a.image_url && (
+                a.title.toLowerCase().includes('tech') ||
+                a.title.toLowerCase().includes('ai') ||
+                a.category.toLowerCase().includes('tech')
+              )
+            ).slice(0, 2)} 
+            layout="two-col" 
+          />
+          
+          {/* Business - Three Column */}
+          <HeadlinesSection 
+            title="Business" 
+            articles={articles.filter(a => 
+              a.image_url && (
+                a.title.toLowerCase().includes('business') ||
+                a.title.toLowerCase().includes('market') ||
+                a.category.toLowerCase().includes('business')
+              )
+            ).slice(0, 3)} 
+            layout="three-col" 
+          />
+          
+          {/* Latest Updates - Two Column */}
+          <HeadlinesSection 
+            title="Latest Updates" 
+            articles={articles.filter(a => a.image_url).slice(6, 8)} 
+            layout="two-col" 
+          />
+          
+        </div>
+        
+        {/* Unified Chat Input for News Comments/Sharing */}
+        <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-4" style={{
+          boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
+        }}>
+          <style jsx>{`
+            @keyframes pulseBlue {
+              0%, 100% { 
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+              }
+              50% { 
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+              }
+            }
+          `}</style>
+          <div className="max-w-4xl mx-auto">
+            <div className="flex gap-2 items-end">
+              <textarea
+                placeholder="Share your thoughts on the news..."
+                className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 bg-gray-800 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
+                style={{ fontSize: '14px' }}
+              />
+              
+              {/* Action buttons in 2x2 grid */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* Top row: Send + Share */}
+                <button
+                  className="group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-blue-500/10"
+                  title="Share comment"
+                  aria-label="Share"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                    <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button className="group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Share article">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                
+                {/* Bottom row: Save + Trending */}
+                <button className="p-2 rounded-lg transition-all duration-300 hover:bg-gray-700 hover:scale-105" title="Save article"> 
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors stroke-current">
+                    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <button className="p-2 rounded border transition-colors bg-gray-800 border-gray-600 text-gray-100 hover:bg-gray-700" title="Make trending">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 13l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.35 0 4.49.9 6.1 2.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Add padding bottom to account for fixed input */}
+        <div className="h-20"></div>
+      </div>
+    </div>
+  );
+}

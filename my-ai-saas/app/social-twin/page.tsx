@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
+import MessengerComponent from "@/components/MessengerComponent";
+import NewsComponent from "@/components/NewsComponent";
 
 // Utility function to safely get location origin
 function getLocationOrigin(): string {
@@ -3397,29 +3399,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
           {activeTab === 'news' && (
             <div className="flex-1 overflow-hidden">
-              {/* News page embed */}
-              <div className="h-full w-full">
-                <iframe 
-                  src="/news"
-                  className="w-full h-full border-0"
-                  title="News"
-                  allow="web-share"
-                />
-              </div>
+              <NewsComponent />
             </div>
           )}
 
           {activeTab === 'messenger' && (
             <div className="flex-1 overflow-hidden">
-              {/* Messenger page embed */}
-              <div className="h-full w-full">
-                <iframe 
-                  src="/messenger"
-                  className="w-full h-full border-0"
-                  title="101Messenger"
-                  allow="camera; microphone; geolocation"
-                />
-              </div>
+              <MessengerComponent />
             </div>
           )}
 
