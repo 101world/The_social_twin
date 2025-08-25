@@ -200,10 +200,14 @@ export default function MessengerTestPanel() {
               addResult('❌ Failed to retrieve messages');
             }
           } else {
-            addResult('❌ Failed to send message');
+            let sendErr = '';
+            try { sendErr = await messageResponse.text(); } catch {}
+            addResult(`❌ Failed to send message${sendErr ? `: ${sendErr}` : ''}`);
           }
         } else {
-          addResult('❌ Failed to create DM room');
+          let errText = '';
+          try { errText = await dmResponse.text(); } catch {}
+          addResult(`❌ Failed to create DM room${errText ? `: ${errText}` : ''}`);
         }
       } catch (error) {
         addResult(`❌ DM room error: ${error}`);
