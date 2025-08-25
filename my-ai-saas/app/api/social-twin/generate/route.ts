@@ -1,14 +1,14 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient, getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
+import { createSafeSupabaseClient, getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
 import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
 import { promises as fs } from 'fs';
 import path from 'path';
 
 type Mode = 'text' | 'image' | 'image-modify' | 'video';
 
-async function ensureSocialTwinTopic(supabase: ReturnType<typeof createSupabaseClient> | ReturnType<typeof createSupabaseAdminClient>, userId: string) {
+async function ensureSocialTwinTopic(supabase: ReturnType<typeof createSafeSupabaseClient>, userId: string) {
   const today = new Date().toISOString().slice(0, 10);
   const title = `Social Twin - ${today}`;
   const { data: existing } = await supabase
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
     const canLog = Boolean(userId);
     // Prefer admin client for reliable writes regardless of RLS
-    let supabase: ReturnType<typeof createSupabaseAdminClient> | ReturnType<typeof createSupabaseClient> | null = null;
+    let supabase: ReturnType<typeof createSafeSupabaseClient> | null = null;
     let topicId: string | null = null;
     if (canLog) {
       try {
