@@ -1506,7 +1506,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               effects_on: effectsOn || undefined,
               video_model: mode==='video' ? videoModel : undefined,
               video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
-          userId: userId || undefined,
           attachment: attached || undefined,
           imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
           workflow_settings: showWorkflowPopoverFor ? {
