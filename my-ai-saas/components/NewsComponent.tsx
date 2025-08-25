@@ -19,6 +19,19 @@ interface NewsArticle {
   image_url?: string;
 }
 
+// Build a resilient image URL (placeholder if missing) like the standalone News page
+function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
+  if (article.image_url) return article.image_url;
+  const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+  const colorIndex = article.title.length % fallbackColors.length;
+  const color = fallbackColors[colorIndex];
+  const maxLen = size === 'small' ? 30 : size === 'large' ? 60 : 40;
+  const encodedTitle = encodeURIComponent(article.title.slice(0, maxLen) || 'News');
+  if (size === 'large') return `https://via.placeholder.com/640x360/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'small') return `https://via.placeholder.com/120x80/${color}/ffffff?text=${encodedTitle}`;
+  return `https://via.placeholder.com/400x225/${color}/ffffff?text=${encodedTitle}`;
+}
+
 // Modern news card with mobile-optimized smaller thumbnails and high quality images
 const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
   const formatDate = (dateString: string) => {
@@ -45,23 +58,20 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
 
   if (layout === "large") {
     return (
-      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500">
+      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 relative">
         <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-          {article.image_url ? (
-            <img 
-              src={article.image_url} 
-              alt={article.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
-              loading="lazy"
-              style={{ imageRendering: 'auto' }}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="text-gray-500 text-sm">No image</div>
-          )}
+          <img 
+            src={getCardImageUrl(article, 'large')} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://picsum.photos/640/360?random=${article.id || Math.random()}`;
+            }}
+          />
+          {/* Subtle top gradient like Perplexity Discover */}
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
         </div>
         
         <div className="p-4 md:p-6">
@@ -103,20 +113,16 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
     <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
       <div className="flex gap-3 md:gap-4 p-3 md:p-4">
         <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-          {article.image_url ? (
-            <img 
-              src={article.image_url} 
-              alt={article.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 filter brightness-100 contrast-110 saturate-110"
-              loading="lazy"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <span className="text-gray-600 text-xs">No image</span>
-          )}
+          <img 
+            src={getCardImageUrl(article, 'small')} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 filter brightness-100 contrast-110 saturate-110"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://picsum.photos/120/80?random=${article.id || Math.random()}`;
+            }}
+          />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -169,13 +175,13 @@ const HeadlinesSection = ({ title, articles, layout = "default" }: { title: stri
   };
 
   return (
-    <div className="mb-8 md:mb-12">
-      <div className="flex items-center gap-3 mb-4 md:mb-6">
+    <div className="mb-6 md:mb-8">
+      <div className="flex items-center gap-2 mb-3 md:mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
         <div className="h-px bg-gray-800 flex-1"></div>
       </div>
       
-      <div className={`grid ${getGridClass()} gap-4 md:gap-6`}>
+      <div className={`grid ${getGridClass()} gap-3 md:gap-4`}>
         {articles.map(article => (
           <ModernNewsCard 
             key={article.id} 
@@ -192,12 +198,12 @@ const HeadlinesSection = ({ title, articles, layout = "default" }: { title: stri
 const HorizontalStrip = ({ title, articles, large = false }: { title: string; articles: NewsArticle[]; large?: boolean }) => {
   if (!articles.length) return null;
   return (
-    <section className="mb-8">
-      <div className="flex items-center justify-between mb-4 md:mb-6">
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
         <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
       </div>
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
-        <div className="flex gap-4 md:gap-6">
+        <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
             <div key={a.id} className={large ? 'min-w-[360px] max-w-[360px]' : 'min-w-[300px] max-w-[300px]'}>
               <ModernNewsCard article={a} layout={large ? 'large' : 'default'} />
@@ -215,13 +221,24 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [detectedSimple, setDetectedSimple] = useState<boolean>(false);
+  const [continent, setContinent] = useState<string>('');
+  const [country, setCountry] = useState<string>('');
 
   // Load real news from API
   useEffect(() => {
-    const loadNews = async () => {
+  const loadNews = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/news?limit=50', { cache: 'no-store' });
+    const qs = new URLSearchParams();
+    qs.set('limit', '50');
+  // Prefer image-rich articles to match UI sections that require thumbnails
+  qs.set('media', 'images');
+    if (country) {
+      qs.set('country', country);
+    } else if (continent) {
+      qs.set('continent', continent);
+    }
+    const response = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
@@ -264,8 +281,8 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
       }
     };
 
-    loadNews();
-  }, []);
+  loadNews();
+  }, [country, continent]);
 
   // Detect simple mode (docked) if not provided
   useEffect(() => {
@@ -313,8 +330,119 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   return (
     <div className="h-full bg-black text-white overflow-y-auto">
       <div className="h-full flex flex-col">
-        {/* Search Bar */}
-        <div className="flex-shrink-0 p-4 md:p-6">
+        {/* Filters */}
+  <div className="flex-shrink-0 p-3 md:p-5">
+          {/* Country Dropdown - centered */}
+          <div className="max-w-2xl mx-auto mb-2">
+            <div className="flex items-center justify-center">
+              <select
+                value={continent}
+                onChange={(e) => { setContinent(e.target.value); setCountry(''); }}
+                className="mr-2 px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm"
+                aria-label="Select continent"
+              >
+                <option value="">Continent</option>
+                <option value="africa">Africa</option>
+                <option value="asia">Asia</option>
+                <option value="europe">Europe</option>
+                <option value="north-america">North America</option>
+                <option value="south-america">South America</option>
+                <option value="oceania">Oceania</option>
+              </select>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm"
+                aria-label="Select country"
+              >
+                <option value="">Country</option>
+                {continent === 'africa' && (
+                  <>
+                    <option value="ZA">South Africa</option>
+                    <option value="NG">Nigeria</option>
+                    <option value="KE">Kenya</option>
+                    <option value="EG">Egypt</option>
+                    <option value="GH">Ghana</option>
+                    <option value="MA">Morocco</option>
+                    <option value="TZ">Tanzania</option>
+                    <option value="UG">Uganda</option>
+                    <option value="DZ">Algeria</option>
+                    <option value="ET">Ethiopia</option>
+                  </>
+                )}
+                {continent === 'asia' && (
+                  <>
+                    <option value="IN">India</option>
+                    <option value="CN">China</option>
+                    <option value="JP">Japan</option>
+                    <option value="KR">South Korea</option>
+                    <option value="ID">Indonesia</option>
+                    <option value="PH">Philippines</option>
+                    <option value="TH">Thailand</option>
+                    <option value="MY">Malaysia</option>
+                    <option value="PK">Pakistan</option>
+                    <option value="VN">Vietnam</option>
+                  </>
+                )}
+                {continent === 'europe' && (
+                  <>
+                    <option value="GB">United Kingdom</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="IT">Italy</option>
+                    <option value="ES">Spain</option>
+                    <option value="NL">Netherlands</option>
+                    <option value="SE">Sweden</option>
+                    <option value="NO">Norway</option>
+                    <option value="PL">Poland</option>
+                    <option value="RU">Russia</option>
+                  </>
+                )}
+                {continent === 'north-america' && (
+                  <>
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="MX">Mexico</option>
+                    <option value="GT">Guatemala</option>
+                    <option value="CU">Cuba</option>
+                    <option value="HT">Haiti</option>
+                    <option value="DO">Dominican Republic</option>
+                    <option value="HN">Honduras</option>
+                    <option value="NI">Nicaragua</option>
+                    <option value="CR">Costa Rica</option>
+                  </>
+                )}
+                {continent === 'south-america' && (
+                  <>
+                    <option value="BR">Brazil</option>
+                    <option value="AR">Argentina</option>
+                    <option value="CO">Colombia</option>
+                    <option value="CL">Chile</option>
+                    <option value="PE">Peru</option>
+                    <option value="VE">Venezuela</option>
+                    <option value="EC">Ecuador</option>
+                    <option value="UY">Uruguay</option>
+                    <option value="PY">Paraguay</option>
+                    <option value="BO">Bolivia</option>
+                  </>
+                )}
+                {continent === 'oceania' && (
+                  <>
+                    <option value="AU">Australia</option>
+                    <option value="NZ">New Zealand</option>
+                    <option value="FJ">Fiji</option>
+                    <option value="PG">Papua New Guinea</option>
+                    <option value="WS">Samoa</option>
+                    <option value="TO">Tonga</option>
+                    <option value="VU">Vanuatu</option>
+                    <option value="SB">Solomon Islands</option>
+                    <option value="FM">Micronesia</option>
+                    <option value="KI">Kiribati</option>
+                  </>
+                )}
+              </select>
+            </div>
+          </div>
           <div className="relative max-w-2xl mx-auto">
             <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
             <input
@@ -323,11 +451,11 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-3 md:py-4 text-base md:text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
+              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3 text-sm md:text-base bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
             />
           </div>
           {isSearchOpen && searchQuery && (
-            <div className="relative max-w-2xl mx-auto mt-2">
+            <div className="relative max-w-2xl mx-auto mt-1">
               <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
                 <div className="p-4 border-b border-gray-800">
                   <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
@@ -347,7 +475,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6" onClick={() => setIsSearchOpen(false)}>
+  <div className="flex-1 overflow-y-auto px-3 md:px-4 pb-4" onClick={() => setIsSearchOpen(false)}>
           {renderHorizontal ? (
             <>
               <HorizontalStrip title="Breaking News" articles={articles.slice(0, 6)} large />
@@ -358,12 +486,12 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
             </>
           ) : (
             <>
-              <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" />
-              <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" />
-              <HeadlinesSection title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 6)} layout="three-col" />
-              <HeadlinesSection title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 4)} layout="two-col" />
-              <HeadlinesSection title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 6)} layout="three-col" />
-              <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" />
+  <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" />
+  <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" />
+  <HeadlinesSection title="World" articles={articles.filter(a => (a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world'))).slice(0, 6)} layout="three-col" />
+  <HeadlinesSection title="Technology" articles={articles.filter(a => (a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech'))).slice(0, 4)} layout="two-col" />
+  <HeadlinesSection title="Business" articles={articles.filter(a => (a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business'))).slice(0, 6)} layout="three-col" />
+  <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" />
             </>
           )}
         </div>
