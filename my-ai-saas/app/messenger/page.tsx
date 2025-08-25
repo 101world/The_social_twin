@@ -418,43 +418,106 @@ export default function MessengerPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Clean Message Input */}
-            <div className="p-4 border-t border-gray-700 bg-gray-800">
-              <div className="flex items-center gap-2">
-                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={privacyMode ? "Encrypted message..." : "Type a message..."}
-                    className="w-full px-4 py-2 rounded-lg bg-gray-700 border-gray-600 text-white border focus:outline-none focus:border-blue-500 pr-24"
-                  />
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
-                    {privacyMode && <Lock className="w-4 h-4 text-green-500" />}
-                    <button className="p-1 rounded transition-colors hover:bg-gray-600">
-                      <Smile className="w-4 h-4" />
-                    </button>
-                  </div>
+            {/* Unified Chat Input Design */}
+            <div 
+              className="p-4 border-t border-gray-700 bg-gray-800"
+              style={{
+                boxShadow: isTyping 
+                  ? '0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2)' 
+                  : '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
+              }}
+            >
+              <style jsx>{`
+                @keyframes pulseBlue {
+                  0%, 100% { 
+                    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+                  }
+                  50% { 
+                    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+                  }
+                }
+                @keyframes pulseOrange {
+                  0%, 100% { 
+                    box-shadow: 0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2);
+                  }
+                  50% { 
+                    box-shadow: 0 0 30px rgba(255, 165, 0, 0.6), 0 0 60px rgba(255, 165, 0, 0.3);
+                  }
+                }
+              `}</style>
+              <div className="flex gap-2 items-end">
+                <textarea
+                  value={messageInput}
+                  onChange={(e) => {
+                    setMessageInput(e.target.value);
+                    setIsTyping(e.target.value.length > 0);
+                  }}
+                  onKeyDown={(e) => { 
+                    if (e.key === 'Enter' && !e.shiftKey) { 
+                      e.preventDefault(); 
+                      sendMessage(); 
+                    } 
+                  }}
+                  placeholder={privacyMode ? "Encrypted message..." : "Type a message..."}
+                  className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 bg-gray-700 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
+                  style={{ fontSize: '14px' }}
+                />
+                
+                {/* Action buttons in 2x2 grid */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {/* Top row: Send + Attach */}
+                  <button
+                    onClick={sendMessage}
+                    disabled={!messageInput.trim()}
+                    className={`group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+                      messageInput.trim() 
+                        ? 'hover:bg-blue-500/10' 
+                        : 'cursor-not-allowed opacity-50'
+                    }`}
+                    title="Send message"
+                    aria-label="Send"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <button className="group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Attach file">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                      <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  
+                  {/* Bottom row: Privacy Toggle + Voice */}
+                  <button 
+                    title="Toggle Privacy Mode" 
+                    onClick={() => setPrivacyMode(!privacyMode)}
+                    className={`p-2 rounded-lg transition-all duration-300 ${
+                      privacyMode
+                        ? 'bg-green-500/20 scale-110 ring-2 ring-green-500/30'
+                        : 'hover:bg-gray-700 hover:scale-105'
+                    }`}
+                  > 
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className={`transition-colors ${privacyMode ? 'stroke-green-500' : 'stroke-current'}`}>
+                      <path d="M12 1v2m0 18v2m10-11h-2M4 12H2m15.364-7.364l-1.414 1.414M7.05 17.95l-1.414 1.414m12.728 0l-1.414-1.414M7.05 6.05L5.636 4.636M16 12a4 4 0 11-8 0 4 4 0 018 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  <button className="p-2 rounded border transition-colors bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600" title="Voice message">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                  </button>
                 </div>
-                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
-                  <Mic className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={sendMessage}
-                  disabled={!messageInput.trim()}
-                  className={`p-2 rounded-lg transition-colors ${
-                    messageInput.trim()
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-700 text-gray-400'
-                  }`}
-                >
-                  <Send className="w-5 h-5" />
-                </button>
               </div>
+              
+              {/* Privacy mode indicator */}
+              {privacyMode && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-green-400">
+                  <Lock className="w-3 h-3" />
+                  <span>Privacy mode enabled - Messages encrypted</span>
+                </div>
+              )}
             </div>
           </>
         ) : (
