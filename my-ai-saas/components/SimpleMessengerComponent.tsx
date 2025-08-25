@@ -269,20 +269,20 @@ export default function SimpleMessengerComponent() {
       {/* Main Chat Area - full width, no left split */}
       <div className={`flex-1 flex flex-col min-h-0 relative ${isSimpleMode ? 'w-full' : ''}`}>
         {/* Slim Friends top bar */}
-        <div className="flex items-center justify-between h-9 px-3 border-b border-gray-800 bg-black">
+    <div className="flex items-center justify-between h-9 px-3 border-b border-gray-200 bg-white">
           <button
             onClick={() => { setFriendsOpen(!friendsOpen); setFriendsCollapsed(!friendsCollapsed); }}
-            className="inline-flex items-center gap-2 text-xs text-white hover:opacity-90"
+      className="inline-flex items-center gap-2 text-xs text-black hover:opacity-90"
           >
-            <Users className="w-3.5 h-3.5" />
+      <Users className="w-3.5 h-3.5 text-black" />
             <span>Friends</span>
-            {friendsCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            <span className="text-[10px] text-gray-500">{friends.length}</span>
+      {friendsCollapsed ? <ChevronRight className="w-3 h-3 text-black" /> : <ChevronDown className="w-3 h-3 text-black" />}
+      <span className="text-[10px] text-gray-700">{friends.length}</span>
           </button>
 
           <button
             onClick={() => setShowFriendSearch(true)}
-            className="text-[11px] text-black bg-white/90 hover:bg-white px-2 py-1 rounded"
+      className="text-[11px] text-black bg-white hover:bg-gray-100 px-2 py-1 rounded border border-gray-200"
             title="Add Friend"
           >
             Add
@@ -386,8 +386,8 @@ export default function SimpleMessengerComponent() {
               )}
             </div>
 
-            {/* FIXED PROMPT BOX (identical sizing to chat tab style) */}
-            <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800" style={{ zIndex: 20 }}>
+            {/* PROMPT BOX docked to chat column (not full viewport) */}
+            <div className="absolute bottom-0 left-0 right-0 bg-black border-t border-gray-800" style={{ zIndex: 20 }}>
               <div className="max-w-4xl mx-auto p-4">
                 <div className="flex items-start gap-3">
                   <textarea
@@ -429,8 +429,8 @@ export default function SimpleMessengerComponent() {
                 <p className="text-sm text-gray-400">Choose a friend to start messaging</p>
               </div>
             </div>
-            {/* Fixed prompt visible but disabled until chat selected */}
-            <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800" style={{ zIndex: 20 }}>
+            {/* Prompt visible but disabled until chat selected; constrained to column */}
+            <div className="absolute bottom-0 left-0 right-0 bg-black border-t border-gray-800" style={{ zIndex: 20 }}>
               <div className="max-w-4xl mx-auto p-4">
                 <div className="flex items-start gap-3">
                   <textarea
