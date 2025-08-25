@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
-import MessengerComponent from "@/components/DockedMessengerComponent";
+import MessengerComponent from "@/components/SimpleMessengerComponent";
 import NewsComponent from "@/components/NewsComponent";
 
 // Utility function to safely get location origin

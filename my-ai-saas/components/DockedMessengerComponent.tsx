@@ -121,36 +121,61 @@ export default function DockedMessengerComponent() {
 
   // Initialize Supabase client-side only
   useEffect(() => {
+    console.log('🔍 Messenger Debug - Initializing Supabase...');
+    console.log('- Window check:', typeof window !== 'undefined');
+    console.log('- User check:', !!user);
+    console.log('- Supabase check:', !!supabase);
+    
     if (typeof window !== 'undefined' && user && !supabase) {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
       
+      console.log('- Env URL:', supabaseUrl ? 'Found' : 'Missing');
+      console.log('- Env Key:', supabaseKey ? 'Found' : 'Missing');
+      
       if (supabaseUrl && supabaseKey) {
+        console.log('✅ Creating Supabase client...');
         const supabaseClient = createClient(supabaseUrl, supabaseKey);
         setSupabase(supabaseClient);
+      } else {
+        console.error('❌ Missing Supabase environment variables!');
       }
     }
   }, [user, supabase]);
 
   // Initialize user and load data
   useEffect(() => {
+    console.log('🔍 Messenger Debug - User initialization...');
+    console.log('- User exists:', !!user);
+    console.log('- Supabase exists:', !!supabase);
+    
     if (user && supabase) {
+      console.log('✅ Starting user initialization...');
       initializeUser();
     }
   }, [user, supabase]);
 
   const initializeUser = async () => {
-    if (!user || !supabase) return;
+    console.log('🚀 initializeUser called');
+    if (!user || !supabase) {
+      console.log('❌ Missing user or supabase in initializeUser');
+      return;
+    }
     
     try {
+      console.log('🔑 Getting Clerk token...');
       const token = await getToken({ template: 'supabase' });
+      console.log('Token received:', !!token);
+      
       if (token) {
+        console.log('🔐 Setting Supabase session...');
         supabase.auth.setSession({
           access_token: token,
           refresh_token: '',
         });
       }
 
+      console.log('👤 Calling messenger_upsert_user...');
       // Upsert user with enhanced profile
       const { error } = await supabase.rpc('messenger_upsert_user', {
         p_clerk_id: user.id,
@@ -161,30 +186,39 @@ export default function DockedMessengerComponent() {
       });
 
       if (error) {
-        console.error('Error initializing user:', error);
+        console.error('❌ Error initializing user:', error);
       } else {
+        console.log('✅ User initialized successfully!');
+        console.log('📋 Loading friends and groups...');
         loadFriends();
         loadGroups();
       }
     } catch (error) {
-      console.error('Error with authentication:', error);
+      console.error('❌ Error with authentication:', error);
     }
   };
 
   const loadFriends = async () => {
-    if (!supabase || !user) return;
+    console.log('📋 loadFriends called');
+    if (!supabase || !user) {
+      console.log('❌ Missing supabase or user in loadFriends');
+      return;
+    }
+    
     try {
+      console.log('🔍 Calling messenger_get_friends...');
       const { data, error } = await supabase.rpc('messenger_get_friends', {
         user_clerk_id: user.id
       });
 
       if (error) {
-        console.error('Error loading friends:', error);
+        console.error('❌ Error loading friends:', error);
       } else {
+        console.log('✅ Friends loaded:', data?.length || 0);
         setFriends(data || []);
       }
     } catch (error) {
-      console.error('Error loading friends:', error);
+      console.error('❌ Error loading friends:', error);
     }
   };
 
