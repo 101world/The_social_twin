@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Search, TrendingUp, ExternalLink, Clock, Filter, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Loader2, Play, Send } from 'lucide-react';
@@ -46,8 +46,8 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
   if (layout === "large") {
     return (
       <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500">
-        {article.image_url && (
-          <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden">
+        <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+          {article.image_url ? (
             <img 
               src={article.image_url} 
               alt={article.title}
@@ -59,8 +59,10 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
                 target.style.display = 'none';
               }}
             />
-          </div>
-        )}
+          ) : (
+            <div className="text-gray-500 text-sm">No image</div>
+          )}
+        </div>
         
         <div className="p-4 md:p-6">
           <h2 className="font-bold text-white text-lg md:text-xl leading-tight mb-3 group-hover:text-orange-400 transition-colors">
@@ -100,8 +102,8 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
   return (
     <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
       <div className="flex gap-3 md:gap-4 p-3 md:p-4">
-        {article.image_url && (
-          <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden">
+        <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+          {article.image_url ? (
             <img 
               src={article.image_url} 
               alt={article.title}
@@ -112,8 +114,10 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
                 target.style.display = 'none';
               }}
             />
-          </div>
-        )}
+          ) : (
+            <span className="text-gray-600 text-xs">No image</span>
+          )}
+        </div>
         
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-white text-sm md:text-base leading-tight mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
@@ -184,25 +188,69 @@ const HeadlinesSection = ({ title, articles, layout = "default" }: { title: stri
   );
 };
 
-export default function NewsComponent() {
+// Horizontal scrolling strip for full-width layout
+const HorizontalStrip = ({ title, articles, large = false }: { title: string; articles: NewsArticle[]; large?: boolean }) => {
+  if (!articles.length) return null;
+  return (
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
+        <div className="flex gap-4 md:gap-6">
+          {articles.map(a => (
+            <div key={a.id} className={large ? 'min-w-[360px] max-w-[360px]' : 'min-w-[300px] max-w-[300px]'}>
+              <ModernNewsCard article={a} layout={large ? 'large' : 'default'} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMode?: boolean; mode?: 'auto' | 'vertical' | 'horizontal' }) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [detectedSimple, setDetectedSimple] = useState<boolean>(false);
 
   // Load real news from API
   useEffect(() => {
     const loadNews = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/news');
+        const response = await fetch('/api/news?limit=50', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
-          if (data.success && Array.isArray(data.data)) {
-            setArticles(data.data.slice(0, 20)); // Limit to 20 articles
+          const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+          if (list.length) {
+            setArticles(list.slice(0, 30));
           } else {
-            console.warn('No news data available');
-            setArticles([]);
+            // Fallback: daily brief
+            const briefRes = await fetch('/api/news/daily-brief', { cache: 'no-store' });
+            if (briefRes.ok) {
+              const brief = await briefRes.json();
+              const mapped: NewsArticle[] = (brief?.articles || []).map((a: any, i: number) => ({
+                id: a.id || a.url || `brief-${i}`,
+                title: a.title || 'Untitled',
+                content: a.snippet || a.summary || '',
+                snippet: a.snippet || a.summary || '',
+                summary: a.snippet || a.summary || '',
+                published_at: a.publishDate || new Date().toISOString(),
+                source_name: a.source || 'Daily Brief',
+                source: a.source || 'Daily Brief',
+                source_url: a.url,
+                url: a.url,
+                category: a.category || 'General',
+                quality_score: 0,
+                image_url: a.imageUrl || undefined,
+              }));
+              setArticles(mapped);
+            } else {
+              setArticles([]);
+            }
           }
         } else {
           console.error('Failed to fetch news');
@@ -218,6 +266,27 @@ export default function NewsComponent() {
 
     loadNews();
   }, []);
+
+  // Detect simple mode (docked) if not provided
+  useEffect(() => {
+    if (typeof simpleMode === 'boolean') {
+      setDetectedSimple(simpleMode);
+      return;
+    }
+    if (mode !== 'auto') {
+      setDetectedSimple(mode === 'vertical');
+      return;
+    }
+    const check = () => {
+      try {
+        const sm = (window as any)?.__getSimpleMode?.() || false;
+        setDetectedSimple(!!sm);
+      } catch {}
+    };
+    check();
+    const id = setInterval(check, 1000);
+    return () => clearInterval(id);
+  }, [simpleMode, mode]);
 
   const searchResults = useMemo(() => {
     if (!searchQuery) return [];
@@ -238,11 +307,12 @@ export default function NewsComponent() {
     );
   }
 
+  // Branch by layout: horizontal for full-width, vertical for docked (simple)
+  const renderHorizontal = mode === 'horizontal' ? true : mode === 'vertical' ? false : !detectedSimple;
+
   return (
     <div className="h-full bg-black text-white overflow-y-auto">
-      {/* Main Content - No navbar as this is embedded */}
       <div className="h-full flex flex-col">
-        
         {/* Search Bar */}
         <div className="flex-shrink-0 p-4 md:p-6">
           <div className="relative max-w-2xl mx-auto">
@@ -256,8 +326,6 @@ export default function NewsComponent() {
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-3 md:py-4 text-base md:text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
             />
           </div>
-          
-          {/* Search Dropdown */}
           {isSearchOpen && searchQuery && (
             <div className="relative max-w-2xl mx-auto mt-2">
               <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
@@ -278,65 +346,27 @@ export default function NewsComponent() {
           )}
         </div>
 
-        {/* Headlines Sections - Takes remaining space */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-4 md:pb-8" onClick={() => setIsSearchOpen(false)}>
-          
-          {/* Breaking News - Hero Layout */}
-          <HeadlinesSection 
-            title="Breaking News" 
-            articles={articles.filter(a => a.image_url).slice(0, 1)} 
-            layout="hero" 
-          />
-          
-          {/* Top Stories - Two Column */}
-          <HeadlinesSection 
-            title="Top Stories" 
-            articles={articles.filter(a => a.image_url).slice(1, 3)} 
-            layout="two-col" 
-          />
-          
-          {/* World News - Three Column */}
-          <HeadlinesSection 
-            title="World News" 
-            articles={articles.filter(a => a.image_url).slice(3, 6)} 
-            layout="three-col" 
-          />
-          
-          {/* Technology - Two Column */}
-          <HeadlinesSection 
-            title="Technology" 
-            articles={articles.filter(a => 
-              a.image_url && (
-                a.title.toLowerCase().includes('tech') ||
-                a.title.toLowerCase().includes('ai') ||
-                a.category.toLowerCase().includes('tech')
-              )
-            ).slice(0, 2)} 
-            layout="two-col" 
-          />
-          
-          {/* Business - Three Column */}
-          <HeadlinesSection 
-            title="Business" 
-            articles={articles.filter(a => 
-              a.image_url && (
-                a.title.toLowerCase().includes('business') ||
-                a.title.toLowerCase().includes('market') ||
-                a.category.toLowerCase().includes('business')
-              )
-            ).slice(0, 3)} 
-            layout="three-col" 
-          />
-          
-          {/* Latest Updates - Two Column */}
-          <HeadlinesSection 
-            title="Latest Updates" 
-            articles={articles.filter(a => a.image_url).slice(6, 8)} 
-            layout="two-col" 
-          />
-          
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pb-6" onClick={() => setIsSearchOpen(false)}>
+          {renderHorizontal ? (
+            <>
+              <HorizontalStrip title="Breaking News" articles={articles.slice(0, 6)} large />
+              <HorizontalStrip title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 10)} />
+              <HorizontalStrip title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 10)} />
+              <HorizontalStrip title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 10)} />
+              <HorizontalStrip title="Latest" articles={articles.slice(6, 20)} />
+            </>
+          ) : (
+            <>
+              <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" />
+              <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" />
+              <HeadlinesSection title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 6)} layout="three-col" />
+              <HeadlinesSection title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 4)} layout="two-col" />
+              <HeadlinesSection title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 6)} layout="three-col" />
+              <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" />
+            </>
+          )}
         </div>
-        
       </div>
     </div>
   );

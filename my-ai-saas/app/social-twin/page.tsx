@@ -3399,7 +3399,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
           {activeTab === 'news' && (
             <div className="flex-1 overflow-hidden">
-              <NewsComponent />
+              {/* Pass layout: horizontal for full width, vertical for docked */}
+              <NewsComponent mode={simpleMode ? 'vertical' : 'horizontal'} simpleMode={simpleMode} />
             </div>
           )}
 
