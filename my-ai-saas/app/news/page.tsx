@@ -53,7 +53,7 @@ const CompactNewsCard = ({ article }: { article: NewsArticle }) => {
   return (
     <div 
       onClick={openSource}
-      className="flex gap-3 p-3 border border-gray-800 rounded-lg hover:border-orange-500 transition-all cursor-pointer bg-black hover:bg-gray-900"
+      className="flex gap-3 p-3 border border-gray-800 rounded-lg hover:border-orange-500 transition-all cursor-pointer bg-gradient-to-br from-black to-gray-950 hover:from-gray-950 hover:to-black"
     >
       <div className="flex-shrink-0">
         <img 
@@ -71,7 +71,14 @@ const CompactNewsCard = ({ article }: { article: NewsArticle }) => {
           {article.title}
         </h3>
         <div className="flex items-center justify-between text-xs text-gray-400">
-          <span className="truncate">{sourceName}</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="truncate">{sourceName}</span>
+            {article.category && (
+              <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-[10px]">
+                {article.category}
+              </span>
+            )}
+          </div>
           <span className="flex-shrink-0 ml-2">{formatDate(article.published_at)}</span>
         </div>
       </div>
@@ -271,56 +278,69 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isSimpleMode, setIsSimpleMode] = useState(false);
+  // Force vertical/docked layout for consistency and simplicity
+  const [isSimpleMode] = useState(true);
 
-  // Detect layout mode
-  useEffect(() => {
-    const checkSimpleMode = () => {
-      if (typeof window !== 'undefined') {
-        const simpleMode = (window as any).__getSimpleMode?.() || false;
-        setIsSimpleMode(simpleMode);
-      }
-    };
-
-    checkSimpleMode();
-    
-    // Listen for layout changes
-    const handleResize = () => {
-      checkSimpleMode();
-    };
-
-    window.addEventListener('resize', handleResize);
-    
-    // Poll for layout changes
-    const interval = setInterval(checkSimpleMode, 1000);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      clearInterval(interval);
-    };
-  }, []);
+  // No layout detection; we keep vertical layout only
 
   useEffect(() => {
     fetchNews();
   }, []);
 
   const fetchNews = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await fetch('/api/news?limit=50');
-      const data = await response.json();
-      
-      if (data.success) {
-        // Sort by published date (newest first)
-        const sortedArticles = data.data.articles.sort((a: NewsArticle, b: NewsArticle) => 
-          new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
-        );
-        setArticles(sortedArticles);
+      // Primary source: our news API (DB with RSS fallback)
+      const response = await fetch('/api/news?limit=50', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+        if (list.length > 0) {
+          const sorted = list.sort((a: NewsArticle, b: NewsArticle) =>
+            new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+          );
+          setArticles(sorted);
+          return;
+        }
       }
+      // Fallback: daily brief endpoint (always returns something, even mock)
+      await loadDailyBriefFallback();
     } catch (error) {
       console.error('Error fetching news:', error);
+      await loadDailyBriefFallback();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDailyBriefFallback = async () => {
+    try {
+      const res = await fetch('/api/news/daily-brief', { cache: 'no-store' });
+      if (!res.ok) throw new Error('daily-brief failed');
+      const brief = await res.json();
+      const mapped: NewsArticle[] = (brief?.articles || []).map((a: any, i: number) => ({
+        id: a.id || a.url || `brief-${i}`,
+        title: a.title || 'Untitled',
+        content: a.snippet || a.summary || '',
+        snippet: a.snippet || a.summary || '',
+        summary: a.snippet || a.summary || '',
+        published_at: a.publishDate || new Date().toISOString(),
+        source_name: a.source || 'Daily Brief',
+        source: a.source || 'Daily Brief',
+        source_url: a.url,
+        url: a.url,
+        category: a.category || 'General',
+        quality_score: 0,
+        image_url: a.imageUrl || undefined,
+      }));
+      setArticles(mapped);
+    } catch (e) {
+      // Final safety net: minimal local placeholders
+      const now = new Date().toISOString();
+      setArticles([
+        { id: 'local-1', title: 'Stay tuned: Live news feed warming up', published_at: now, category: 'System', quality_score: 0 },
+        { id: 'local-2', title: 'Tip: Check back in a moment for fresh headlines', published_at: now, category: 'System', quality_score: 0 },
+      ] as NewsArticle[]);
     }
   };
 
@@ -345,101 +365,7 @@ export default function NewsPage() {
     );
   }
 
-  // Full Width Layout - Horizontal Scrolling
-  if (!isSimpleMode) {
-    return (
-      <div className="min-h-screen bg-black">
-        <div className="max-w-full px-6 py-8">
-          
-          {/* Search Bar */}
-          <div className="mb-8">
-            <div className="relative max-w-2xl mx-auto">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search breaking news... Powered by 101World"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setIsSearchOpen(true)}
-                className="w-full pl-12 pr-4 py-4 text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
-              />
-            </div>
-            
-            {/* Search Dropdown */}
-            {isSearchOpen && searchQuery && (
-              <div className="relative max-w-2xl mx-auto mt-2">
-                <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
-                  <div className="p-4 border-b border-gray-800">
-                    <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
-                  </div>
-                  {searchResults.slice(0, 5).map(article => (
-                    <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
-                      <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
-                      <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
-                    </div>
-                  ))}
-                  <div className="p-3 text-center border-t border-gray-800">
-                    <span className="text-xs text-gray-500">Powered by 101World</span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Horizontal Scrolling News Sections */}
-          <div onClick={() => setIsSearchOpen(false)}>
-            
-            {/* Breaking News - Hero Horizontal */}
-            <HorizontalNewsSection 
-              title="Breaking News" 
-              articles={articles} 
-              layout="hero" 
-            />
-            
-            {/* World News - Horizontal */}
-            <HorizontalNewsSection 
-              title="World News" 
-              articles={articles.filter(a => 
-                a.category.toLowerCase().includes('world') ||
-                a.title.toLowerCase().includes('world')
-              )} 
-              layout="normal" 
-            />
-            
-            {/* Technology - Horizontal */}
-            <HorizontalNewsSection 
-              title="Technology" 
-              articles={articles.filter(a => 
-                a.title.toLowerCase().includes('tech') ||
-                a.title.toLowerCase().includes('ai') ||
-                a.category.toLowerCase().includes('tech')
-              )} 
-              layout="normal" 
-            />
-            
-            {/* Business - Horizontal */}
-            <HorizontalNewsSection 
-              title="Business" 
-              articles={articles.filter(a => 
-                a.title.toLowerCase().includes('business') ||
-                a.title.toLowerCase().includes('market') ||
-                a.category.toLowerCase().includes('business')
-              )} 
-              layout="normal" 
-            />
-            
-            {/* Latest Updates - Horizontal */}
-            <HorizontalNewsSection 
-              title="Latest Updates" 
-              articles={articles.slice(10)} 
-              layout="normal" 
-            />
-            
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Always render Docked/Mobile Layout - Vertical Scrolling
 
   // Docked/Mobile Layout - Vertical Scrolling
   return (
