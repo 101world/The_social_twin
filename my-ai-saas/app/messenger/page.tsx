@@ -87,9 +87,8 @@ export default function MessengerPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // UI state
-  const [showFriendSearch, setShowFriendSearch] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  // UI state - Force dark mode for clean look
+  const [darkMode] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   
@@ -187,14 +186,14 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-100'} text-white flex`}>
-      {/* Sidebar */}
-      <div className={`w-80 ${darkMode ? 'bg-gray-800' : 'bg-white'} border-r ${darkMode ? 'border-gray-700' : 'border-gray-200'} flex flex-col`}>
-        {/* Header */}
+    <div className="h-screen bg-gray-900 text-white flex">
+      {/* Clean Vertical Sidebar - Friends & Groups */}
+      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+        {/* Minimalist Header */}
         <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              101Messenger
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-lg font-bold text-white">
+              Messenger
             </h1>
             <div className="flex items-center gap-2">
               <button
@@ -202,7 +201,7 @@ export default function MessengerPage() {
                 className={`p-2 rounded-lg transition-colors ${
                   privacyMode 
                     ? 'bg-green-600 text-white' 
-                    : darkMode ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
                 }`}
                 title="Privacy Mode"
               >
@@ -210,9 +209,7 @@ export default function MessengerPage() {
               </button>
               <button
                 onClick={() => setNotifications(!notifications)}
-                className={`p-2 rounded-lg transition-colors ${
-                  darkMode ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                }`}
+                className="p-2 rounded-lg transition-colors bg-gray-700 text-gray-400 hover:bg-gray-600"
               >
                 {notifications ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
               </button>
@@ -239,37 +236,34 @@ export default function MessengerPage() {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              Community
+              Groups
             </button>
           </div>
         </div>
 
-        {/* Search */}
+        {/* Clean Search */}
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder={activeSection === 'friends' ? 'Search friends...' : 'Search communities...'}
+              placeholder={activeSection === 'friends' ? 'Search friends...' : 'Search groups...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg ${
-                darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'
-              } border focus:outline-none focus:border-blue-500`}
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-700 border-gray-600 text-white border focus:outline-none focus:border-blue-500"
             />
           </div>
         </div>
 
-        {/* Content */}
+        {/* Vertical Content - Friends & Groups */}
         <div className="flex-1 overflow-y-auto">
           {activeSection === 'friends' ? (
             <div>
               {/* Add Friend Button */}
               <div className="px-4 mb-4">
                 <button
-                  onClick={() => setShowFriendSearch(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                  onClick={() => {/* TODO: Add friend search functionality */}}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                   <UserPlus className="w-4 h-4" />
                   Add Friend
                 </button>
@@ -304,7 +298,7 @@ export default function MessengerPage() {
                     className={`w-full flex items-center gap-3 p-3 rounded-lg mb-2 transition-colors ${
                       selectedConversation?.id === conversation.id
                         ? 'bg-blue-600'
-                        : darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+                        : 'hover:bg-gray-700'
                     }`}
                   >
                     <div className="relative">
@@ -335,7 +329,7 @@ export default function MessengerPage() {
             </div>
           ) : (
             <div className="px-4">
-              <h3 className="text-sm font-semibold text-gray-400 mb-4">Your Communities</h3>
+              <h3 className="text-sm font-semibold text-gray-400 mb-4">Your Groups</h3>
               {communities.map(community => (
                 <div key={community.id} className="p-3 rounded-lg bg-gray-700 mb-2">
                   <div className="flex items-center justify-between mb-2">
@@ -358,28 +352,28 @@ export default function MessengerPage() {
                 </div>
               ))}
               
-              {/* Join Community Button */}
+              {/* Join Group Button */}
               <button className="w-full py-2 px-4 border-2 border-dashed border-gray-600 text-gray-400 rounded-lg hover:border-blue-500 hover:text-blue-400 transition-colors">
-                + Join a Community
+                + Join a Group
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Chat Area */}
+      {/* Clean Chat Area */}
       <div className="flex-1 flex flex-col">
         {selectedConversation ? (
           <>
-            {/* Chat Header */}
-            <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} flex items-center justify-between`}>
+            {/* Clean Chat Header */}
+            <div className="p-4 border-b border-gray-700 bg-gray-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button className="lg:hidden">
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <img src={selectedConversation.avatar} alt="" className="w-10 h-10 rounded-full" />
                 <div>
-                  <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className="font-semibold text-white">
                     {selectedConversation.name}
                   </h3>
                   <p className="text-sm text-gray-400">
@@ -389,13 +383,13 @@ export default function MessengerPage() {
               </div>
               
               <div className="flex items-center gap-2">
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
                   <Phone className="w-5 h-5" />
                 </button>
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
                   <Video className="w-5 h-5" />
                 </button>
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
                   <MoreVertical className="w-5 h-5" />
                 </button>
               </div>
@@ -411,7 +405,7 @@ export default function MessengerPage() {
                   <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                     message.senderId === user?.id
                       ? 'bg-blue-600 text-white'
-                      : darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
+                      : 'bg-gray-700 text-white'
                   }`}>
                     <p className="text-sm">{message.content}</p>
                     <div className="flex items-center justify-between mt-1">
@@ -424,10 +418,10 @@ export default function MessengerPage() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
-            <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+            {/* Clean Message Input */}
+            <div className="p-4 border-t border-gray-700 bg-gray-800">
               <div className="flex items-center gap-2">
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
                   <Paperclip className="w-5 h-5" />
                 </button>
                 <div className="flex-1 relative">
@@ -437,18 +431,16 @@ export default function MessengerPage() {
                     onChange={(e) => setMessageInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={privacyMode ? "Encrypted message..." : "Type a message..."}
-                    className={`w-full px-4 py-2 rounded-lg ${
-                      darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'
-                    } border focus:outline-none focus:border-blue-500 pr-24`}
+                    className="w-full px-4 py-2 rounded-lg bg-gray-700 border-gray-600 text-white border focus:outline-none focus:border-blue-500 pr-24"
                   />
                   <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
                     {privacyMode && <Lock className="w-4 h-4 text-green-500" />}
-                    <button className={`p-1 rounded transition-colors ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200'}`}>
+                    <button className="p-1 rounded transition-colors hover:bg-gray-600">
                       <Smile className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <button className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}>
+                <button className="p-2 rounded-lg transition-colors hover:bg-gray-700">
                   <Mic className="w-5 h-5" />
                 </button>
                 <button
@@ -457,7 +449,7 @@ export default function MessengerPage() {
                   className={`p-2 rounded-lg transition-colors ${
                     messageInput.trim()
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-400'
+                      : 'bg-gray-700 text-gray-400'
                   }`}
                 >
                   <Send className="w-5 h-5" />
@@ -469,11 +461,11 @@ export default function MessengerPage() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className="text-xl font-semibold mb-2 text-white">
                 Select a conversation
               </h3>
               <p className="text-gray-400">
-                Choose a friend or community to start messaging
+                Choose a friend or group to start messaging
               </p>
             </div>
           </div>
