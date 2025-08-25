@@ -3167,20 +3167,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* AI Toggle Button */}
-                    <button 
-                      title="Toggle AI Features" 
-                      onClick={() => setShowAIFeatures(!showAIFeatures)}
-                      className={`p-2 rounded-lg transition-all duration-300 ${
-                        showAIFeatures
-                          ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
-                          : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
-                      }`}
-                    > 
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
-                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
+                    {/* AI Toggle Button - moved below */}
                     
                     {/* Library Button */}
                     <button
@@ -3253,66 +3240,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Folder + Debug (mobile only) */}
-                    <button
-                      onClick={() => setFolderModalOpen(true)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                      title="Organize in folder"
-                    >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
+                    {/* Bottom row: AI Toggle + Library Button */}
+                    <button 
+                      title="Toggle AI Features" 
+                      onClick={() => setShowAIFeatures(!showAIFeatures)}
+                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded-lg transition-all duration-300 ${
+                        showAIFeatures
+                          ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
+                          : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
+                      }`}
+                    > 
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    {isMobile ? (
-                      <button
-                        onClick={() => {
-                          console.log('=== MOBILE DEBUG INFO ===');
-                          console.log('User agent:', navigator.userAgent);
-                          console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
-                          console.log('isMobile state:', isMobile);
-                          console.log('Credits raw:', creditInfo);
-                          console.log('Credits value:', creditInfo?.credits);
-                          console.log('Credits type:', typeof creditInfo?.credits);
-                          console.log('Can afford:', canAffordGeneration);
-                          console.log('Generation cost:', generationCost);
-                          console.log('Active endpoint:', activeEndpoint);
-                          console.log('Current mode:', mode);
-                          console.log('Input value:', input);
-                          console.log('Available LoRAs:', availableLoras.length, availableLoras);
-                          console.log('LoRAs loading:', lorasLoading);
-                          console.log('Image URL:', imageUrl);
-                          console.log('Image Modify URL:', imageModifyUrl);
-                          console.log('User ID:', userId);
-                          const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
-                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
-                        }}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                        title="Debug info"
-                      >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          // Simple save functionality - could be enhanced later
-                          const data = { messages, input, mode };
-                          console.log('Saving conversation:', data);
-                        }}
-                        disabled={!messages.length}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                        title="Save as recipe"
-                      >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setActiveTab('generated')}
+                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
+                      title="View all your generated images and videos"
+                    >
+                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="2"/>
+                        <circle cx="8.5" cy="13.5" r="1.5" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M21 15l-3.086-3.086a2 2 0 00-2.828 0L6 21" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                    </button>
                   </div>
                   {isMobile && (
                     <div className="flex gap-3 justify-center mt-2 px-2">
