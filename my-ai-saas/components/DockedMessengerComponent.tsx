@@ -106,6 +106,10 @@ export default function DockedMessengerComponent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  // Discovery
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<MessengerUser[]>([]);
   
   // AI Integration State
   const [aiMode, setAiMode] = useState(false);
@@ -197,6 +201,45 @@ export default function DockedMessengerComponent() {
       console.error('❌ Error with authentication:', error);
     }
   };
+
+  // Discovery: search users (including suggestions when query is empty)
+  useEffect(() => {
+    const run = async () => {
+      if (!supabase || !user) return;
+      setSearching(true);
+      try {
+        const { data, error } = await supabase.rpc('messenger_search_users', {
+          search_term: searchQuery || '',
+          current_user_clerk_id: user.id,
+          limit_count: 10
+        });
+        if (error) {
+          console.error('❌ Search error:', error);
+          setSearchResults([]);
+        } else {
+          const mapped: MessengerUser[] = (data || []).map((u: any) => ({
+            id: u.id,
+            clerk_id: u.clerk_id,
+            username: u.username || 'user',
+            display_name: u.display_name || u.username,
+            avatar_url: u.avatar_url || '',
+            is_online: false,
+            last_seen: new Date().toISOString(),
+            custom_status: undefined,
+            is_favorite: false,
+            custom_nickname: undefined,
+          }));
+          setSearchResults(mapped);
+        }
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    // Debounce 250ms
+    const t = setTimeout(run, 250);
+    return () => clearTimeout(t);
+  }, [searchQuery, supabase, user]);
 
   const loadFriends = async () => {
     console.log('📋 loadFriends called');
@@ -427,7 +470,21 @@ export default function DockedMessengerComponent() {
           </button>
           
           {!friendsCollapsed && (
-            <div className="max-h-32 overflow-y-auto bg-gray-750">
+            <div className="max-h-64 overflow-y-auto bg-gray-750">
+              {/* Discovery search */}
+              <div className="px-3 pt-3 pb-2 sticky top-0 bg-gray-750 border-b border-gray-700">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search people..."
+                    className="w-full pl-8 pr-2 py-1.5 text-sm rounded bg-gray-700 border border-gray-600 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* When there are no accepted friends, show discovery results */}
               {friends.length > 0 ? (
                 friends.map((friend) => (
                   <button
@@ -461,9 +518,38 @@ export default function DockedMessengerComponent() {
                   </button>
                 ))
               ) : (
-                <div className="p-4 text-center text-gray-400">
-                  <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No friends yet</p>
+                <div className="p-2">
+                  <div className="text-xs text-gray-400 px-1 pb-2">People</div>
+                  {searching && (
+                    <div className="py-6 text-center text-gray-400">Searching…</div>
+                  )}
+                  {!searching && searchResults.length === 0 && (
+                    <div className="py-6 text-center text-gray-400">
+                      <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No people found</p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    {searchResults.map((p) => (
+                      <div key={p.id} className="flex items-center gap-3 p-2 rounded hover:bg-gray-700">
+                        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                          {p.avatar_url ? (
+                            <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+                          ) : (
+                            <span className="text-sm">{p.username.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{p.display_name || p.username}</div>
+                          <div className="text-xs text-gray-400 truncate">@{p.username}</div>
+                        </div>
+                        <button
+                          onClick={() => startDirectMessage(p)}
+                          className="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-500"
+                        >Start DM</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
