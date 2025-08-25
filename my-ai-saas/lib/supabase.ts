@@ -2,32 +2,50 @@ import { createClient } from "@supabase/supabase-js";
 
 // Create a Supabase client. If a Clerk JWT is provided, attach it for RLS.
 export function createSupabaseClient(jwt?: string) {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
-      },
-    }
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!url || !anonKey) {
+    throw new Error('Missing Supabase environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+  }
+  
+  return createClient(url, anonKey, {
+    global: {
+      headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+    },
+  });
 }
 
 // Server-side admin client using service role key (bypasses RLS). Do NOT expose to client.
 export function createSupabaseAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!url || !key) {
+    throw new Error('Missing Supabase admin environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  
   return createClient(url, key);
 }
 
 // Fetch RunPod config from DB (admin client required to bypass RLS reliably)
 export async function getRunpodConfig() {
   try {
+    // During build time, environment variables might not be available
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!url || !key) {
+      console.warn('Supabase admin environment variables not available, skipping RunPod config fetch');
+      return null;
+    }
+    
     const admin = createSupabaseAdminClient();
     const { data, error } = await admin.from('runpod_config').select('*').eq('scope', 'global').maybeSingle();
     if (error) throw error;
     return data || null;
-  } catch {
+  } catch (err) {
+    console.warn('Failed to fetch RunPod config:', err);
     return null;
   }
 }

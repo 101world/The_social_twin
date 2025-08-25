@@ -4,14 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+function getSupabaseClient() {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+  return createClient(supabaseUrl, supabaseKey);
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient();
     const userId = request.headers.get('X-User-Id');
     
     console.log('🔍 Library API: Received request for user:', userId);
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
           const [bucket, ...pathParts] = storagePath.split('/');
           const path = pathParts.join('/');
           
-          const { data: signedUrlData, error: signedError } = await supabase.storage
+          const { data: signedUrlData, error: signedError } = await getSupabaseClient().storage
             .from(bucket)
             .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days
           
