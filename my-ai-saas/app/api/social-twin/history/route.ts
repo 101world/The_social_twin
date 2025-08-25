@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const cursor = searchParams.get('cursor'); // ISO string of created_at to paginate older
 
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
 
     // Return recent generations for the user (no saved-only filter).
     // Include status and error_message so the UI can show processing/failed items.

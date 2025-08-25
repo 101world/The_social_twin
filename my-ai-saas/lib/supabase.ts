@@ -50,6 +50,21 @@ export async function getRunpodConfig() {
   }
 }
 
+// Safe Supabase client creation that chooses admin or regular client at runtime
+export function createSafeSupabaseClient(jwt?: string) {
+  try {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceRoleKey) {
+      return createSupabaseAdminClient();
+    } else {
+      return createSupabaseClient(jwt);
+    }
+  } catch (error) {
+    console.warn('Failed to create admin client, falling back to regular client:', error);
+    return createSupabaseClient(jwt);
+  }
+}
+
 export function pickRunpodUrlFromConfig(opts: {
   provided?: string | null;
   mode?: 'text' | 'image' | 'image-modify' | 'video';

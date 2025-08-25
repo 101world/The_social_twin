@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Number(searchParams.get('limit') || '200'), 500);
     const before = searchParams.get('before'); // ISO string; only return items strictly older than this
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
 
     // Fetch recent chat messages (descending for efficiency)
     let msgQuery = supabase

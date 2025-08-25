@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     let topicId: string | null = null;
     if (canLog) {
       try {
-        supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt!);
+        supabase = createSafeSupabaseClient(jwt!);
         topicId = await ensureSocialTwinTopic(supabase, userId!);
           await supabase
           .from('chat_messages')

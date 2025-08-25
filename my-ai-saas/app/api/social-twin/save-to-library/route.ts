@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     if (!genId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const token = await authState.getToken({ template: 'supabase' }).catch(()=>null) as string | undefined;
-  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(token);
+  const supabase = createSafeSupabaseClient(token);
 
     // Fetch generation row
     const { data: rows, error } = await supabase.from('media_generations').select('*').eq('id', genId).maybeSingle();

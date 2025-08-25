@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const topicId = params.id;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { data, error } = await supabase
       .from('chat_messages')
       .select('id,role,content,created_at')

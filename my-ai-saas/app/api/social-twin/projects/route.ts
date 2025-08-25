@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const thumbnailUrl: string | undefined = body?.thumbnailUrl;
 
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
     const { data: row, error } = await supabase.from('projects').insert({ user_id: userId, title, data, thumbnail_url: thumbnailUrl }).select('id').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, id: row?.id });
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
     const { data, error } = await supabase.from('projects').select('id,title,thumbnail_url,created_at,updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(100);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     // If no thumbnail, try infer from latest folder item with the same title (fallback heuristic)
@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest) {
     const thumbnailUrl: string | undefined = body?.thumbnailUrl;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { error } = await supabase.from('projects').update({
       ...(title ? { title } : {}),
       ...(data ? { data } : {}),
