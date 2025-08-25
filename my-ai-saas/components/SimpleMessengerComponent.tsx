@@ -33,6 +33,9 @@ export default function SimpleMessengerComponent() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showFriendSearch, setShowFriendSearch] = useState(false);
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
   
   // Mock current user clerk ID (in real app, get from useUser())
   const currentUserClerkId = "user_12345"; // This would come from Clerk auth
@@ -50,28 +53,140 @@ export default function SimpleMessengerComponent() {
     { id: '5', name: 'AI Creators', avatar: '#', members: 89, description: 'AI enthusiasts and creators' }
   ];
 
-  const handleSelectChat = (chat: any) => {
-    setSelectedChat(chat);
-    // Simulate loading some messages
-    setMessages([
-      {
-        id: '1',
-        content: `Hey! Welcome to the chat with ${chat.name}!`,
-        sender: chat.name,
-        timestamp: new Date().toLocaleTimeString(),
-        isOwn: false
-      },
-      {
-        id: '2', 
-        content: 'This is a working messenger interface!',
-        sender: 'You',
-        timestamp: new Date().toLocaleTimeString(),
-        isOwn: true
+  // Real messaging functions
+  const startChatWithUser = async (friendClerkId: string) => {
+    try {
+      setLoadingMessages(true);
+      const response = await fetch('/api/messenger/get-or-create-dm-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user1ClerkId: currentUserClerkId,
+          user2ClerkId: friendClerkId
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentRoomId(data.roomId);
+        await loadMessages(data.roomId);
+      } else {
+        console.error('Failed to create/get DM room');
+        alert('Failed to start conversation. Please try again.');
       }
-    ]);
+    } catch (error) {
+      console.error('Start chat error:', error);
+      alert('Failed to start conversation. Please try again.');
+    } finally {
+      setLoadingMessages(false);
+    }
   };
 
+  const loadMessages = async (roomId: string) => {
+    try {
+      const response = await fetch('/api/messenger/get-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, limit: 50, offset: 0 }),
+      });
+
+      if (response.ok) {
+        const messages = await response.json();
+        const transformedMessages = messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          isOwn: msg.sender.clerkId === currentUserClerkId,
+          sender: msg.sender
+        }));
+        setMessages(transformedMessages);
+      } else {
+        console.error('Failed to load messages');
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error('Load messages error:', error);
+      setMessages([]);
+    }
+  };
+
+  const sendRealMessage = async () => {
+    if (!messageInput.trim() || !currentRoomId || sendingMessage) return;
+
+    setSendingMessage(true);
+    const messageContent = messageInput.trim();
+    setMessageInput('');
+    setIsTyping(false);
+
+    try {
+      const response = await fetch('/api/messenger/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderClerkId: currentUserClerkId,
+          roomId: currentRoomId,
+          content: messageContent,
+          messageType: aiMode ? 'ai_generation' : privacyMode ? 'encrypted' : 'text',
+          aiGenerationData: aiMode ? { type: 'shared_generation' } : null
+        }),
+      });
+
+      if (response.ok) {
+        await loadMessages(currentRoomId);
+      } else {
+        console.error('Failed to send message');
+        setMessageInput(messageContent);
+        alert('Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      console.error('Send message error:', error);
+      setMessageInput(messageContent);
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleSelectChat = (chat: any) => {
+    setSelectedChat(chat);
+    setMessages([]);
+    
+    // If it's a real friend with clerkId, start real chat
+    if (chat.clerkId) {
+      startChatWithUser(chat.clerkId);
+    } else {
+      // Keep test data for demo chats
+      setCurrentRoomId(null);
+      // Simulate loading some messages for test chats
+      setMessages([
+        {
+          id: '1',
+          content: `Hey! Welcome to the chat with ${chat.name}! (Test mode)`,
+          sender: chat.name,
+          timestamp: new Date().toLocaleTimeString(),
+          isOwn: false
+        },
+        {
+          id: '2', 
+          content: 'This is a working messenger interface!',
+          sender: 'You',
+          timestamp: new Date().toLocaleTimeString(),
+          isOwn: true
+        }
+      ]);
+    }
+  };
+
+  // Updated sendMessage function
   const sendMessage = () => {
+    if (currentRoomId) {
+      sendRealMessage();
+    } else {
+      sendTestMessage();
+    }
+  };
+
+  const sendTestMessage = () => {
     if (!messageInput.trim() || !selectedChat) return;
     
     const newMessage = {
@@ -244,7 +359,14 @@ export default function SimpleMessengerComponent() {
 
             {/* Messages Container */}
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-black">
-              {messages.length > 0 ? (
+              {loadingMessages ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-400">
+                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                    <p className="text-sm">Loading messages...</p>
+                  </div>
+                </div>
+              ) : messages.length > 0 ? (
                 messages.map((message) => (
                   <div
                     key={message.id}
@@ -308,15 +430,19 @@ export default function SimpleMessengerComponent() {
                     {/* Top row: Send + AI */}
                     <button
                       onClick={sendMessage}
-                      disabled={!messageInput.trim()}
+                      disabled={!messageInput.trim() || sendingMessage}
                       className={`group relative h-10 w-10 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
-                        messageInput.trim()
+                        messageInput.trim() && !sendingMessage
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
                           : 'bg-gray-700 text-gray-400'
                       }`}
-                      title="Send message"
+                      title={sendingMessage ? "Sending..." : "Send message"}
                     >
-                      <Send className="w-4 h-4" />
+                      {sendingMessage ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
                     </button>
                     <button 
                       onClick={() => setAiMode(!aiMode)}
@@ -382,7 +508,10 @@ export default function SimpleMessengerComponent() {
                 Choose a friend or group to start messaging
               </p>
               <div className="mt-6 space-y-3">
-                <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={() => setShowFriendSearch(true)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   Start New Chat
                 </button>
                 <button 
