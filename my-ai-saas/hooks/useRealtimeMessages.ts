@@ -1,12 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 interface UseRealtimeMessagesProps {
   roomId: string | null;
@@ -25,8 +20,22 @@ export const useRealtimeMessages = ({
 }: UseRealtimeMessagesProps) => {
   const subscriptionRef = useRef<any>(null);
 
+  // Create Supabase client at runtime to avoid build-time environment variable access
+  const supabase = useMemo(() => {
+    // Only create if we have the environment variables available
+    if (typeof window !== 'undefined') {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (url && key) {
+        return createClient(url, key);
+      }
+    }
+    return null;
+  }, []);
+
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !supabase) return;
 
     // Clean up previous subscription
     if (subscriptionRef.current) {
