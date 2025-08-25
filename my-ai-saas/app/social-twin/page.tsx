@@ -146,6 +146,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [targetScrollTs, setTargetScrollTs] = useState<string | null>(null);
   const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
   const [currentTopic, setCurrentTopic] = useState<{ id: string; title: string } | null>(null);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [showAIFeatures, setShowAIFeatures] = useState<boolean>(false);
 
   // Canvas/grid
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
@@ -299,6 +301,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   useEffect(() => {
     if (viewerOpen) setViewerDetailsOpen(false);
   }, [viewerOpen, viewerItem]);
+  
+  // Typing indicator for pulsating shadow effect
+  useEffect(() => {
+    let typingTimer: NodeJS.Timeout | undefined;
+    if (input.length > 0) {
+      setIsTyping(true);
+      // Clear any existing timer
+      if (typingTimer) clearTimeout(typingTimer);
+      // Set timer to mark as not typing after 1 second of no input changes
+      typingTimer = setTimeout(() => {
+        setIsTyping(false);
+      }, 1000);
+    } else {
+      setIsTyping(false);
+    }
+    
+    return () => {
+      if (typingTimer) clearTimeout(typingTimer);
+    };
+  }, [input]);
   
   const { creditInfo, refresh: refreshCredits } = useSafeCredits();
   
@@ -1930,6 +1952,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }, [isMobile]); // Add isMobile as dependency
 
   return (
+  <>
+    <style jsx global>{`
+      @keyframes pulseBlue {
+        0%, 100% {
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+        }
+      }
+      
+      @keyframes pulseOrange {
+        0%, 100% {
+          box-shadow: 0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(255, 165, 0, 0.6), 0 0 60px rgba(255, 165, 0, 0.3);
+        }
+      }
+    `}</style>
   <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
@@ -2825,10 +2867,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
+                {/* AI Toggle Button and Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
                 <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
                   <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
-                    {/* Mode buttons - SVG icons for mobile, text for desktop */}
+                    {/* AI Toggle Button */}
+                    <button 
+                      title="AI Features" 
+                      onClick={() => setShowAIFeatures(!showAIFeatures)}
+                      className={`p-2 rounded-lg transition-all duration-300 ${
+                        showAIFeatures
+                          ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
+                          : 'hover:bg-neutral-800/50 hover:scale-105'
+                      }`}
+                    > 
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    
+                    {/* Mode buttons - SVG icons for mobile, text for desktop - Collapsible */}
+                    <div className={`flex items-center gap-1 transition-all duration-300 ${
+                      showAIFeatures 
+                        ? 'opacity-100 scale-100' 
+                        : 'opacity-0 scale-95 pointer-events-none'
+                    } ${showAIFeatures ? '' : 'max-w-0 overflow-hidden'}`}>
                     {isMobile ? (
                       <>
                         {/* Mobile: SVG icon buttons (no background) */}
@@ -2956,6 +3018,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </button>
                       </>
                     )}
+                    </div>
                     
                     {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
@@ -3129,7 +3192,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
 
                 {/* Prompt input area - unified desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}>
+                <div 
+                  className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} rounded-lg transition-all duration-300`}
+                  style={{
+                    boxShadow: isTyping 
+                      ? '0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2)' 
+                      : '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
+                    animation: isTyping 
+                      ? 'pulseOrange 1.5s ease-in-out infinite' 
+                      : 'pulseBlue 2s ease-in-out infinite'
+                  }}
+                >
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -4428,10 +4501,35 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </button>
             </div>
 
-            {/* Mode Selection (segmented icons) */}
+            {/* AI Toggle and Mode Selection (segmented icons) */}
             <div className="mb-3">
-              <div className="text-xs font-medium mb-1 opacity-80">Mode</div>
-              <div className="inline-flex items-center gap-1 rounded-lg border p-1 border-neutral-200">
+              <div className="text-xs font-medium mb-1 opacity-80">AI Features</div>
+              <div className="flex items-center gap-2 mb-2">
+                <button 
+                  title="AI Features" 
+                  onClick={() => setShowAIFeatures(!showAIFeatures)}
+                  className={`p-2 rounded-lg transition-all duration-300 ${
+                    showAIFeatures
+                      ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
+                      : 'hover:bg-neutral-100 hover:scale-105'
+                  }`}
+                > 
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
+                    <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                <span className="text-xs opacity-60">
+                  {showAIFeatures ? 'Click to hide modes' : 'Click to show AI modes'}
+                </span>
+              </div>
+              
+              <div className={`transition-all duration-300 ${
+                showAIFeatures 
+                  ? 'opacity-100 scale-100 max-h-20' 
+                  : 'opacity-0 scale-95 max-h-0 overflow-hidden'
+              }`}>
+                <div className="text-xs font-medium mb-1 opacity-80">Mode</div>
+                <div className="inline-flex items-center gap-1 rounded-lg border p-1 border-neutral-200">
                 <button
                   className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='text' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
                   onClick={()=> setMode('text')}
@@ -4464,6 +4562,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke="#111" strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span>Video</span>
                 </button>
+              </div>
               </div>
             </div>
 
@@ -6030,6 +6129,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       )}
     </main>
+  </>
   );
 }
 
