@@ -101,43 +101,43 @@ export default function SimpleMessengerComponent() {
   };
 
   return (
-    <div className="h-full bg-gray-900 text-white flex flex-col">
+    <div className="h-full bg-black text-white flex flex-col">
       {/* Top Navigation - Friends/Groups Collapsible Bars */}
-      <div className="bg-gray-800 border-b border-gray-700">
+      <div className="bg-gray-900 border-b border-gray-800">
         {/* Friends Bar */}
-        <div className="border-b border-gray-700">
+        <div className="border-b border-gray-800">
           <button
             onClick={() => setFriendsCollapsed(!friendsCollapsed)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-blue-400" />
-              <span className="font-semibold">Friends</span>
+              <Users className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold text-white">Friends</span>
               <span className="text-sm text-gray-400">({testFriends.length})</span>
             </div>
-            {friendsCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {friendsCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
           </button>
           
           {!friendsCollapsed && (
-            <div className="max-h-32 overflow-y-auto bg-gray-750">
+            <div className="max-h-32 overflow-y-auto bg-gray-900">
               {testFriends.map((friend) => (
                 <button
                   key={friend.id}
                   onClick={() => handleSelectChat(friend)}
-                  className={`w-full flex items-center gap-3 p-3 hover:bg-gray-700 transition-colors border-l-4 ${
-                    selectedChat?.id === friend.id ? 'border-blue-500 bg-gray-700' : 'border-transparent'
+                  className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
+                    selectedChat?.id === friend.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
                   }`}
                 >
                   <div className="relative">
-                    <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                      <span className="text-sm">{friend.avatar}</span>
+                    <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                      <span className="text-sm text-white">{friend.avatar}</span>
                     </div>
                     {friend.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-black"></div>
                     )}
                   </div>
                   <div className="flex-1 text-left">
-                    <div className="text-sm font-medium">{friend.name}</div>
+                    <div className="text-sm font-medium text-white">{friend.name}</div>
                     <div className="text-xs text-gray-400 truncate">{friend.status}</div>
                   </div>
                 </button>
@@ -150,31 +150,31 @@ export default function SimpleMessengerComponent() {
         <div>
           <button
             onClick={() => setGroupsCollapsed(!groupsCollapsed)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-800 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <Hash className="w-5 h-5 text-green-400" />
-              <span className="font-semibold">Groups</span>
+              <Hash className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold text-white">Groups</span>
               <span className="text-sm text-gray-400">({testGroups.length})</span>
             </div>
-            {groupsCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {groupsCollapsed ? <ChevronRight className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
           </button>
           
           {!groupsCollapsed && (
-            <div className="max-h-32 overflow-y-auto bg-gray-750">
+            <div className="max-h-32 overflow-y-auto bg-gray-900">
               {testGroups.map((group) => (
                 <button
                   key={group.id}
                   onClick={() => handleSelectChat(group)}
-                  className={`w-full flex items-center gap-3 p-3 hover:bg-gray-700 transition-colors border-l-4 ${
-                    selectedChat?.id === group.id ? 'border-green-500 bg-gray-700' : 'border-transparent'
+                  className={`w-full flex items-center gap-3 p-3 hover:bg-gray-800 transition-colors border-l-4 ${
+                    selectedChat?.id === group.id ? 'border-blue-600 bg-gray-800' : 'border-transparent'
                   }`}
                 >
-                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                    <Hash className="w-4 h-4" />
+                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
+                    <Hash className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex-1 text-left">
-                    <div className="text-sm font-medium">{group.name}</div>
+                    <div className="text-sm font-medium text-white">{group.name}</div>
                     <div className="text-xs text-gray-400">{group.members} members</div>
                   </div>
                 </button>
@@ -189,14 +189,14 @@ export default function SimpleMessengerComponent() {
         {selectedChat ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-700 bg-gray-800">
+            <div className="p-4 border-b border-gray-800 bg-gray-900">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
-                    <span className="text-sm">{selectedChat.avatar}</span>
+                  <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                    <span className="text-sm text-white">{selectedChat.avatar}</span>
                   </div>
                   <div>
-                    <div className="font-semibold">{selectedChat.name}</div>
+                    <div className="font-semibold text-white">{selectedChat.name}</div>
                     <div className="text-xs text-gray-400">
                       {selectedChat.members ? `${selectedChat.members} members` : 'Online'}
                     </div>
@@ -206,26 +206,26 @@ export default function SimpleMessengerComponent() {
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => setSoundEnabled(!soundEnabled)}
-                    className="p-2 rounded-lg hover:bg-gray-700"
+                    className="p-2 rounded-lg hover:bg-gray-800"
                     title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
                   >
-                    {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                    {soundEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-gray-400" />}
                   </button>
-                  <button className="p-2 rounded-lg hover:bg-gray-700">
-                    <Phone className="w-4 h-4" />
+                  <button className="p-2 rounded-lg hover:bg-gray-800">
+                    <Phone className="w-4 h-4 text-white" />
                   </button>
-                  <button className="p-2 rounded-lg hover:bg-gray-700">
-                    <Video className="w-4 h-4" />
+                  <button className="p-2 rounded-lg hover:bg-gray-800">
+                    <Video className="w-4 h-4 text-white" />
                   </button>
-                  <button className="p-2 rounded-lg hover:bg-gray-700">
-                    <MoreVertical className="w-4 h-4" />
+                  <button className="p-2 rounded-lg hover:bg-gray-800">
+                    <MoreVertical className="w-4 h-4 text-white" />
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-black">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -235,7 +235,7 @@ export default function SimpleMessengerComponent() {
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                       message.isOwn
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-white'
+                        : 'bg-gray-800 text-white border border-gray-700'
                     }`}
                   >
                     <div className="text-sm">{message.content}</div>
@@ -245,12 +245,12 @@ export default function SimpleMessengerComponent() {
               ))}
             </div>
 
-            {/* Chat Input Area - EXACTLY like docked chat */}
+            {/* Chat Input Area - PROMPT BOX EXACTLY like docked chat */}
             <div 
-              className="p-4 border-t border-gray-700 bg-gray-800"
+              className="p-4 border-t border-gray-800 bg-black"
               style={{
                 boxShadow: isTyping 
-                  ? '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)' 
+                  ? '0 0 20px rgba(37, 99, 235, 0.4), 0 0 40px rgba(37, 99, 235, 0.2)' 
                   : '0 0 10px rgba(0, 0, 0, 0.3)'
               }}
             >
@@ -270,7 +270,7 @@ export default function SimpleMessengerComponent() {
                         ? "Encrypted message..." 
                         : "Type a message..."
                   }
-                  className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 bg-gray-700 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
+                  className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-600/50 border border-gray-700 bg-gray-900 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
                   style={{ fontSize: '14px' }}
                 />
                 
@@ -282,23 +282,23 @@ export default function SimpleMessengerComponent() {
                     disabled={!messageInput.trim()}
                     className={`group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                       messageInput.trim()
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' 
-                        : 'bg-gray-600 text-gray-400'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' 
+                        : 'bg-gray-700 text-gray-400'
                     }`}
                     title="Send message"
                   >
-                    <Send className="w-4 h-4 text-white group-hover:text-gray-400" />
+                    <Send className="w-4 h-4" />
                   </button>
                   <button 
                     onClick={() => setAiMode(!aiMode)}
                     className={`p-2 rounded-lg transition-all duration-300 ${
                       aiMode
-                        ? 'bg-purple-500/20 scale-110 ring-2 ring-purple-500/30'
-                        : 'hover:bg-gray-700 hover:scale-105'
+                        ? 'bg-blue-600/20 scale-110 ring-2 ring-blue-600/30'
+                        : 'hover:bg-gray-800 hover:scale-105 bg-gray-700'
                     }`}
                     title="AI Mode - Share generations"
                   >
-                    <Sparkles className={`w-3 h-3 transition-colors ${aiMode ? 'text-purple-400' : 'text-current'}`} />
+                    <Sparkles className={`w-3 h-3 transition-colors ${aiMode ? 'text-blue-400' : 'text-white'}`} />
                   </button>
                   
                   {/* Bottom row: Privacy + Attach */}
@@ -307,13 +307,13 @@ export default function SimpleMessengerComponent() {
                     onClick={() => setPrivacyMode(!privacyMode)}
                     className={`p-2 rounded-lg transition-all duration-300 ${
                       privacyMode
-                        ? 'bg-green-500/20 scale-110 ring-2 ring-green-500/30'
-                        : 'hover:bg-gray-700 hover:scale-105'
+                        ? 'bg-blue-600/20 scale-110 ring-2 ring-blue-600/30'
+                        : 'hover:bg-gray-800 hover:scale-105 bg-gray-700'
                     }`}
                   > 
-                    <Lock className={`w-3 h-3 transition-colors ${privacyMode ? 'text-green-500' : 'text-current'}`} />
+                    <Lock className={`w-3 h-3 transition-colors ${privacyMode ? 'text-blue-400' : 'text-white'}`} />
                   </button>
-                  <button className="p-2 rounded border transition-colors bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600" title="Attach file">
+                  <button className="p-2 rounded border transition-colors bg-gray-700 border-gray-600 text-white hover:bg-gray-600" title="Attach file">
                     <Paperclip className="w-3 h-3" />
                   </button>
                 </div>
@@ -321,7 +321,7 @@ export default function SimpleMessengerComponent() {
               
               {/* Privacy mode indicator */}
               {privacyMode && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-green-400">
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-400">
                   <Lock className="w-3 h-3" />
                   <span>Privacy mode enabled - Messages encrypted</span>
                 </div>
@@ -329,7 +329,7 @@ export default function SimpleMessengerComponent() {
               
               {/* AI mode indicator */}
               {aiMode && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-purple-400">
+                <div className="mt-2 flex items-center gap-2 text-xs text-blue-400">
                   <Sparkles className="w-3 h-3" />
                   <span>AI mode enabled - Ready to share generations</span>
                 </div>
@@ -337,20 +337,20 @@ export default function SimpleMessengerComponent() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center bg-black">
             <div className="text-center">
               <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">
+              <h3 className="text-xl font-semibold mb-2 text-white">
                 Select a conversation
               </h3>
               <p className="text-gray-400 mb-4">
                 Choose a friend or group to start messaging
               </p>
-              <div className="text-sm text-green-400">
+              <div className="text-sm text-blue-400">
+                ✅ Black/White theme with deep blue highlights<br/>
                 ✅ Friends/Groups collapsible bars working<br/>
                 ✅ Full chat interface with docked prompt box<br/>
-                ✅ AI mode, privacy mode, and all chat functions<br/>
-                ✅ Ready for database integration
+                ✅ All messenger functions ready
               </div>
             </div>
           </div>
