@@ -19,8 +19,68 @@ interface NewsArticle {
   image_url?: string;
 }
 
-// Modern news card with mobile-optimized smaller thumbnails and high quality images
-const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
+// Compact news card for docked/mobile layout
+const CompactNewsCard = ({ article }: { article: NewsArticle }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const openSource = () => {
+    const url = article.source_url || article.url;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const getImageUrl = () => {
+    if (article.image_url) {
+      return article.image_url;
+    }
+    const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+    const colorIndex = article.title.length % fallbackColors.length;
+    const color = fallbackColors[colorIndex];
+    const encodedTitle = encodeURIComponent(article.title.slice(0, 30));
+    return `https://via.placeholder.com/120x80/${color}/ffffff?text=${encodedTitle}`;
+  };
+
+  const sourceName = article.source_name || article.source || 'News';
+
+  return (
+    <div 
+      onClick={openSource}
+      className="flex gap-3 p-3 border border-gray-800 rounded-lg hover:border-orange-500 transition-all cursor-pointer bg-black hover:bg-gray-900"
+    >
+      <div className="flex-shrink-0">
+        <img 
+          src={getImageUrl()} 
+          alt={article.title}
+          className="w-20 h-14 object-cover rounded-md"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = `https://picsum.photos/120/80?random=${article.id || Math.random()}`;
+          }}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-white text-sm leading-tight mb-1 line-clamp-2">
+          {article.title}
+        </h3>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span className="truncate">{sourceName}</span>
+          <span className="flex-shrink-0 ml-2">{formatDate(article.published_at)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Full width news card for desktop layout
+const FullWidthNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -41,12 +101,10 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
     }
   };
 
-  // Generate fallback image if none exists
   const getImageUrl = () => {
     if (article.image_url) {
       return article.image_url;
     }
-    // Generate a fallback image with the article title as text
     const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
     const colorIndex = article.title.length % fallbackColors.length;
     const color = fallbackColors[colorIndex];
@@ -58,28 +116,26 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
 
   if (layout === "large") {
     return (
-      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500">
-        <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden">
+      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 min-w-[400px] flex-shrink-0">
+        <div className="aspect-[16/9] h-48 overflow-hidden">
           <img 
             src={getImageUrl()} 
             alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
-            style={{ imageRendering: 'auto' }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              // Try fallback image service
               target.src = `https://picsum.photos/400/225?random=${article.id || Math.random()}`;
             }}
           />
         </div>
         
-        <div className="p-4 md:p-6">
-          <h2 className="font-bold text-white text-lg md:text-xl leading-tight mb-3 group-hover:text-orange-400 transition-colors">
+        <div className="p-4">
+          <h2 className="font-bold text-white text-lg leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
             {article.title}
           </h2>
           
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 text-sm text-gray-400">
               <span className="font-semibold text-gray-200">{sourceName}</span>
               <span className="flex items-center gap-1">
@@ -91,10 +147,10 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleTrend}
-                className="flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
               >
                 <TrendingUp className="w-3 h-3" />
-                <span className="hidden md:inline">Trend</span>
+                Trend
               </button>
               <button 
                 onClick={openSource}
@@ -110,104 +166,100 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
   }
 
   return (
-    <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
-      <div className="aspect-video h-32 md:h-40 overflow-hidden">
+    <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500 min-w-[320px] flex-shrink-0">
+      <div className="aspect-video h-40 overflow-hidden">
         <img 
           src={getImageUrl()} 
           alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
-          style={{ imageRendering: 'auto' }}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            // Try fallback image service
             target.src = `https://picsum.photos/320/180?random=${article.id || Math.random()}`;
           }}
         />
       </div>
       
-      <div className="p-3 md:p-4">
-        <h3 className="font-semibold text-white text-sm md:text-base leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
+      <div className="p-4">
+        <h3 className="font-semibold text-white text-base leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
           {article.title}
         </h3>
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="font-semibold text-gray-200 truncate max-w-20 md:max-w-none">{sourceName}</span>
+            <span className="font-semibold text-gray-200 truncate">{sourceName}</span>
             <span className="text-gray-500">•</span>
             <span className="truncate">{formatDate(article.published_at)}</span>
           </div>
           
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={handleTrend}
-              className="flex items-center gap-1 px-2 py-1 bg-orange-900/50 text-orange-400 rounded-full text-xs font-semibold hover:bg-orange-800/50 transition-colors"
-            >
-              <TrendingUp className="w-3 h-3" />
-              <span className="hidden md:inline">Trend</span>
-            </button>
-          </div>
+          <button 
+            onClick={handleTrend}
+            className="flex items-center gap-1 px-2 py-1 bg-orange-900/50 text-orange-400 rounded-full text-xs font-semibold hover:bg-orange-800/50 transition-colors"
+          >
+            <TrendingUp className="w-3 h-3" />
+            <span className="hidden sm:inline">Trend</span>
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Headlines section component with mobile-first responsive design
-const HeadlinesSection = ({ title, articles, layout }: { title: string; articles: NewsArticle[]; layout: 'hero' | 'two-col' | 'three-col' }) => {
+// Horizontal scrolling section for full width layout
+const HorizontalNewsSection = ({ title, articles, layout }: { title: string; articles: NewsArticle[]; layout: 'hero' | 'normal' }) => {
   if (layout === 'hero') {
     return (
-      <section className="mb-8 md:mb-12">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
-          <button className="flex items-center gap-2 text-xs md:text-sm text-gray-400 hover:text-orange-400 transition-colors">
-            <Filter className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden sm:inline">View All</span>
-          </button>
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
         </div>
         
-        <div className="grid grid-cols-1 gap-4 md:gap-6">
-          {articles.slice(0, 1).map(article => (
-            <ModernNewsCard key={article.id} article={article} layout="large" />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (layout === 'two-col') {
-    return (
-      <section className="mb-8 md:mb-12">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
-          <button className="flex items-center gap-2 text-xs md:text-sm text-gray-400 hover:text-orange-400 transition-colors">
-            <Filter className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="hidden sm:inline">View All</span>
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          {articles.slice(0, 2).map(article => (
-            <ModernNewsCard key={article.id} article={article} />
-          ))}
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-6">
+            {articles.slice(0, 3).map(article => (
+              <FullWidthNewsCard key={article.id} article={article} layout="large" />
+            ))}
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="mb-8 md:mb-12">
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
-        <button className="flex items-center gap-2 text-xs md:text-sm text-gray-400 hover:text-orange-400 transition-colors">
-          <Filter className="w-3 h-3 md:w-4 md:h-4" />
-          <span className="hidden sm:inline">View All</span>
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-white">{title}</h2>
+        <button className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors">
+          <Filter className="w-4 h-4" />
+          View All
         </button>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {articles.slice(0, 3).map(article => (
-          <ModernNewsCard key={article.id} article={article} />
+      <div className="overflow-x-auto pb-4">
+        <div className="flex gap-4">
+          {articles.slice(0, 6).map(article => (
+            <FullWidthNewsCard key={article.id} article={article} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// Vertical scrolling section for docked layout
+const VerticalNewsSection = ({ title, articles }: { title: string; articles: NewsArticle[] }) => {
+  return (
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-white">{title}</h2>
+        <button className="text-sm text-gray-400 hover:text-orange-400 transition-colors">
+          View All
+        </button>
+      </div>
+      
+      <div className="space-y-3">
+        {articles.slice(0, 8).map(article => (
+          <CompactNewsCard key={article.id} article={article} />
         ))}
       </div>
     </section>
@@ -219,6 +271,34 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSimpleMode, setIsSimpleMode] = useState(false);
+
+  // Detect layout mode
+  useEffect(() => {
+    const checkSimpleMode = () => {
+      if (typeof window !== 'undefined') {
+        const simpleMode = (window as any).__getSimpleMode?.() || false;
+        setIsSimpleMode(simpleMode);
+      }
+    };
+
+    checkSimpleMode();
+    
+    // Listen for layout changes
+    const handleResize = () => {
+      checkSimpleMode();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Poll for layout changes
+    const interval = setInterval(checkSimpleMode, 1000);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     fetchNews();
@@ -253,7 +333,6 @@ export default function NewsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        {/* Removed nav bar for mobile optimization */}
         <div className="flex items-center justify-center h-96">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
@@ -266,99 +345,175 @@ export default function NewsPage() {
     );
   }
 
+  // Full Width Layout - Horizontal Scrolling
+  if (!isSimpleMode) {
+    return (
+      <div className="min-h-screen bg-black">
+        <div className="max-w-full px-6 py-8">
+          
+          {/* Search Bar */}
+          <div className="mb-8">
+            <div className="relative max-w-2xl mx-auto">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search breaking news... Powered by 101World"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchOpen(true)}
+                className="w-full pl-12 pr-4 py-4 text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
+              />
+            </div>
+            
+            {/* Search Dropdown */}
+            {isSearchOpen && searchQuery && (
+              <div className="relative max-w-2xl mx-auto mt-2">
+                <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
+                  <div className="p-4 border-b border-gray-800">
+                    <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
+                  </div>
+                  {searchResults.slice(0, 5).map(article => (
+                    <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
+                      <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
+                      <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                  <div className="p-3 text-center border-t border-gray-800">
+                    <span className="text-xs text-gray-500">Powered by 101World</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Horizontal Scrolling News Sections */}
+          <div onClick={() => setIsSearchOpen(false)}>
+            
+            {/* Breaking News - Hero Horizontal */}
+            <HorizontalNewsSection 
+              title="Breaking News" 
+              articles={articles} 
+              layout="hero" 
+            />
+            
+            {/* World News - Horizontal */}
+            <HorizontalNewsSection 
+              title="World News" 
+              articles={articles.filter(a => 
+                a.category.toLowerCase().includes('world') ||
+                a.title.toLowerCase().includes('world')
+              )} 
+              layout="normal" 
+            />
+            
+            {/* Technology - Horizontal */}
+            <HorizontalNewsSection 
+              title="Technology" 
+              articles={articles.filter(a => 
+                a.title.toLowerCase().includes('tech') ||
+                a.title.toLowerCase().includes('ai') ||
+                a.category.toLowerCase().includes('tech')
+              )} 
+              layout="normal" 
+            />
+            
+            {/* Business - Horizontal */}
+            <HorizontalNewsSection 
+              title="Business" 
+              articles={articles.filter(a => 
+                a.title.toLowerCase().includes('business') ||
+                a.title.toLowerCase().includes('market') ||
+                a.category.toLowerCase().includes('business')
+              )} 
+              layout="normal" 
+            />
+            
+            {/* Latest Updates - Horizontal */}
+            <HorizontalNewsSection 
+              title="Latest Updates" 
+              articles={articles.slice(10)} 
+              layout="normal" 
+            />
+            
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Docked/Mobile Layout - Vertical Scrolling
   return (
     <div className="min-h-screen bg-black">
-      {/* Removed navigation bar for mobile optimization */}
-      
-      {/* Main Content with mobile-optimized padding */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8">{/* Removed pt-20 since no nav */}
+      <div className="max-w-md mx-auto px-4 py-6">
         
-        {/* Search Bar with improved mobile layout */}
-        <div className="mb-8 md:mb-12">
-          <div className="relative max-w-2xl mx-auto">
-            <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search breaking news... Powered by 101World"
+              placeholder="Search news..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-3 md:py-4 text-base md:text-lg bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
+              className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
             />
           </div>
           
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery && (
-            <div className="relative max-w-2xl mx-auto mt-2">
-              <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
-                <div className="p-4 border-b border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
-                </div>
-                {searchResults.slice(0, 5).map(article => (
-                  <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
+            <div className="relative mt-2">
+              <div className="absolute w-full bg-black border border-gray-800 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
+                {searchResults.slice(0, 3).map(article => (
+                  <div key={article.id} className="p-3 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
                     <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
-                    <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-400">{article.source_name || article.source}</p>
                   </div>
                 ))}
-                <div className="p-3 text-center border-t border-gray-800">
-                  <span className="text-xs text-gray-500">Powered by 101World</span>
-                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Headlines Sections */}
-        <div onClick={() => setIsSearchOpen(false)}>
+        {/* Vertical Scrolling News Sections */}
+        <div onClick={() => setIsSearchOpen(false)} className="space-y-6">
           
-          {/* Breaking News - Hero Layout */}
-          <HeadlinesSection 
+          {/* Breaking News - Vertical */}
+          <VerticalNewsSection 
             title="Breaking News" 
-            articles={articles.slice(0, 1)} 
-            layout="hero" 
+            articles={articles.slice(0, 3)} 
           />
           
-          {/* Top Stories - Two Column */}
-          <HeadlinesSection 
-            title="Top Stories" 
-            articles={articles.slice(1, 3)} 
-            layout="two-col" 
-          />
-          
-          {/* World News - Three Column */}
-          <HeadlinesSection 
+          {/* World News - Vertical */}
+          <VerticalNewsSection 
             title="World News" 
-            articles={articles.slice(3, 6)} 
-            layout="three-col" 
+            articles={articles.slice(3, 8)} 
           />
           
-          {/* Technology - Two Column */}
-          <HeadlinesSection 
+          {/* Technology - Vertical */}
+          <VerticalNewsSection 
             title="Technology" 
             articles={articles.filter(a => 
               a.title.toLowerCase().includes('tech') ||
               a.title.toLowerCase().includes('ai') ||
               a.category.toLowerCase().includes('tech')
-            ).slice(0, 2)} 
-            layout="two-col" 
+            )} 
           />
           
-          {/* Business - Three Column */}
-          <HeadlinesSection 
+          {/* Business - Vertical */}
+          <VerticalNewsSection 
             title="Business" 
             articles={articles.filter(a => 
               a.title.toLowerCase().includes('business') ||
               a.title.toLowerCase().includes('market') ||
               a.category.toLowerCase().includes('business')
-            ).slice(0, 3)} 
-            layout="three-col" 
+            )} 
           />
           
-          {/* Latest Updates - Two Column */}
-          <HeadlinesSection 
+          {/* Latest Updates - Vertical */}
+          <VerticalNewsSection 
             title="Latest Updates" 
-            articles={articles.slice(6, 8)} 
-            layout="two-col" 
+            articles={articles.slice(8)} 
           />
           
         </div>
