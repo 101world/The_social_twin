@@ -19,7 +19,7 @@ const parser = new Parser({
   }
 });
 
-// Fresh RSS feeds for real-time news
+// Enhanced RSS feeds with better image sources
 const RSS_FEEDS = [
   { 
     url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', 
@@ -53,12 +53,12 @@ const RSS_FEEDS = [
   },
   { 
     url: 'https://techcrunch.com/feed/', 
-    category: 'Money & Power',
+    category: 'Technology',
     source: 'TechCrunch'
   },
   { 
     url: 'https://feeds.finance.yahoo.com/rss/2.0/headline', 
-    category: 'Money & Power',
+    category: 'Business',
     source: 'Yahoo Finance'
   },
   { 
@@ -70,13 +70,29 @@ const RSS_FEEDS = [
     url: 'https://rss.cbc.ca/lineup/world.xml', 
     category: 'World News',
     source: 'CBC'
+  },
+  // Additional feeds with good image support
+  { 
+    url: 'https://www.wired.com/feed/rss', 
+    category: 'Technology',
+    source: 'Wired'
+  },
+  { 
+    url: 'https://feeds.washingtonpost.com/rss/world', 
+    category: 'World News',
+    source: 'Washington Post'
+  },
+  { 
+    url: 'https://www.polygon.com/rss/index.xml', 
+    category: 'Entertainment',
+    source: 'Polygon'
   }
 ];
 
 async function extractImageUrl(item) {
   let imageUrl = null;
   
-  // Try different image sources
+  // Try different image sources in order of preference
   if (item['media:content']?.$ && item['media:content'].$.url) {
     imageUrl = item['media:content'].$.url;
   } else if (item['media:thumbnail']?.$ && item['media:thumbnail'].$.url) {
@@ -87,9 +103,28 @@ async function extractImageUrl(item) {
     // Extract first image from content
     const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/i);
     if (imgMatch) imageUrl = imgMatch[1];
+  } else if (item.description && item.description.includes('<img')) {
+    // Extract first image from description
+    const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/i);
+    if (imgMatch) imageUrl = imgMatch[1];
   }
   
-  return imageUrl;
+  // Clean and validate image URL
+  if (imageUrl) {
+    // Remove query parameters that might break images
+    imageUrl = imageUrl.split('?')[0];
+    
+    // Ensure it's a valid image extension or from known image sources
+    if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
+        imageUrl.includes('images.') || 
+        imageUrl.includes('img.') ||
+        imageUrl.includes('cdn.') ||
+        imageUrl.includes('static.')) {
+      return imageUrl;
+    }
+  }
+  
+  return null;
 }
 
 async function calculateQualityScore(item) {

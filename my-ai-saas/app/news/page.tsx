@@ -41,26 +41,38 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
     }
   };
 
+  // Generate fallback image if none exists
+  const getImageUrl = () => {
+    if (article.image_url) {
+      return article.image_url;
+    }
+    // Generate a fallback image with the article title as text
+    const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+    const colorIndex = article.title.length % fallbackColors.length;
+    const color = fallbackColors[colorIndex];
+    const encodedTitle = encodeURIComponent(article.title.slice(0, 50));
+    return `https://via.placeholder.com/400x225/${color}/ffffff?text=${encodedTitle}`;
+  };
+
   const sourceName = article.source_name || article.source || 'Unknown Source';
 
   if (layout === "large") {
     return (
       <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500">
-        {article.image_url && (
-          <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden">
-            <img 
-              src={article.image_url} 
-              alt={article.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
-              loading="lazy"
-              style={{ imageRendering: 'auto' }}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-          </div>
-        )}
+        <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden">
+          <img 
+            src={getImageUrl()} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+            loading="lazy"
+            style={{ imageRendering: 'auto' }}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              // Try fallback image service
+              target.src = `https://picsum.photos/400/225?random=${article.id || Math.random()}`;
+            }}
+          />
+        </div>
         
         <div className="p-4 md:p-6">
           <h2 className="font-bold text-white text-lg md:text-xl leading-tight mb-3 group-hover:text-orange-400 transition-colors">
@@ -99,21 +111,20 @@ const ModernNewsCard = ({ article, layout = "default" }: { article: NewsArticle;
 
   return (
     <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
-      {article.image_url && (
-        <div className="aspect-video h-32 md:h-40 overflow-hidden">
-          <img 
-            src={article.image_url} 
-            alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
-            loading="lazy"
-            style={{ imageRendering: 'auto' }}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-            }}
-          />
-        </div>
-      )}
+      <div className="aspect-video h-32 md:h-40 overflow-hidden">
+        <img 
+          src={getImageUrl()} 
+          alt={article.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-100 contrast-110 saturate-110"
+          loading="lazy"
+          style={{ imageRendering: 'auto' }}
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            // Try fallback image service
+            target.src = `https://picsum.photos/320/180?random=${article.id || Math.random()}`;
+          }}
+        />
+      </div>
       
       <div className="p-3 md:p-4">
         <h3 className="font-semibold text-white text-sm md:text-base leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
@@ -303,21 +314,21 @@ export default function NewsPage() {
           {/* Breaking News - Hero Layout */}
           <HeadlinesSection 
             title="Breaking News" 
-            articles={articles.filter(a => a.image_url).slice(0, 1)} 
+            articles={articles.slice(0, 1)} 
             layout="hero" 
           />
           
           {/* Top Stories - Two Column */}
           <HeadlinesSection 
             title="Top Stories" 
-            articles={articles.filter(a => a.image_url).slice(1, 3)} 
+            articles={articles.slice(1, 3)} 
             layout="two-col" 
           />
           
           {/* World News - Three Column */}
           <HeadlinesSection 
             title="World News" 
-            articles={articles.filter(a => a.image_url).slice(3, 6)} 
+            articles={articles.slice(3, 6)} 
             layout="three-col" 
           />
           
@@ -325,11 +336,9 @@ export default function NewsPage() {
           <HeadlinesSection 
             title="Technology" 
             articles={articles.filter(a => 
-              a.image_url && (
-                a.title.toLowerCase().includes('tech') ||
-                a.title.toLowerCase().includes('ai') ||
-                a.category.toLowerCase().includes('tech')
-              )
+              a.title.toLowerCase().includes('tech') ||
+              a.title.toLowerCase().includes('ai') ||
+              a.category.toLowerCase().includes('tech')
             ).slice(0, 2)} 
             layout="two-col" 
           />
@@ -338,11 +347,9 @@ export default function NewsPage() {
           <HeadlinesSection 
             title="Business" 
             articles={articles.filter(a => 
-              a.image_url && (
-                a.title.toLowerCase().includes('business') ||
-                a.title.toLowerCase().includes('market') ||
-                a.category.toLowerCase().includes('business')
-              )
+              a.title.toLowerCase().includes('business') ||
+              a.title.toLowerCase().includes('market') ||
+              a.category.toLowerCase().includes('business')
             ).slice(0, 3)} 
             layout="three-col" 
           />
@@ -350,72 +357,11 @@ export default function NewsPage() {
           {/* Latest Updates - Two Column */}
           <HeadlinesSection 
             title="Latest Updates" 
-            articles={articles.filter(a => a.image_url).slice(6, 8)} 
+            articles={articles.slice(6, 8)} 
             layout="two-col" 
           />
           
         </div>
-        
-        {/* Unified Chat Input for News Comments/Sharing */}
-        <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-4" style={{
-          boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
-        }}>
-          <style jsx>{`
-            @keyframes pulseBlue {
-              0%, 100% { 
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
-              }
-              50% { 
-                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
-              }
-            }
-          `}</style>
-          <div className="max-w-4xl mx-auto">
-            <div className="flex gap-2 items-end">
-              <textarea
-                placeholder="Share your thoughts on the news..."
-                className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 bg-gray-800 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
-                style={{ fontSize: '14px' }}
-              />
-              
-              {/* Action buttons in 2x2 grid */}
-              <div className="grid grid-cols-2 gap-1.5">
-                {/* Top row: Send + Share */}
-                <button
-                  className="group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-blue-500/10"
-                  title="Share comment"
-                  aria-label="Share"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
-                    <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button className="group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Share article">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
-                    <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                
-                {/* Bottom row: Save + Trending */}
-                <button className="p-2 rounded-lg transition-all duration-300 hover:bg-gray-700 hover:scale-105" title="Save article"> 
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors stroke-current">
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button className="p-2 rounded border transition-colors bg-gray-800 border-gray-600 text-gray-100 hover:bg-gray-700" title="Make trending">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 13l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.35 0 4.49.9 6.1 2.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Add padding bottom to account for fixed input */}
-        <div className="h-20"></div>
       </div>
     </div>
   );
