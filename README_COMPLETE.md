@@ -387,3 +387,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 **Built with ❤️ for the 101 World community**
 
 *This system is designed to be production-ready and scalable. Follow the setup instructions carefully and test thoroughly before deploying to production.*
+
+---
+
+Note: Deployment trigger commit for MOBILE GEN flow verification (2025-08-25).
