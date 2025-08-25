@@ -190,68 +190,33 @@ export default function NewsComponent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Mock data for development
+  // Load real news from API
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setArticles([
-        {
-          id: '1',
-          title: 'AI Revolution Continues: New Language Models Achieve Human-Level Performance',
-          published_at: new Date().toISOString(),
-          source_name: 'TechCrunch',
-          category: 'technology',
-          quality_score: 95,
-          image_url: '/api/placeholder/400/250'
-        },
-        {
-          id: '2',
-          title: 'Cryptocurrency Market Sees Major Gains Amid Institutional Adoption',
-          published_at: new Date(Date.now() - 3600000).toISOString(),
-          source_name: 'CoinDesk',
-          category: 'finance',
-          quality_score: 88,
-          image_url: '/api/placeholder/400/250'
-        },
-        {
-          id: '3',
-          title: 'Climate Tech Startups Raise Record $10B in Funding This Quarter',
-          published_at: new Date(Date.now() - 7200000).toISOString(),
-          source_name: 'Reuters',
-          category: 'environment',
-          quality_score: 92,
-          image_url: '/api/placeholder/400/250'
-        },
-        {
-          id: '4',
-          title: 'Meta Unveils Next-Generation VR Headset with Haptic Feedback',
-          published_at: new Date(Date.now() - 10800000).toISOString(),
-          source_name: 'The Verge',
-          category: 'technology',
-          quality_score: 87,
-          image_url: '/api/placeholder/400/250'
-        },
-        {
-          id: '5',
-          title: 'Global Supply Chain Disruptions Show Signs of Recovery',
-          published_at: new Date(Date.now() - 14400000).toISOString(),
-          source_name: 'Wall Street Journal',
-          category: 'business',
-          quality_score: 90,
-          image_url: '/api/placeholder/400/250'
-        },
-        {
-          id: '6',
-          title: 'Space Tourism Industry Reaches New Milestone with 100th Commercial Flight',
-          published_at: new Date(Date.now() - 18000000).toISOString(),
-          source_name: 'Space News',
-          category: 'science',
-          quality_score: 85,
-          image_url: '/api/placeholder/400/250'
-        },
-      ]);
-      setLoading(false);
-    }, 1000);
+    const loadNews = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/news');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data)) {
+            setArticles(data.data.slice(0, 20)); // Limit to 20 articles
+          } else {
+            console.warn('No news data available');
+            setArticles([]);
+          }
+        } else {
+          console.error('Failed to fetch news');
+          setArticles([]);
+        }
+      } catch (error) {
+        console.error('Error loading news:', error);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadNews();
   }, []);
 
   const searchResults = useMemo(() => {
@@ -372,66 +337,6 @@ export default function NewsComponent() {
           
         </div>
         
-        {/* Unified Chat Input for News Comments/Sharing */}
-        <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-4" style={{
-          boxShadow: '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
-        }}>
-          <style jsx>{`
-            @keyframes pulseBlue {
-              0%, 100% { 
-                box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
-              }
-              50% { 
-                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
-              }
-            }
-          `}</style>
-          <div className="max-w-4xl mx-auto">
-            <div className="flex gap-2 items-end">
-              <textarea
-                placeholder="Share your thoughts on the news..."
-                className="flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 bg-gray-800 text-white placeholder-gray-400 min-h-[40px] max-h-[120px]"
-                style={{ fontSize: '14px' }}
-              />
-              
-              {/* Action buttons in 2x2 grid */}
-              <div className="grid grid-cols-2 gap-1.5">
-                {/* Top row: Send + Share */}
-                <button
-                  className="group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 hover:bg-blue-500/10"
-                  title="Share comment"
-                  aria-label="Share"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
-                    <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button className="group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10" title="Share article">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
-                    <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                
-                {/* Bottom row: Save + Trending */}
-                <button className="p-2 rounded-lg transition-all duration-300 hover:bg-gray-700 hover:scale-105" title="Save article"> 
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors stroke-current">
-                    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <button className="p-2 rounded border transition-colors bg-gray-800 border-gray-600 text-gray-100 hover:bg-gray-700" title="Make trending">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 13l3 3 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.35 0 4.49.9 6.1 2.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Add padding bottom to account for fixed input */}
-        <div className="h-20"></div>
       </div>
     </div>
   );
