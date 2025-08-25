@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
 
 // Allow unauthenticated access for developer tools and select APIs
 const isPublicRoute = createRouteMatcher([
@@ -13,18 +12,17 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks/razorpay",
   // Internal server-to-server generation call; upstream route enforces auth+credits
   "/api/social-twin/generate",
-  // Public generation entrypoint handles its own auth + X-User-Id fallback for mobile/webviews
+  // Main generation endpoint used by mobile and desktop; route handler enforces auth
   "/api/generate-with-tracking",
+  // Library/generations endpoints for mobile and desktop
+  "/api/social-twin/generations",
+  "/api/social-twin/history",
   // Allow these in dev; route handlers still enforce auth for real data
   "/api/users/credits",
   "/api/generations",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Always let preflight pass to API routes (fixes mobile/webview CORS + fetch)
-  if (req.method === 'OPTIONS') {
-    return NextResponse.next();
-  }
   if (!isPublicRoute(req)) {
     const { userId, redirectToSignIn } = await auth();
     if (!userId) {
