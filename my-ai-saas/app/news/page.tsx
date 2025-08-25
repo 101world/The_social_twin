@@ -291,7 +291,7 @@ export default function NewsPage() {
     setLoading(true);
     try {
       // Primary source: our news API (DB with RSS fallback)
-      const response = await fetch('/api/news?limit=50', { cache: 'no-store' });
+  const response = await fetch('/api/news?limit=50&media=images', { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
@@ -370,10 +370,10 @@ export default function NewsPage() {
   // Docked/Mobile Layout - Vertical Scrolling
   return (
     <div className="min-h-screen bg-black">
-      <div className="max-w-md mx-auto px-4 py-6">
+  <div className="max-w-md mx-auto px-3 py-4">
         
         {/* Search Bar */}
-        <div className="mb-6">
+  <div className="mb-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -388,7 +388,7 @@ export default function NewsPage() {
           
           {/* Search Dropdown */}
           {isSearchOpen && searchQuery && (
-            <div className="relative mt-2">
+            <div className="relative mt-1">
               <div className="absolute w-full bg-black border border-gray-800 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
                 {searchResults.slice(0, 3).map(article => (
                   <div key={article.id} className="p-3 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
@@ -402,22 +402,22 @@ export default function NewsPage() {
         </div>
 
         {/* Vertical Scrolling News Sections */}
-        <div onClick={() => setIsSearchOpen(false)} className="space-y-6">
+  <div onClick={() => setIsSearchOpen(false)} className="space-y-4">
           
           {/* Breaking News - Vertical */}
-          <VerticalNewsSection 
+          <VerticalNewsSection
             title="Breaking News" 
             articles={articles.slice(0, 3)} 
           />
           
           {/* World News - Vertical */}
-          <VerticalNewsSection 
+          <VerticalNewsSection
             title="World News" 
             articles={articles.slice(3, 8)} 
           />
           
           {/* Technology - Vertical */}
-          <VerticalNewsSection 
+          <VerticalNewsSection
             title="Technology" 
             articles={articles.filter(a => 
               a.title.toLowerCase().includes('tech') ||
@@ -427,7 +427,7 @@ export default function NewsPage() {
           />
           
           {/* Business - Vertical */}
-          <VerticalNewsSection 
+          <VerticalNewsSection
             title="Business" 
             articles={articles.filter(a => 
               a.title.toLowerCase().includes('business') ||
@@ -437,7 +437,7 @@ export default function NewsPage() {
           />
           
           {/* Latest Updates - Vertical */}
-          <VerticalNewsSection 
+          <VerticalNewsSection
             title="Latest Updates" 
             articles={articles.slice(8)} 
           />

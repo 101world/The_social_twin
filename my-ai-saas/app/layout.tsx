@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 
 import Navbar from "@/components/Navbar";
 import { CreditProvider } from "@/lib/credits-context";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
@@ -36,9 +37,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
+  <body className={`${inter.variable} ${geistMono.variable} antialiased`}> 
           <CreditProvider>
             <Navbar />
             {children}

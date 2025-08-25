@@ -285,39 +285,7 @@ const ArticleModal = ({ article, onClose }: { article: NewsArticle | null; onClo
   );
 };
 
-// Tiny widgets: quick filters and top sources
-const Widgets = ({ articles, onPickFilter, compact }: { articles: NewsArticle[]; onPickFilter: (query: string) => void; compact?: boolean }) => {
-  const chips = ['AI', 'Business', 'Science', 'Sports', 'Crypto', 'Space', 'World', 'Politics'];
-  const sourceCounts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const a of articles) {
-      const s = (a.source_name || a.source || 'Unknown').trim();
-      map.set(s, (map.get(s) || 0) + 1);
-    }
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  }, [articles]);
-
-  return (
-    <div className="space-y-3 md:space-y-4">
-      <div>
-        <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Quick filters</div>
-        <div className={`flex ${compact ? 'flex-wrap gap-2' : 'gap-2 overflow-x-auto'} scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent`}>
-          {chips.map(c => (
-            <button key={c} onClick={() => onPickFilter(c)} className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-900 border border-gray-800 text-gray-200 hover:border-orange-500 whitespace-nowrap">{c}</button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Top sources</div>
-        <div className={`flex ${compact ? 'flex-wrap gap-2' : 'gap-2 overflow-x-auto'} scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent`}>
-          {sourceCounts.map(([name, count]) => (
-            <span key={name} className="px-3 py-1.5 rounded-full text-xs bg-black border border-gray-800 text-gray-300 whitespace-nowrap">{name} • {count}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+// Widgets removed: replaced by compact quick chips in the toolbar
 
 export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMode?: boolean; mode?: 'auto' | 'vertical' | 'horizontal' }) {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
@@ -328,6 +296,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const [continent, setContinent] = useState<string>('');
   const [country, setCountry] = useState<string>('');
   const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
+  const quickChips = ['AI', 'Business', 'Science', 'World', 'Crypto'];
 
   // Load real news from API
   useEffect(() => {
@@ -435,15 +404,37 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   return (
     <div className={`h-full bg-black text-white overflow-y-auto overflow-x-hidden ${activeArticle ? 'md:overflow-hidden' : ''}`}>
       <div className="h-full flex flex-col">
-        {/* Filters */}
-  <div className="flex-shrink-0 p-3 md:p-5">
-          {/* Country Dropdown - centered */}
-          <div className="max-w-2xl mx-auto mb-2">
-            <div className="flex items-center justify-center">
+        {/* Toolbar: search + quick chips + region selects */}
+        <div className="flex-shrink-0 p-3 md:p-4 border-b border-gray-800">
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search news..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchOpen(true)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-white placeholder-gray-400"
+              />
+            </div>
+
+            {/* Quick chips */}
+            <div className={`flex items-center gap-1 md:gap-2 ${renderHorizontal ? 'overflow-x-auto whitespace-nowrap' : 'flex-wrap'} max-w-full`}>
+              {quickChips.map((c) => (
+                <button key={c} onClick={() => setSearchQuery(c)} className="px-2.5 md:px-3 py-1.5 rounded-full text-xs font-medium bg-gray-900 border border-gray-800 text-gray-200 hover:border-orange-500">
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {/* Region selects */}
+            <div className="flex items-center gap-2 ml-auto">
               <select
                 value={continent}
                 onChange={(e) => { setContinent(e.target.value); setCountry(''); }}
-                className="mr-2 px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm"
+                className="px-2 py-2 bg-black border border-gray-800 rounded-lg text-xs md:text-sm"
                 aria-label="Select continent"
               >
                 <option value="">Continent</option>
@@ -457,112 +448,87 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="px-3 py-2 bg-black border border-gray-800 rounded-lg text-sm"
+                className="px-2 py-2 bg-black border border-gray-800 rounded-lg text-xs md:text-sm"
                 aria-label="Select country"
               >
                 <option value="">Country</option>
-                {continent === 'africa' && (
-                  <>
-                    <option value="ZA">South Africa</option>
-                    <option value="NG">Nigeria</option>
-                    <option value="KE">Kenya</option>
-                    <option value="EG">Egypt</option>
-                    <option value="GH">Ghana</option>
-                    <option value="MA">Morocco</option>
-                    <option value="TZ">Tanzania</option>
-                    <option value="UG">Uganda</option>
-                    <option value="DZ">Algeria</option>
-                    <option value="ET">Ethiopia</option>
-                  </>
-                )}
-                {continent === 'asia' && (
-                  <>
-                    <option value="IN">India</option>
-                    <option value="CN">China</option>
-                    <option value="JP">Japan</option>
-                    <option value="KR">South Korea</option>
-                    <option value="ID">Indonesia</option>
-                    <option value="PH">Philippines</option>
-                    <option value="TH">Thailand</option>
-                    <option value="MY">Malaysia</option>
-                    <option value="PK">Pakistan</option>
-                    <option value="VN">Vietnam</option>
-                  </>
-                )}
-                {continent === 'europe' && (
-                  <>
-                    <option value="GB">United Kingdom</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                    <option value="IT">Italy</option>
-                    <option value="ES">Spain</option>
-                    <option value="NL">Netherlands</option>
-                    <option value="SE">Sweden</option>
-                    <option value="NO">Norway</option>
-                    <option value="PL">Poland</option>
-                    <option value="RU">Russia</option>
-                  </>
-                )}
-                {continent === 'north-america' && (
-                  <>
-                    <option value="US">United States</option>
-                    <option value="CA">Canada</option>
-                    <option value="MX">Mexico</option>
-                    <option value="GT">Guatemala</option>
-                    <option value="CU">Cuba</option>
-                    <option value="HT">Haiti</option>
-                    <option value="DO">Dominican Republic</option>
-                    <option value="HN">Honduras</option>
-                    <option value="NI">Nicaragua</option>
-                    <option value="CR">Costa Rica</option>
-                  </>
-                )}
-                {continent === 'south-america' && (
-                  <>
-                    <option value="BR">Brazil</option>
-                    <option value="AR">Argentina</option>
-                    <option value="CO">Colombia</option>
-                    <option value="CL">Chile</option>
-                    <option value="PE">Peru</option>
-                    <option value="VE">Venezuela</option>
-                    <option value="EC">Ecuador</option>
-                    <option value="UY">Uruguay</option>
-                    <option value="PY">Paraguay</option>
-                    <option value="BO">Bolivia</option>
-                  </>
-                )}
-                {continent === 'oceania' && (
-                  <>
-                    <option value="AU">Australia</option>
-                    <option value="NZ">New Zealand</option>
-                    <option value="FJ">Fiji</option>
-                    <option value="PG">Papua New Guinea</option>
-                    <option value="WS">Samoa</option>
-                    <option value="TO">Tonga</option>
-                    <option value="VU">Vanuatu</option>
-                    <option value="SB">Solomon Islands</option>
-                    <option value="FM">Micronesia</option>
-                    <option value="KI">Kiribati</option>
-                  </>
-                )}
+                {/* options retained below for each continent */}
+                {continent === 'africa' && (<>
+                  <option value="ZA">South Africa</option>
+                  <option value="NG">Nigeria</option>
+                  <option value="KE">Kenya</option>
+                  <option value="EG">Egypt</option>
+                  <option value="GH">Ghana</option>
+                  <option value="MA">Morocco</option>
+                  <option value="TZ">Tanzania</option>
+                  <option value="UG">Uganda</option>
+                  <option value="DZ">Algeria</option>
+                  <option value="ET">Ethiopia</option>
+                </>)}
+                {continent === 'asia' && (<>
+                  <option value="IN">India</option>
+                  <option value="CN">China</option>
+                  <option value="JP">Japan</option>
+                  <option value="KR">South Korea</option>
+                  <option value="ID">Indonesia</option>
+                  <option value="PH">Philippines</option>
+                  <option value="TH">Thailand</option>
+                  <option value="MY">Malaysia</option>
+                  <option value="PK">Pakistan</option>
+                  <option value="VN">Vietnam</option>
+                </>)}
+                {continent === 'europe' && (<>
+                  <option value="GB">United Kingdom</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="IT">Italy</option>
+                  <option value="ES">Spain</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="SE">Sweden</option>
+                  <option value="NO">Norway</option>
+                  <option value="PL">Poland</option>
+                  <option value="RU">Russia</option>
+                </>)}
+                {continent === 'north-america' && (<>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="MX">Mexico</option>
+                  <option value="GT">Guatemala</option>
+                  <option value="CU">Cuba</option>
+                  <option value="HT">Haiti</option>
+                  <option value="DO">Dominican Republic</option>
+                  <option value="HN">Honduras</option>
+                  <option value="NI">Nicaragua</option>
+                  <option value="CR">Costa Rica</option>
+                </>)}
+                {continent === 'south-america' && (<>
+                  <option value="BR">Brazil</option>
+                  <option value="AR">Argentina</option>
+                  <option value="CO">Colombia</option>
+                  <option value="CL">Chile</option>
+                  <option value="PE">Peru</option>
+                  <option value="VE">Venezuela</option>
+                  <option value="EC">Ecuador</option>
+                  <option value="UY">Uruguay</option>
+                  <option value="PY">Paraguay</option>
+                  <option value="BO">Bolivia</option>
+                </>)}
+                {continent === 'oceania' && (<>
+                  <option value="AU">Australia</option>
+                  <option value="NZ">New Zealand</option>
+                  <option value="FJ">Fiji</option>
+                  <option value="PG">Papua New Guinea</option>
+                  <option value="WS">Samoa</option>
+                  <option value="TO">Tonga</option>
+                  <option value="VU">Vanuatu</option>
+                  <option value="SB">Solomon Islands</option>
+                  <option value="FM">Micronesia</option>
+                  <option value="KI">Kiribati</option>
+                </>)}
               </select>
             </div>
           </div>
-          <div className="relative max-w-2xl mx-auto">
-            <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
-            <input
-              type="text"
-              placeholder="Search breaking news... Powered by 101World"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3 text-sm md:text-base bg-black border border-gray-800 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
-            />
-          </div>
-          {/* Widgets: quick filters + top sources (compact in docked) */}
-          <div className="max-w-3xl mx-auto mt-3 md:mt-4">
-            <Widgets articles={articles} compact={!renderHorizontal} onPickFilter={(q) => setSearchQuery(q)} />
-          </div>
+
           {isSearchOpen && searchQuery && (
             <div className="relative max-w-2xl mx-auto mt-1">
               <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">

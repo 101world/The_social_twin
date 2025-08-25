@@ -24,6 +24,8 @@ async function ensureTableExists() {
           youtube_url TEXT,
           category TEXT DEFAULT 'General',
           source TEXT,
+          country_code TEXT,
+          continent TEXT,
           published_at TIMESTAMPTZ DEFAULT NOW(),
           quality_score INTEGER DEFAULT 0,
           content_hash TEXT,
@@ -31,9 +33,21 @@ async function ensureTableExists() {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
         
+        -- Backfill columns if they don't exist yet
+        DO $$ BEGIN
+          BEGIN
+            ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS country_code TEXT;
+          EXCEPTION WHEN others THEN NULL; END;
+          BEGIN
+            ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS continent TEXT;
+          EXCEPTION WHEN others THEN NULL; END;
+        END $$;
+        
         CREATE INDEX IF NOT EXISTS idx_news_category ON news_articles(category);
         CREATE INDEX IF NOT EXISTS idx_news_published ON news_articles(published_at DESC);
         CREATE INDEX IF NOT EXISTS idx_news_quality ON news_articles(quality_score DESC);
+        CREATE INDEX IF NOT EXISTS idx_news_country ON news_articles(country_code);
+        CREATE INDEX IF NOT EXISTS idx_news_continent ON news_articles(continent);
       `
     });
     
@@ -54,11 +68,15 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const mediaType = searchParams.get('media');
     const limit = parseInt(searchParams.get('limit') || '100');
+  const countryParam = (searchParams.get('country') || '').trim();
+  const continentParam = (searchParams.get('continent') || '').trim();
+  const country = countryParam ? countryParam.toUpperCase() : '';
+  const continent = normalizeContinent(continentParam);
 
     // Ensure table exists
     await ensureTableExists();
 
-    let query = supabase
+  let query = supabase
       .from('news_articles')
       .select('*')
       .order('published_at', { ascending: false })  // Most recent first (PRIMARY)
@@ -72,6 +90,13 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+    }
+
+    // Region filters
+    if (country) {
+      query = query.eq('country_code', country);
+    } else if (continent) {
+      query = query.eq('continent', continent);
     }
 
     // Filter by media type
@@ -104,23 +129,19 @@ export async function GET(request: NextRequest) {
     if (!articles || articles.length === 0) {
       try {
         const parser = new Parser();
-        const feeds = [
-          'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
-          'http://feeds.bbci.co.uk/news/world/rss.xml',
-          'https://feeds.reuters.com/reuters/worldNews',
-          'https://www.theguardian.com/world/rss'
-        ];
+        const feeds = getFeedsForRegion(country, continent);
         const results: any[] = [];
         for (const url of feeds) {
           const feed = await parser.parseURL(url);
           for (const entry of (feed.items || []).slice(0, 10)) {
+            const image = extractImageFromEntry(entry);
             results.push({
               id: entry.id || entry.link || Math.random().toString(36).slice(2),
               title: entry.title || 'Untitled',
               snippet: (entry.contentSnippet || entry.content || '').slice(0, 300),
               summary: (entry.contentSnippet || entry.content || '').slice(0, 300),
               url: entry.link,
-              image_url: null,
+              image_url: image,
               video_url: null,
               youtube_url: null,
               category: 'General',
@@ -146,6 +167,8 @@ export async function GET(request: NextRequest) {
               youtube_url: a.youtube_url,
               category: a.category,
               source: a.source,
+              country_code: country || null,
+              continent: continent || (country ? inferContinent(country) : null),
               published_at: a.published_at,
               quality_score: a.quality_score,
               content_hash: null
@@ -196,7 +219,9 @@ export async function GET(request: NextRequest) {
           category,
           search,
           mediaType,
-          limit
+          limit,
+          country,
+          continent
         },
         metadata: {
           total_articles: (articles && articles.length > 0) ? (count || 0) : fallbackArticles.length,
@@ -222,6 +247,222 @@ export async function GET(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+// Helpers
+function normalizeContinent(s: string | null | undefined): string {
+  if (!s) return '';
+  const raw = s.toString().trim().toLowerCase().replace(/_/g, '-');
+  const map: Record<string, string> = {
+    'africa': 'Africa',
+    'asia': 'Asia',
+    'europe': 'Europe',
+    'north-america': 'North America',
+    'south-america': 'South America',
+    'oceania': 'Oceania',
+    'australia': 'Oceania',
+    'middle-east': 'Middle East',
+    'middle east': 'Middle East'
+  };
+  if (map[raw]) return map[raw];
+  // handle abbreviations
+  if (['na', 'n. america'].includes(raw)) return 'North America';
+  if (['sa', 's. america', 'latam', 'latin-america', 'latin america'].includes(raw)) return 'South America';
+  if (['mea', 'middleeast'].includes(raw)) return 'Middle East';
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function inferContinent(countryCode: string): string | null {
+  const cc = countryCode.toUpperCase();
+  const map: Record<string, string> = {
+    US: 'North America', CA: 'North America', MX: 'North America',
+    BR: 'South America', AR: 'South America', CL: 'South America', CO: 'South America', PE: 'South America',
+    GB: 'Europe', IE: 'Europe', FR: 'Europe', DE: 'Europe', ES: 'Europe', IT: 'Europe', NL: 'Europe', SE: 'Europe', NO: 'Europe', FI: 'Europe', PL: 'Europe', PT: 'Europe', GR: 'Europe', RO: 'Europe', CZ: 'Europe', UA: 'Europe', RU: 'Europe', CH: 'Europe', AT: 'Europe', BE: 'Europe', DK: 'Europe', HU: 'Europe',
+    CN: 'Asia', JP: 'Asia', KR: 'Asia', IN: 'Asia', SG: 'Asia', HK: 'Asia', MY: 'Asia', TH: 'Asia', VN: 'Asia', PH: 'Asia', ID: 'Asia', LK: 'Asia', BD: 'Asia', PK: 'Asia',
+    AU: 'Oceania', NZ: 'Oceania',
+    ZA: 'Africa', NG: 'Africa', KE: 'Africa', EG: 'Africa', MA: 'Africa', GH: 'Africa', ET: 'Africa', DZ: 'Africa', TN: 'Africa', CI: 'Africa', UG: 'Africa', TZ: 'Africa',
+    AE: 'Middle East', SA: 'Middle East', IL: 'Middle East', IQ: 'Middle East', IR: 'Middle East', QA: 'Middle East', KW: 'Middle East', JO: 'Middle East', LB: 'Middle East', TR: 'Middle East'
+  };
+  return map[cc] || null;
+}
+
+function getFeedsForRegion(countryCode: string, continent?: string): string[] {
+  const cc = (countryCode || '').toUpperCase();
+  const cont = continent || (cc ? inferContinent(cc) || undefined : undefined);
+
+  // Country-specific feeds (sample selection)
+  const byCountry: Record<string, string[]> = {
+    US: [
+      'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+      'http://feeds.washingtonpost.com/rss/world',
+      'http://rss.cnn.com/rss/cnn_world.rss',
+      'https://apnews.com/hub/apf-intlnews?output=rss',
+      'https://www.npr.org/rss/rss.php?id=1004',
+      'https://feeds.reuters.com/reuters/worldNews',
+      'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+      'https://www.theguardian.com/us-news/rss',
+      'https://www.latimes.com/world/rss2.0.xml',
+      'https://www.wsj.com/xml/rss/3_7085.xml'
+    ],
+    GB: [
+      'http://feeds.bbci.co.uk/news/world/rss.xml',
+      'https://www.theguardian.com/world/rss',
+      'https://www.telegraph.co.uk/news/rss.xml',
+      'https://www.independent.co.uk/news/uk/rss',
+      'https://www.standard.co.uk/news/uk/rss',
+      'https://news.sky.com/feeds/rss/home.xml',
+      'https://www.ft.com/rss/home',
+      'https://www.dailymail.co.uk/news/index.rss',
+      'https://www.reuters.com/places/uk/uk-news/rss',
+      'https://www.theguardian.com/uk/rss'
+    ],
+    IN: [
+      'https://www.thehindu.com/news/international/feeder/default.rss',
+      'https://feeds.feedburner.com/ndtvnews-world-news',
+      'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',
+      'https://indianexpress.com/section/world/feed/',
+      'https://www.hindustantimes.com/feeds/rss/world-news/rssfeed.xml',
+      'https://www.livemint.com/rss/world',
+      'https://www.bbc.com/news/world/asia/india/rss.xml',
+      'https://www.aljazeera.com/xml/rss/all.xml'
+    ],
+    AU: [
+      'https://www.abc.net.au/news/feed/45910/rss.xml',
+      'https://www.smh.com.au/rss/feed.xml',
+      'https://www.theaustralian.com.au/feed/',
+      'https://www.theguardian.com/australia-news/rss',
+      'https://www.news.com.au/content-feeds/latest-news-world/',
+      'https://www.nzherald.co.nz/rss/',
+      'https://www.rnz.co.nz/rss',
+      'https://www.sbs.com.au/news/section/world/feed'
+    ],
+    JP: [
+      'https://www.japantimes.co.jp/rss/introductory/feed/',
+      'https://english.kyodonews.net/rss/news',
+      'https://www3.nhk.or.jp/nhkworld/en/news/rss/',
+      'https://www.nikkei.com/rss/ENGLISH.xml'
+    ],
+  };
+
+  // Continent feeds (10-ish each)
+  const byContinent: Record<string, string[]> = {
+    'North America': [
+      'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',
+      'http://rss.cnn.com/rss/cnn_world.rss',
+      'https://apnews.com/hub/apf-intlnews?output=rss',
+      'https://www.washingtonpost.com/world/?outputType=rss',
+      'https://www.latimes.com/world/rss2.0.xml',
+      'https://www.cbc.ca/cmlink/rss-world',
+      'https://globalnews.ca/feed/',
+      'https://www.theglobeandmail.com/world/rss/',
+      'https://www.reuters.com/world/americas/rss',
+      'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en'
+    ],
+    Europe: [
+      'http://feeds.bbci.co.uk/news/world/europe/rss.xml',
+      'https://www.dw.com/en/top-stories/europe/s-4536?maca=en-rss-en-eu-2091-rdf',
+      'https://www.euronews.com/rss?level=theme&name=news',
+      'https://www.theguardian.com/world/europe/rss',
+      'https://apnews.com/hub/europe?output=rss',
+      'https://www.politico.eu/feed/',
+      'https://www.ft.com/rss/world/europe',
+      'https://www.reuters.com/places/europe/rss',
+      'https://www.independent.co.uk/news/world/europe/rss',
+      'https://www.aljazeera.com/xml/rss/all.xml'
+    ],
+    Asia: [
+      'https://www.scmp.com/rss/91/feed',
+      'https://www.thehindu.com/news/international/feeder/default.rss',
+      'https://www.japantimes.co.jp/rss/introductory/feed/',
+      'https://www.straitstimes.com/news/world/rss.xml',
+      'https://www.aljazeera.com/xml/rss/all.xml',
+      'https://www.nhk.or.jp/rss/news/cat0.xml',
+      'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',
+      'https://www.koreatimes.co.kr/www/rss/nation.xml',
+      'https://www.nikkei.com/rss/ENGLISH.xml',
+      'https://www.reuters.com/places/asia/rss'
+    ],
+    Africa: [
+      'https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf',
+      'https://www.bbc.com/news/world/africa/rss.xml',
+      'https://www.aljazeera.com/xml/rss/all.xml',
+      'https://www.reuters.com/places/africa/rss',
+      'https://www.dw.com/en/top-stories/africa/s-12756?maca=en-rss-en-africa-3496-rdf',
+      'https://www.france24.com/en/africa/rss',
+      'https://www.voanews.com/rss',
+      'https://www.theguardian.com/world/africa/rss',
+      'https://apnews.com/hub/africa?output=rss',
+      'https://news.google.com/rss/search?q=site:allafrica.com+OR+site:bbc.co.uk+africa&hl=en-US&gl=US&ceid=US:en'
+    ],
+    'South America': [
+      'https://apnews.com/hub/latin-america?output=rss',
+      'https://www.reuters.com/places/latin-america/rss',
+      'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada',
+      'https://www.bbc.com/mundo/topics/c2dwq9v67pjt/index.xml',
+      'https://www.buenosairesherald.com/feed',
+      'https://www.theguardian.com/world/americas/rss',
+      'https://www.latimes.com/world-nation/rss2.0.xml',
+      'https://www.bbc.co.uk/news/world/latin_america/rss.xml',
+      'https://news.google.com/rss/search?q=latin+america&hl=en-US&gl=US&ceid=US:en'
+    ],
+    Oceania: [
+      'https://www.abc.net.au/news/feed/45910/rss.xml',
+      'https://www.nzherald.co.nz/rss/',
+      'https://www.smh.com.au/rss/feed.xml',
+      'https://www.theguardian.com/world/oceania/rss',
+      'https://www.rnz.co.nz/rss',
+      'https://www.news.com.au/content-feeds/latest-news-world/',
+      'https://apnews.com/hub/asia-pacific?output=rss',
+      'https://www.reuters.com/world/asia-pacific/rss',
+      'https://www.sbs.com.au/news/section/world/feed',
+      'https://www.ft.com/rss/world/asia-pacific'
+    ],
+    'Middle East': [
+      'https://www.aljazeera.com/xml/rss/all.xml',
+      'https://www.reuters.com/places/middle-east/rss',
+      'https://apnews.com/hub/middle-east?output=rss',
+      'https://www.haaretz.com/cmlink/1.976594',
+      'https://www.thenationalnews.com/rss/top-stories/',
+      'https://www.bbc.com/news/world/middle_east/rss.xml',
+      'https://www.alarabiya.net/.mrss/en.xml',
+      'https://www.middleeasteye.net/rss'
+    ]
+  };
+
+  if (cc && byCountry[cc]) return byCountry[cc];
+  if (cont && byContinent[cont]) return byContinent[cont];
+
+  // Default world mix
+  return [
+    'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en',
+    'http://feeds.bbci.co.uk/news/world/rss.xml',
+    'https://feeds.reuters.com/reuters/worldNews',
+    'https://www.theguardian.com/world/rss',
+    'https://apnews.com/hub/apf-intlnews?output=rss'
+  ];
+}
+
+function extractImageFromEntry(entry: any): string | null {
+  try {
+    // 1) enclosure with image
+    if (entry.enclosure && typeof entry.enclosure.url === 'string') {
+      const t = (entry.enclosure.type || '').toLowerCase();
+      if (!t || t.includes('image')) return entry.enclosure.url;
+    }
+    // 2) content HTML <img src="...">
+    const html = (entry['content:encoded'] || entry.content || '') as string;
+    if (html) {
+      const m = html.match(/<img[^>]+src=["']([^"'>]+)["']/i);
+      if (m && m[1]) return m[1];
+    }
+    // 3) media:thumbnail or media:content (if present in parsed object)
+    const media = (entry as any).media || (entry as any)['media:content'] || (entry as any)['media:thumbnail'];
+    if (media) {
+      const url = (media.url || media[0]?.url || media[0]?.$?.url);
+      if (typeof url === 'string') return url;
+    }
+  } catch {}
+  return null;
 }
 
 export async function POST(request: NextRequest) {
