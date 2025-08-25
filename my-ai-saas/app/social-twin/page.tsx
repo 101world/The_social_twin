@@ -279,7 +279,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'dashboard'>('chat');
   // Dashboard collapsibles
   const [dashOverviewOpen, setDashOverviewOpen] = useState(true);
   const [dashSettingsOpen, setDashSettingsOpen] = useState(false);
@@ -632,29 +632,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }
 
-  // Refresh the Generated tab by fetching the latest history for this user.
-  async function refreshGeneratedHistory(limit = 24) {
-    try {
-      if (!userId) return;
-      const r = await fetch(`/api/social-twin/history?limit=${limit}`, { headers: { 'X-User-Id': userId || '' } });
-      if (!r.ok) return;
-      const j = await r.json().catch(() => ({} as any));
-      const items = Array.isArray(j.items) ? j.items : (j.items || []);
-      if (!items.length) return;
-      setBinItems(prev => {
-        // merge newest items while avoiding duplicates by id
-        const existingIds = new Set(prev.map((it: any) => it.id));
-        const newItems = items.filter((it: any) => !existingIds.has(it.id));
-        // Prepend newest items
-        const merged = [...newItems, ...prev];
-        // Keep to reasonable length
-        return merged.slice(0, Math.max(limit, merged.length));
-      });
-    } catch (e) {
-      // ignore
-    }
-  }
-
   // Auto-load projects when opening the Dashboard -> Projects collapsible
   useEffect(() => {
     if (dashProjectsOpen && projects.length === 0) {
@@ -662,16 +639,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }, [dashProjectsOpen, userId]);
 
+  // Load news content when switching to News tab
   useEffect(() => {
-    if (activeTab === 'generated') {
-      // Always load generated items when switching to Generated tab (to show latest data)
-      fetch('/api/social-twin/history?limit=24', { headers: { 'X-User-Id': userId || '' } })
-        .then(r => r.json())
-        .then(j => {
-          setBinItems(j.items || []);
-          setBinCursor(j.nextCursor || null);
-        })
-        .catch(() => {});
+    if (activeTab === 'news') {
+      // News content loads via iframe, no additional loading needed
     }
   }, [activeTab, userId]);
 
@@ -1635,8 +1606,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
   // credits may have been deducted; refresh balance UI via shared provider
   refreshCredits();
-  // Refresh generated history so new outputs appear in the Generated tab
-  try { refreshGeneratedHistory(); } catch {}
   // Make sure Save Project button is available after generation
   setShowSaveProject(true);
     } catch (err: any) {
@@ -2044,7 +2013,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
-          { id: 'generated', label: 'Generated', icon: '🎨' },
+          { id: 'news', label: 'News', icon: '📰' },
           { id: 'dashboard', label: 'Dashboard', icon: '📊' }
         ].map((tab) => (
                 <button
@@ -3171,7 +3140,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {/* Library Button */}
                     <button
-                      onClick={() => setActiveTab('generated')}
+                      onClick={() => setLibraryOpen(true)}
                       className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition-all ${darkMode ? 'border border-neutral-700 hover:bg-neutral-800 text-neutral-100' : 'border border-neutral-300 hover:bg-gray-50 text-neutral-900'}`}
                       title="View all your generated images and videos"
                     >
@@ -3255,7 +3224,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </svg>
                     </button>
                     <button
-                      onClick={() => setActiveTab('generated')}
+                      onClick={() => setLibraryOpen(true)}
                       className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
                       title="View all your generated images and videos"
                     >
@@ -3320,153 +3289,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
           {/* Projects tab removed - now accessible via Dashboard */}
 
-          {activeTab === 'generated' && (
-            <div className="flex-1 overflow-hidden bg-black">
-              {/* Full screen infinite gallery - within tab content area */}
-              <div className="h-full w-full relative">
-                {/* Floating controls overlay */}
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-                  <div className={`text-sm px-3 py-2 rounded-full backdrop-blur-md ${darkMode ? 'bg-black/50 text-white' : 'bg-white/80 text-black'}`}>
-                    {binItems.length} generations
-                  </div>
-                  <button
-                    className={`rounded-full px-4 py-2 text-sm backdrop-blur-md transition-colors ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
-                    onClick={async () => {
-                      const r = await fetch('/api/social-twin/history?limit=48', { headers: { 'X-User-Id': userId || '' } });
-                      const j = await r.json();
-                      setBinItems(j.items || []);
-                      setBinCursor(j.nextCursor || null);
-                    }}
-                  >
-                    Refresh
-                  </button>
-                </div>
-                
-                {/* Vertical scroll grid with even small thumbnails */}
-                <div className="h-full w-full overflow-y-auto p-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3">
-                    {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
-                      const url = it.display_url || it.result_url;
-                      const isVideo = it.type === 'video';
-                      
-                      return (
-                        <div 
-                          key={it.id} 
-                          className={`aspect-square relative group cursor-pointer rounded-lg overflow-hidden ${darkMode ? 'bg-neutral-900' : 'bg-white'} transition-all duration-300 hover:scale-105 hover:shadow-xl hover:z-10`}
-                          onClick={() => {
-                            setViewerItem(it);
-                            setViewerOpen(true);
-                          }}
-                          onMouseEnter={() => {
-                            if (isVideo) setHoverVideoIds(prev => { const n = new Set(prev); n.add(it.id); return n; });
-                          }}
-                          onMouseLeave={() => {
-                            if (isVideo) setHoverVideoIds(prev => { const n = new Set(prev); n.delete(it.id); return n; });
-                          }}
-                        >
-                          {/* Content - even square size */}
-                          <div className="w-full h-full">
-                            {isVideo ? (
-                              (url ? (
-                                (!lowDataMode || mediaAllowed.has(it.id)) ? (
-                                  <video 
-                                    src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
-                                    className="h-full w-full object-cover" 
-                                    preload="metadata" 
-                                    muted
-                                    playsInline
-                                    controls={hoverVideoIds.has(it.id)}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                ) : (
-                                  <div 
-                                    className={`w-full h-full flex items-center justify-center text-2xl ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`} 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setMediaAllowed(prev=>{ const n = new Set(prev); n.add(it.id); return n; });
-                                    }}
-                                  >
-                                    📹
-                                  </div>
-                                )
-                              ) : (
-                                <div className={`h-full w-full ${darkMode?'bg-neutral-800':'bg-gray-100'} flex items-center justify-center text-2xl opacity-70`}>
-                                  ⏳
-                                </div>
-                              ))
-                            ) : (
-                              url ? (
-                                <img 
-                                  src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
-                                  className="h-full w-full object-cover" 
-                                  loading="lazy" 
-                                  alt="Generated content"
-                                  onError={(e) => {
-                                    // Replace broken image with status-based placeholder
-                                    const status = it.status || 'completed';
-                                    const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
-                                    const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);
-                                    
-                                    e.currentTarget.style.display = 'none';
-                                    const parent = e.currentTarget.parentElement;
-                                    if (parent && !parent.querySelector('.fallback-placeholder')) {
-                                      const placeholder = document.createElement('div');
-                                      placeholder.className = `fallback-placeholder h-full w-full flex flex-col items-center justify-center text-center ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-600'}`;
-                                      placeholder.innerHTML = `
-                                        <div class="text-2xl mb-1">${statusEmoji}</div>
-                                        <div class="text-xs opacity-70">${statusText}</div>
-                                        ${status === 'completed' ? '<div class="text-xs opacity-50 mt-1">URL expired</div>' : ''}
-                                      `;
-                                      parent.appendChild(placeholder);
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div className={`h-full w-full flex flex-col items-center justify-center text-center ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                  <div className="text-2xl mb-1">{it.status === 'pending' ? '⏳' : it.status === 'processing' ? '⚙️' : it.status === 'failed' ? '❌' : '🎨'}</div>
-                                  <div className="text-xs opacity-70">{it.status ? it.status.charAt(0).toUpperCase() + it.status.slice(1) : 'Generated'}</div>
-                                  {it.status === 'completed' && <div className="text-xs opacity-50 mt-1">No preview</div>}
-                                </div>
-                              )
-                            )}
-                          </div>
-                          
-                          {/* Hover overlay with info */}
-                          <div className={`absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-end`}>
-                            <div className={`p-2 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs`}>
-                              {isVideo ? '🎥' : '🖼️'}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Load more button */}
-                  {binCursor && binItems.length > 0 && (
-                    <div className="flex justify-center mt-6">
-                      <button
-                        className={`rounded-full px-6 py-3 text-sm font-medium backdrop-blur-md transition-all hover:scale-105 ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
-                        onClick={async () => {
-                          const r = await fetch(`/api/social-twin/history?limit=24&cursor=${encodeURIComponent(binCursor)}`, { headers: { 'X-User-Id': userId || '' } });
-                          const j = await r.json();
-                          setBinItems(prev => [...prev, ...(j.items || [])]);
-                          setBinCursor(j.nextCursor || null);
-                        }}
-                      >
-                        Load More
-                      </button>
-                    </div>
-                  )}
-                  
-                  {binItems.length === 0 && (
-                    <div className="h-full w-full flex flex-col items-center justify-center text-center">
-                      <div className="text-6xl mb-4 opacity-50">🎨</div>
-                      <div className={`text-xl mb-3 ${darkMode ? 'text-white' : 'text-black'}`}>No generations yet</div>
-                      <div className={`text-sm opacity-60 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Create images or videos in chat to see them here</div>
-                    </div>
-                  )}
-                </div>
+          {activeTab === 'news' && (
+            <div className="flex-1 overflow-hidden">
+              {/* News page embed */}
+              <div className="h-full w-full">
+                <iframe 
+                  src="/news"
+                  className="w-full h-full border-0"
+                  title="News"
+                  allow="web-share"
+                />
               </div>
             </div>
           )}
@@ -5146,21 +4978,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           </div>
         </aside>
       ) : null}
-      {/* Quick access to Generated tab - only show if not already on generated tab */}
-      {activeTab !== 'generated' && binItems.length > 0 && (
-        <button
-          className={`fixed bottom-4 left-4 rounded-full p-3 shadow-lg transition-all hover:scale-105 ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white border border-neutral-200'}`}
-          onClick={() => setActiveTab('generated')}
-          title="View your generated content"
-        >
-          <span className="text-lg">🎨</span>
-          {binItems.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {binItems.length > 9 ? '9+' : binItems.length}
-            </span>
-          )}
-        </button>
-      )}
 
       {/* Legacy panel removed - now using tab interface */}
       {/* Legacy pinned grid removed */}
