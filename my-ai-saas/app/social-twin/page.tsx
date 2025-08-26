@@ -2094,7 +2094,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ))}
             </div>
             
-            {/* Center: Context-Aware Dropdown */}
+            {/* Center: Context-Aware Dropdown - Moved closer to prompt area */}
             <div className="flex-1 flex justify-center px-4">
               <div className="relative">
                 <button
@@ -2122,7 +2122,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {dropdownOpen && (
                   <div 
                     onClick={(e) => e.stopPropagation()}
-                    className={`absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
+                    className={`absolute top-full left-0 right-0 mt-0.5 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
                       darkMode
                         ? 'bg-neutral-800 border-neutral-700'
                         : 'bg-white border-neutral-300'
@@ -3271,6 +3271,72 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}
                   ref={composerRef}
                 >
+                  {/* Project/Context Dropdown - positioned closer to prompt */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDropdownOpen(!dropdownOpen);
+                      }}
+                      className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg border transition-colors ${isMobile ? 'min-w-[80px]' : 'min-w-[100px]'} justify-between ${
+                        darkMode
+                          ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
+                          : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
+                      } mb-auto`}
+                    >
+                      <span className="truncate text-xs">
+                        {activeTab === 'chat' ? selectedProject : 
+                         activeTab === 'news' ? selectedTopic : 
+                         activeTab === 'messenger' ? selectedMessengerFilter :
+                         'Settings'}
+                      </span>
+                      <svg className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {dropdownOpen && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className={`absolute bottom-full left-0 right-0 mb-1 rounded-lg border shadow-lg z-50 max-h-32 overflow-y-auto ${
+                          darkMode
+                            ? 'bg-neutral-800 border-neutral-700'
+                            : 'bg-white border-neutral-300'
+                        }`}
+                      >
+                        {(activeTab === 'chat' ? projectOptions : 
+                          activeTab === 'news' ? topicOptions : 
+                          activeTab === 'messenger' ? messengerOptions :
+                          ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
+                          <button
+                            key={option}
+                            onClick={() => {
+                              if (activeTab === 'chat') {
+                                setSelectedProject(option);
+                              } else if (activeTab === 'news') {
+                                setSelectedTopic(option);
+                              } else if (activeTab === 'messenger') {
+                                setSelectedMessengerFilter(option);
+                              }
+                              setDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-opacity-10 transition-colors ${
+                              darkMode
+                                ? 'hover:bg-white text-neutral-100'
+                                : 'hover:bg-black text-neutral-900'
+                            } ${((activeTab === 'chat' && option === selectedProject) || 
+                                 (activeTab as string === 'news' && option === selectedTopic) ||
+                                 (activeTab as string === 'messenger' && option === selectedMessengerFilter))
+                                ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
+                                : ''}`}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -3283,23 +3349,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }}
                     disabled={isGeneratingBatch}
                   />
-                    {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {/* Top row: Send + Upload */}
+                    {/* Action buttons in 2x2 grid for more text box space - improved positioning */}
+                  <div className={`grid grid-cols-2 gap-1 ${isMobile ? 'gap-1' : 'gap-1.5'}`}>
+                    {/* Top row: Send + Upload - better sizing and spacing */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-500">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
                         <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className={`group cursor-pointer rounded-lg ${isMobile ? 'h-8 w-8' : 'h-8 w-8'} flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -3319,29 +3385,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: AI Toggle + Library Button */}
+                    {/* Bottom row: AI Toggle + Library Button - consistent sizing */}
                     <button 
                       title="Toggle AI Features" 
                       onClick={() => setShowAIFeatures(!showAIFeatures)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded-lg transition-all duration-300 ${
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center ${
                         showAIFeatures
                           ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
                           : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
                       }`}
-                    > 
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
-                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 7l10 5 10-5M12 22V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
                     <button
                       onClick={() => setLibraryOpen(true)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                      title="View all your generated images and videos"
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="View Library"
                     >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="2"/>
-                        <circle cx="8.5" cy="13.5" r="1.5" stroke="currentColor" strokeWidth="2"/>
-                        <path d="M21 15l-3.086-3.086a2 2 0 00-2.828 0L6 21" stroke="currentColor" strokeWidth="2"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-current">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" stroke="currentColor"/>
+                        <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
                       </svg>
                     </button>
                   </div>
