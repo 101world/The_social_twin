@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
           type: 'text',
           mode: actualMode,
           prompt: message,
-          result: aiResult.response || aiResult.message,
+          result: aiResult.content || aiResult.response || aiResult.message,
           credits_used: creditCost,
           success: true,
           created_at: new Date().toISOString(),
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      response: aiResult.response || aiResult.message,
+      response: aiResult.content || aiResult.response || aiResult.message,
       creditsUsed: creditCost,
       remainingCredits: didDeduct ? newBalance : availableCredits - creditCost,
       mode: actualMode,
