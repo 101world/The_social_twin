@@ -3929,21 +3929,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
                       }`}
                     >
-                      {/* Atom SVG Icon - Original Size */}
+                      {/* Enhanced Atom SVG Icon - More Descriptive */}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
-                        {/* Atom nucleus */}
-                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        {/* Central nucleus with gradient effect */}
+                        <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} opacity="0.6" className="transition-colors"/>
                         
-                        {/* Electron orbits */}
-                        <ellipse cx="12" cy="12" rx="6" ry="2" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
-                        <ellipse cx="12" cy="12" rx="2" ry="6" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
-                        <ellipse cx="12" cy="12" rx="4.5" ry="4.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" transform="rotate(45 12 12)" className="transition-colors"/>
+                        {/* Electron orbits - more visible and descriptive */}
+                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="5.5" ry="5.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" transform="rotate(45 12 12)" className="transition-colors" opacity="0.8"/>
                         
-                        {/* Electrons */}
-                        <circle cx="18" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="6" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="6" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="18" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        {/* Electrons with enhanced visibility */}
+                        <circle cx="20" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        
+                        {/* Atomic symbol "A" hint in center */}
+                        <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
                       </svg>
                     </button>
                     {/* Generated Bin button */}
