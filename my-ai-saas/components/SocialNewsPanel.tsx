@@ -539,7 +539,7 @@ export default function SocialNewsPanel() {
                 <button onClick={() => { readerNext(); }} className="px-3 py-1 rounded border border-gray-800 text-sm">Next</button>
               </div>
               <div className="flex items-center gap-2">
-                {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>}
+                {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-300 text-sm bg-gray-100 text-gray-900">Open source</a>}
               </div>
             </div>
             <div tabIndex={0} aria-hidden className="focus-sentinel-end" />
