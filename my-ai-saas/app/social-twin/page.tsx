@@ -547,6 +547,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const newIsMobile = window.innerWidth < 640;
       setIsMobile(newIsMobile);
       
+      // Force simple mode on mobile (Pro mode not available on mobile)
+      if (newIsMobile && !simpleMode) {
+        setSimpleMode(true);
+        localStorage.setItem('social_twin_simple', '1');
+      }
+      
       // Close mobile menu when switching to desktop
       if (!newIsMobile && mobileMenuOpen) {
         setMobileMenuOpen(false);
@@ -556,7 +562,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     checkMobile(); // Initial check
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, [mobileMenuOpen]);
+  }, [mobileMenuOpen, simpleMode]);
 
   // Handle mobile menu interactions (escape key and outside clicks)
   useEffect(() => {
@@ -2421,7 +2427,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   ))}
                 </div>
                 
-                {/* Mode Toggle */}
+                {/* Mode Toggle - Hidden on mobile, Pro mode not available on mobile */}
+                {/* 
                 <div className="space-y-2">
                   <h3 className={`text-sm font-medium ${
                     darkMode ? 'text-gray-400' : 'text-gray-600'
@@ -2449,6 +2456,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </button>
                 </div>
+                */}
                 
                 {/* Theme Toggle */}
                 <div className="space-y-2">
@@ -2509,8 +2517,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - always visible; scrollable on mobile */}
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        {/* Top Navigation - hidden when mobile menu is open */}
+          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile && mobileMenuOpen ? 'hidden' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
