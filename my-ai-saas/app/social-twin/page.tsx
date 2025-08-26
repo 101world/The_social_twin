@@ -2859,7 +2859,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             min="0"
                             max="1"
                             placeholder={mode === 'image-modify' ? '1.0' : '0.8'}
-                            className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                           />
                         </div>
                       </div>
@@ -2870,7 +2870,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <textarea
                           placeholder={mode === 'video' ? "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly" : "low quality, bad anatomy, worst quality, low resolution"}
                           rows={2}
-                          className={`w-full rounded-md border px-2 py-1 text-xs resize-none ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                          className={`w-full rounded-md border px-2 py-1 text-xs resize-none ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                         />
                       </div>
                     </div>
@@ -3038,7 +3038,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <select
                         value={textProvider}
                         onChange={(e)=> setTextProvider(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                         title="Provider"
                       >
                         <option value="social">Social</option>
@@ -3052,7 +3052,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         {/* Advanced Controls Toggle */}
                         <button
                           onClick={() => setShowAdvancedControls(!showAdvancedControls)}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-blue-500 border-blue-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-blue-500 border-blue-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-gray-50 border-neutral-300 hover:bg-gray-100')} touch-manipulation`}
                           title="Advanced Controls"
                         >
                           <div className="flex items-center gap-1">
@@ -3074,7 +3074,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setEffectLora(effectLora || '');
                                 else setEffectLora(v);
                               }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                               title="Effects LoRA"
                             >
                               {(['None','Custom...'] as const).map((opt) => (
@@ -3096,7 +3096,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setLoraName(loraName || '');
                                 else setLoraName(v);
                               }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                               title="Character LoRA"
                             >
                               {(['None','Custom...'] as const).map((opt) => (
@@ -3115,7 +3115,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -3127,7 +3127,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                           title="Aspect Ratio"
                         >
                           <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -3143,7 +3143,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={videoModel}
                           onChange={(e) => setVideoModel(e.target.value as any)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                           title="Video model"
                         >
                           <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
@@ -3153,7 +3153,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -3164,7 +3164,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-gray-50 border-neutral-300'} touch-manipulation`}
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -3179,7 +3179,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <>
                         <button
                           onClick={() => setImgTab('character')}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-gray-50 border-neutral-300 hover:bg-gray-100'} touch-manipulation`}
                         >
                           {isMobile ? 'Char' : 'Character'}
                         </button>
@@ -3291,7 +3291,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <video src={attached.dataUrl} className="h-full w-full object-cover" />
                         </div>
                       ) : (
-                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-gray-100 text-black'}`}>
                           📄
                         </div>
                       )}
@@ -3351,9 +3351,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
 
               {/* Overview (collapsible) */}
-              <div className={`rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
+              <div className={`rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-gray-50/70 backdrop-blur-md border-neutral-200'}`}>
                 <button
-                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-100'}`}
                   onClick={() => setDashOverviewOpen(v => !v)}
                 >
                   <span className="font-medium">Overview</span>
@@ -3418,9 +3418,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {/* Settings moved to modal opened by top-right icon */}
 
               {/* Projects (collapsible) */}
-              <div className={`mt-4 rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
+              <div className={`mt-4 rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-gray-50/70 backdrop-blur-md border-neutral-200'}`}>
                 <button
-                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-100'}`}
                   onClick={() => setDashProjectsOpen(v => !v)}
                 >
                   <span className="font-medium">Projects</span>
@@ -3451,7 +3451,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <a
                             key={p.id}
                             href={`/social-twin?projectId=${encodeURIComponent(p.id)}`}
-                            className={`group flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 hover:bg-neutral-900' : 'bg-white/70 backdrop-blur-sm border-neutral-200 hover:bg-black/5'}`}
+                            className={`group flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 hover:bg-neutral-900' : 'bg-gray-50/70 backdrop-blur-sm border-neutral-200 hover:bg-black/5'}`}
                           >
                             <div className={`relative w-40 sm:w-56 aspect-video overflow-hidden rounded-lg border ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-neutral-50'}`}>
                               <img
@@ -3496,8 +3496,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {/* Settings Modal */}
       {settingsOpen && (
         <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
-          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-white/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
+          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-gray-50 border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-gray-50/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
               <div className="text-sm font-medium">Settings</div>
               <button className={`rounded p-1 ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'}`} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
             </div>
@@ -3553,7 +3553,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </select>
                 </div>
               </div>
-              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-white/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
+              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-gray-50/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
                 <div className="flex gap-2 justify-end">
                   <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
                   <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
@@ -3567,7 +3567,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {!simpleMode && (
   <section
     ref={gridSectionRef as any}
-  className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-white'}`}
+  className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-gray-50'}`}
         style={{ cursor: gridEnabled ? 'grab' : undefined, overflow: 'hidden' }}
         onDragOver={(e)=>{ e.preventDefault(); }}
         onDrop={(e)=>{
@@ -3738,7 +3738,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           <div className="fixed z-[10000]" style={{ left: menu.x, top: menu.y }}
                onClick={()=> setMenu({ open:false, x:0, y:0, targetId:null })}
           >
-            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow relative ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white'}`} onClick={(e)=> e.stopPropagation()}>
+            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow relative ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-gray-50'}`} onClick={(e)=> e.stopPropagation()}>
               {/* Minimal red close button */}
               <button 
                 className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center hover:bg-red-500/20 rounded-full transition-colors"
@@ -3805,7 +3805,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {viewer.open && (
         <div className="fixed inset-0 z-[10040]">
           <div className="absolute inset-0 bg-black/70" onClick={()=> setViewer({ open:false, src:'', ref: undefined })} />
-          <div className={`absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] max-w-6xl rounded-2xl border ${darkMode?'border-white/10 bg-black':'border-black/10 bg-white'} p-4`}>
+          <div className={`absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] max-w-6xl rounded-2xl border ${darkMode?'border-white/10 bg-black':'border-black/10 bg-gray-50'} p-4`}>
             <div className="mb-3 flex items-center justify-between text-xs opacity-70">
               <div>Compare</div>
               <button className="rounded border px-2 py-1" onClick={()=> setViewer({ open:false, src:'', ref: undefined })}>Close</button>
@@ -3841,7 +3841,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50" onClick={()=> setCompileOpen(false)} />
           {/* Modal card */}
-          <div className={`absolute left-1/2 top-20 -translate-x-1/2 w-[92vw] max-w-xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-white'}`} role="dialog" aria-modal="true">
+          <div className={`absolute left-1/2 top-20 -translate-x-1/2 w-[92vw] max-w-xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-gray-50'}`} role="dialog" aria-modal="true">
             <div className="mb-3 text-lg font-semibold">Compile Video</div>
             <div className="mb-3 text-sm opacity-80">Clips to be compiled (in order):</div>
             <div className="mb-4 max-h-48 overflow-auto rounded border p-2 text-xs">
@@ -3881,7 +3881,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {composeOpen ? (
         <div className="fixed inset-0 z-[10050] pointer-events-auto">
           <div className="absolute inset-0 bg-black/50" onClick={()=> setComposeOpen(false)} />
-          <div className={`absolute left-1/2 top-14 -translate-x-1/2 w-[92vw] max-w-3xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-white'}`}>
+          <div className={`absolute left-1/2 top-14 -translate-x-1/2 w-[92vw] max-w-3xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-gray-50'}`}>
             <div className="mb-3 flex items-center justify-between">
               <div className="text-lg font-semibold">Compose Document</div>
               <div className="flex items-center gap-2 text-sm">
@@ -3900,7 +3900,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <div className="mb-1 text-xs opacity-70">Page {i+1}</div>
                   <div className="h-48 w-full overflow-hidden rounded border">
                     {/* Simple preview: first image + texts */}
-                    <div className="relative h-full w-full bg-white">
+                    <div className="relative h-full w-full bg-gray-50">
                       {pg.images[0] ? (
                         
                         <img src={getDisplayUrl(pg.images[0].url)} alt="page" className="h-full w-full object-contain" />
