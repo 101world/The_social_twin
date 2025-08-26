@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { createSupabaseAdminClient } from '@/lib/supabase';
 
 // Define credit costs for different AI modes
 const CREDIT_COSTS = {
@@ -34,24 +35,28 @@ export async function POST(request: NextRequest) {
     const actualMode = imageData ? 'vision' : mode;
     const creditCost = CREDIT_COSTS[actualMode as keyof typeof CREDIT_COSTS] || 2;
 
-    // Check user credits first
-    const creditsResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/credits`, {
-      headers: {
-        'X-User-ID': userId,
-      },
-    });
+    // Create Supabase admin client for credit operations
+    const supabase = createSupabaseAdminClient();
 
-    if (!creditsResponse.ok) {
+    // Check user credits using Supabase
+    const { data: creditData, error: creditError } = await supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (creditError && creditError.code !== 'PGRST116') {
+      console.error('Credit check error:', creditError);
       return NextResponse.json({ error: 'Failed to check credits' }, { status: 500 });
     }
 
-    const creditsData = await creditsResponse.json();
+    const availableCredits = (creditData as any)?.credits || 0;
     
-    if (creditsData.credits < creditCost) {
+    if (availableCredits < creditCost) {
       return NextResponse.json({ 
         error: 'Insufficient credits',
         required: creditCost,
-        available: creditsData.credits 
+        available: availableCredits 
       }, { status: 402 });
     }
 
@@ -90,52 +95,42 @@ export async function POST(request: NextRequest) {
 
     const aiResult = await aiResponse.json();
 
-    // Deduct credits after successful AI response
-    const deductResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/credits/deduct`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId,
-      },
-      body: JSON.stringify({
-        amount: creditCost,
-        reason: `AI Chat - ${actualMode} mode`,
-        metadata: {
-          mode: actualMode,
-          messageLength: message.length,
-          hasImage: !!imageData
-        }
-      }),
+    // Deduct credits using Supabase RPC function
+    let didDeduct = false;
+    let newBalance: number | null = null;
+    
+    const { data: bal, error: deductError } = await supabase.rpc('deduct_credits_simple', {
+      p_user_id: userId,
+      p_amount: creditCost
     });
 
-    if (!deductResponse.ok) {
-      console.error('Failed to deduct credits, but AI response was successful');
+    if (deductError) {
+      console.error('Failed to deduct credits:', deductError);
       // Still return AI response even if credit deduction fails
-      // This ensures user gets the response they paid for
+    } else if (typeof bal === 'number') {
+      didDeduct = true;
+      newBalance = bal;
     }
 
     // Track the generation for analytics
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/generations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': userId,
-        },
-        body: JSON.stringify({
+      await supabase
+        .from('media_generations')
+        .insert({
+          user_id: userId,
           type: 'text',
           mode: actualMode,
           prompt: message,
           result: aiResult.response || aiResult.message,
           credits_used: creditCost,
           success: true,
+          created_at: new Date().toISOString(),
           metadata: {
             model: aiResult.model,
             conversationLength: conversationHistory.length,
             hasImage: !!imageData
           }
-        }),
-      });
+        });
     } catch (trackingError) {
       console.error('Failed to track generation:', trackingError);
       // Don't fail the request if tracking fails
@@ -144,7 +139,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       response: aiResult.response || aiResult.message,
       creditsUsed: creditCost,
-      remainingCredits: creditsData.credits - creditCost,
+      remainingCredits: didDeduct ? newBalance : availableCredits - creditCost,
       mode: actualMode,
       model: aiResult.model
     });
