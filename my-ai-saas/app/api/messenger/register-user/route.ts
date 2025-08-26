@@ -30,27 +30,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the messenger_upsert_user function to create/update user
-    const { data, error } = await supabase.rpc('messenger_upsert_user', {
-      p_clerk_id: clerkId,
-      p_username: username,
-      p_display_name: displayName || username,
-      p_email: email,
-      p_avatar_url: avatarUrl
-    });
-
-    if (error) {
-      console.error('Register user error:', error);
-      return NextResponse.json(
-        { error: error.message || 'Failed to register user' },
-        { status: 500 }
-      );
+    // Call the messenger_upsert_user function to create/update user (preferred)
+    let callError: any | null = null;
+    let userId: any | null = null;
+    try {
+      const { data, error } = await supabase.rpc('messenger_upsert_user', {
+        p_clerk_id: clerkId,
+        p_username: username,
+        p_display_name: displayName || username,
+        p_email: email,
+        p_avatar_url: avatarUrl
+      });
+      if (error) throw error;
+      userId = data;
+    } catch (err: any) {
+      callError = err;
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      userId: data,
-      message: 'User registered successfully in messenger system' 
+    // Fallback to messenger_register_user if upsert function isn't available
+    if (callError) {
+      try {
+        const { data, error } = await supabase.rpc('messenger_register_user', {
+          user_clerk_id: clerkId,
+          user_username: username,
+          user_display_name: displayName || username,
+          user_email: email,
+          user_avatar_url: avatarUrl
+        });
+        if (error) throw error;
+        userId = data;
+      } catch (fallbackErr: any) {
+        console.error('Register user error (both upsert and fallback failed):', fallbackErr);
+        return NextResponse.json(
+          { error: fallbackErr?.message || callError?.message || 'Failed to register user' },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      userId,
+      message: 'User registered successfully in messenger system'
     });
   } catch (error) {
     console.error('Register user API error:', error);
