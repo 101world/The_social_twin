@@ -2749,8 +2749,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
         {/* Top Navigation - COMPLETELY HIDDEN on mobile, visible on desktop only */}
-        {!isMobile && (
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        {!isMobile && window.innerWidth >= 640 && (
+          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile ? 'hidden md:flex' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
@@ -2775,12 +2775,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </button>
               ))}
             </div>
-            
+
             {/* Save Project moved to bottom next to More */}
           </div>
-        )}
-
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+        )}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
@@ -4518,24 +4516,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
 
           {activeTab === 'news' && (
-            <div className="flex-1 overflow-y-auto p-4 bg-neutral-950">
-              {/* News Header - Dark Theme Only */}
-              <div className="mb-6 flex items-center justify-between">
+            <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+              {/* News Header */}
+              <div className="mb-8 flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <span className="text-2xl">📰</span>
-                    <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
-                      Live News Feed
-                    </span>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-400 bg-clip-text text-transparent flex items-center gap-3">
+                    <span className="text-3xl">📰</span>
+                    <span>Live News Feed</span>
                   </h2>
-                  <p className="text-sm text-gray-400 mt-1">Real-time news from trusted sources • Updates every 20 minutes</p>
+                  <p className="text-sm text-gray-400 mt-2 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Real-time news from trusted sources • Updates every 20 minutes
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  {/* Category Selector - Dark Theme */}
+                <div className="flex items-center gap-4">
+                  {/* Category Selector */}
                   <select
                     value={newsCategory}
                     onChange={(e) => setNewsCategory(e.target.value)}
-                    className="bg-neutral-800 border border-neutral-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-neutral-700 hover:border-cyan-500/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+                    className="bg-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 text-white px-4 py-2 rounded-xl text-sm hover:bg-neutral-700/80 hover:border-cyan-500/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
                   >
                     <option value="technology" className="bg-neutral-800">Technology</option>
                     <option value="business" className="bg-neutral-800">Business</option>
@@ -4544,153 +4543,384 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <option value="sports" className="bg-neutral-800">Sports</option>
                     <option value="entertainment" className="bg-neutral-800">Entertainment</option>
                   </select>
-                  {/* Refresh Button - Dark Theme */}
+                  {/* Refresh Button */}
                   <button
                     onClick={() => fetchNews(newsCategory)}
                     disabled={newsLoading}
-                    className="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-cyan-500/50 text-white p-2 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    className="bg-neutral-800/80 backdrop-blur-sm hover:bg-neutral-700/80 border border-neutral-700/50 hover:border-cyan-500/50 text-white p-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                     title="Refresh News"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-cyan-400">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-cyan-400">
                       <path d="M4 4V9H4.582M4.582 9C5.1506 7.56584 6.3534 6.56584 7.8284 6.19248M4.582 9H9M20 20V15H19.418M19.418 15C18.8494 16.4342 17.6466 17.4342 16.1716 17.8075M19.418 15H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
                 </div>
               </div>
 
-              {/* News Content - Dark Theme Only */}
+              {/* News Content */}
               {newsLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="flex items-center gap-4 bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent"></div>
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex items-center gap-6 bg-neutral-900/60 backdrop-blur-sm rounded-2xl p-8 border border-neutral-800/50 shadow-2xl">
+                    <div className="animate-spin rounded-full h-10 w-10 border-3 border-cyan-500 border-t-transparent"></div>
                     <div>
-                      <div className="text-white font-medium">Fetching Latest News...</div>
+                      <div className="text-white font-semibold text-lg">Fetching Latest News...</div>
                       <div className="text-gray-400 text-sm mt-1">Connecting to news sources...</div>
                     </div>
                   </div>
                 </div>
               ) : newsError ? (
-                <div className="bg-red-950/20 border border-red-800/50 rounded-xl p-6 text-center">
-                  <div className="text-red-400 text-4xl mb-3">⚠️</div>
-                  <div className="text-red-300 font-medium text-lg mb-2">News Feed Unavailable</div>
-                  <div className="text-red-400/80 text-sm mb-4">{newsError}</div>
+                <div className="bg-red-950/30 backdrop-blur-sm border border-red-800/50 rounded-2xl p-8 text-center shadow-2xl">
+                  <div className="text-red-400 text-5xl mb-4">⚠️</div>
+                  <div className="text-red-300 font-semibold text-xl mb-3">News Feed Unavailable</div>
+                  <div className="text-red-400/80 text-sm mb-6">{newsError}</div>
                   <button
                     onClick={() => fetchNews(newsCategory)}
-                    className="bg-red-900/50 hover:bg-red-900/70 text-red-300 border border-red-800 hover:border-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                    className="bg-red-900/50 hover:bg-red-900/70 text-red-300 border border-red-800 hover:border-red-700 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
                     Retry Connection
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-8">
                   {newsArticles.length === 0 ? (
-                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-8 text-center">
-                      <div className="text-4xl mb-3">📰</div>
-                      <div className="text-white font-medium text-lg mb-2">No News Available</div>
+                    <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/50 rounded-2xl p-12 text-center shadow-2xl">
+                      <div className="text-5xl mb-4">📰</div>
+                      <div className="text-white font-semibold text-xl mb-3">No News Available</div>
                       <div className="text-gray-400 text-sm">
                         Unable to load news for this category. Please try a different category or check back later.
                       </div>
                     </div>
                   ) : (
-                    newsArticles.map((article, index) => (
-                      <article
-                        key={index}
-                        className="group bg-neutral-900/50 border border-neutral-800 rounded-xl transition-all duration-300 hover:bg-neutral-900/70 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
-                      >
-                        <div className="p-5">
-                          <div className="flex gap-5">
-                            {/* Article Image */}
-                            {article.urlToImage && (
+                    <>
+                      {/* Breaking News - Large Featured Article */}
+                      {newsArticles[0] && (
+                        <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
+                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="relative p-8">
+                            <div className="flex flex-col lg:flex-row gap-8 items-center">
+                              {/* Breaking News Badge */}
                               <div className="flex-shrink-0">
-                                <img
-                                  src={article.urlToImage}
-                                  alt={article.title}
-                                  className="w-28 h-28 object-cover rounded-lg border border-neutral-700"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
+                                <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                  BREAKING NEWS
+                                </div>
                               </div>
-                            )}
 
-                            {/* Article Content */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-white text-base leading-tight mb-3 line-clamp-2 group-hover:text-cyan-400 transition-colors">
-                                <a
-                                  href={article.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:underline decoration-cyan-400/50"
-                                >
-                                  {article.title}
-                                </a>
-                              </h3>
+                              {/* Content */}
+                              <div className="flex-1 text-center lg:text-left">
+                                <h3 className="font-bold text-white text-2xl lg:text-3xl leading-tight mb-4 group-hover:text-cyan-300 transition-colors duration-300">
+                                  <a
+                                    href={newsArticles[0].url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline decoration-cyan-400/50"
+                                  >
+                                    {newsArticles[0].title}
+                                  </a>
+                                </h3>
 
-                              {article.description && (
-                                <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-3">
-                                  {article.description}
-                                </p>
-                              )}
+                                {newsArticles[0].description && (
+                                  <p className="text-gray-300 text-lg leading-relaxed mb-6 line-clamp-3">
+                                    {newsArticles[0].description}
+                                  </p>
+                                )}
 
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 text-xs text-gray-400">
-                                  <span className="bg-neutral-800 px-2 py-1 rounded-md font-medium">
-                                    {article.source?.name || 'Unknown'}
+                                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-400">
+                                  <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                                    {newsArticles[0].source?.name || 'Unknown'}
                                   </span>
-                                  {article.publishedAt && (
-                                    <>
-                                      <span>•</span>
-                                      <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                  {newsArticles[0].publishedAt && (
+                                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                                      {new Date(newsArticles[0].publishedAt).toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                      })}</span>
-                                    </>
+                                      })}
+                                    </span>
                                   )}
-                                  {article.apiSource && (
-                                    <>
-                                      <span>•</span>
-                                      <span className="text-cyan-400/70">{article.apiSource}</span>
-                                    </>
+                                  {newsArticles[0].apiSource && (
+                                    <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg">
+                                      {newsArticles[0].apiSource}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Image */}
+                              {newsArticles[0].urlToImage && (
+                                <div className="flex-shrink-0">
+                                  <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-cyan-500/20 transition-shadow duration-500">
+                                    <img
+                                      src={newsArticles[0].urlToImage}
+                                      alt={newsArticles[0].title}
+                                      className="w-48 h-32 lg:w-64 lg:h-40 object-cover group-hover:scale-105 transition-transform duration-500"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Two Column News Cards */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {newsArticles.slice(1, 3).map((article, index) => (
+                          <div
+                            key={index}
+                            className="group relative overflow-hidden rounded-2xl bg-neutral-900/60 backdrop-blur-sm border border-neutral-700/50 shadow-xl hover:shadow-cyan-500/10 hover:border-cyan-500/30 transition-all duration-300"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative p-6">
+                              <div className="flex gap-4">
+                                {/* Article Image */}
+                                {article.urlToImage && (
+                                  <div className="flex-shrink-0">
+                                    <img
+                                      src={article.urlToImage}
+                                      alt={article.title}
+                                      className="w-20 h-20 object-cover rounded-xl border border-neutral-700/50 group-hover:border-cyan-500/50 transition-colors duration-300"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Article Content */}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-white text-base leading-tight mb-3 line-clamp-2 group-hover:text-cyan-300 transition-colors duration-300">
+                                    <a
+                                      href={article.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:underline decoration-cyan-400/50"
+                                    >
+                                      {article.title}
+                                    </a>
+                                  </h4>
+
+                                  {article.description && (
+                                    <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-2">
+                                      {article.description}
+                                    </p>
+                                  )}
+
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                      <span className="bg-neutral-800/60 px-2 py-1 rounded-md font-medium">
+                                        {article.source?.name || 'Unknown'}
+                                      </span>
+                                      {article.publishedAt && (
+                                        <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })}</span>
+                                      )}
+                                    </div>
+
+                                    <a
+                                      href={article.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all duration-200"
+                                    >
+                                      <span>Read</span>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                        <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    </a>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Featured Article - Large Card */}
+                      {newsArticles[3] && (
+                        <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-teal-500/10 transition-all duration-500">
+                          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="relative p-8">
+                            <div className="flex flex-col lg:flex-row gap-8 items-start">
+                              {/* Featured Badge */}
+                              <div className="flex-shrink-0">
+                                <div className="bg-gradient-to-r from-teal-500 to-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                  FEATURED
+                                </div>
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1">
+                                <h4 className="font-bold text-white text-xl lg:text-2xl leading-tight mb-4 group-hover:text-teal-300 transition-colors duration-300">
+                                  <a
+                                    href={newsArticles[3].url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline decoration-teal-400/50"
+                                  >
+                                    {newsArticles[3].title}
+                                  </a>
+                                </h4>
+
+                                {newsArticles[3].description && (
+                                  <p className="text-gray-300 text-base leading-relaxed mb-6 line-clamp-4">
+                                    {newsArticles[3].description}
+                                  </p>
+                                )}
+
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6">
+                                  <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                                    {newsArticles[3].source?.name || 'Unknown'}
+                                  </span>
+                                  {newsArticles[3].publishedAt && (
+                                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                                      {new Date(newsArticles[3].publishedAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
+                                  {newsArticles[3].apiSource && (
+                                    <span className="bg-teal-500/20 text-teal-400 px-3 py-1 rounded-lg">
+                                      {newsArticles[3].apiSource}
+                                    </span>
                                   )}
                                 </div>
 
                                 <a
-                                  href={article.url}
+                                  href={newsArticles[3].url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all duration-200 group-hover:shadow-lg group-hover:shadow-cyan-500/20"
+                                  className="inline-flex items-center gap-2 px-6 py-3 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/40 rounded-xl text-sm font-medium transition-all duration-300 group-hover:shadow-lg group-hover:shadow-teal-500/20"
                                 >
                                   <span>Read Full Article</span>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                                     <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
                                 </a>
                               </div>
+
+                              {/* Image */}
+                              {newsArticles[3].urlToImage && (
+                                <div className="flex-shrink-0">
+                                  <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-teal-500/20 transition-shadow duration-500">
+                                    <img
+                                      src={newsArticles[3].urlToImage}
+                                      alt={newsArticles[3].title}
+                                      className="w-56 h-40 object-cover group-hover:scale-105 transition-transform duration-500"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
-                      </article>
-                    ))
+                      )}
+
+                      {/* Remaining Articles - Compact List */}
+                      {newsArticles.length > 4 && (
+                        <div className="space-y-3">
+                          <h5 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <span className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-teal-400 rounded-full"></span>
+                            More Stories
+                          </h5>
+                          {newsArticles.slice(4).map((article, index) => (
+                            <article
+                              key={index + 4}
+                              className="group bg-neutral-900/40 backdrop-blur-sm border border-neutral-700/30 rounded-xl transition-all duration-300 hover:bg-neutral-900/60 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5"
+                            >
+                              <div className="p-4">
+                                <div className="flex gap-4">
+                                  {/* Article Image */}
+                                  {article.urlToImage && (
+                                    <div className="flex-shrink-0">
+                                      <img
+                                        src={article.urlToImage}
+                                        alt={article.title}
+                                        className="w-16 h-16 object-cover rounded-lg border border-neutral-700/50"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Article Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <h6 className="font-semibold text-white text-sm leading-tight mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors">
+                                      <a
+                                        href={article.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:underline decoration-cyan-400/50"
+                                      >
+                                        {article.title}
+                                      </a>
+                                    </h6>
+
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                                        <span className="bg-neutral-800/60 px-2 py-1 rounded-md font-medium">
+                                          {article.source?.name || 'Unknown'}
+                                        </span>
+                                        {article.publishedAt && (
+                                          <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric'
+                                          })}</span>
+                                        )}
+                                      </div>
+
+                                      <a
+                                        href={article.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded text-xs font-medium transition-all duration-200"
+                                      >
+                                        <span>Read</span>
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                                          <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                      </a>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
 
               {/* News Status Footer */}
-              <div className="mt-8 bg-neutral-900/30 border border-neutral-800 rounded-lg p-4">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
+              <div className="mt-12 bg-neutral-900/40 backdrop-blur-sm border border-neutral-700/30 rounded-2xl p-6 shadow-xl">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center gap-6">
+                    <span className="flex items-center gap-2">
                       <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                      Live Updates
+                      Live Updates Active
                     </span>
                     <span>•</span>
                     <span>{newsArticles.length} articles loaded</span>
                     <span>•</span>
                     <span>Category: {newsCategory}</span>
                   </div>
-                  <div className="text-cyan-400/70">
+                  <div className="text-cyan-400/70 font-medium">
                     Powered by NewsAPI • GNews • NewsData
                   </div>
                 </div>
