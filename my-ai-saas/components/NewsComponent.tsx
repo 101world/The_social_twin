@@ -110,10 +110,10 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
   const sourceName = article.source_name || article.source || 'Unknown Source';
 
   if (layout === "large") {
+    // Breaking/large card — remove border and make image more square (1:1-ish) for stronger visuals
     return (
-  <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 relative">
-        {/* 25% smaller image height */}
-        <div className="aspect-[16/9] md:aspect-[16/9] h-36 md:h-48 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+      <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 relative">
+        <div className="aspect-square md:aspect-[4/3] h-44 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'large')} 
             alt={article.title}
@@ -121,39 +121,38 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/480/270?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/480/480?random=${article.id || Math.random()}`;
             }}
           />
-          {/* Subtle gradient overlays like Perplexity Discover */}
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none bg-gradient-to-t from-black/70 to-transparent" />
         </div>
-        
-        <div className="p-4 md:p-6">
-          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-3 group-hover:text-orange-400 transition-colors" style={{} as React.CSSProperties}>
+
+        <div className="p-3 md:p-5">
+          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-2 group-hover:text-orange-400 transition-colors">
             {article.title}
           </h2>
-          
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3 text-sm text-gray-400">
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               <span className="font-medium text-gray-200">{sourceName}</span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatDate(article.published_at)}
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button 
                 onClick={handleTrend}
-                className="flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
+                className="p-1.5 text-orange-500 hover:bg-orange-500/10 rounded-full transition-colors"
+                title="Trend this"
               >
-                <TrendingUp className="w-3 h-3" />
-                <span className="hidden md:inline">Trend</span>
+                <TrendingUp className="w-4 h-4" />
               </button>
               <button 
                 onClick={openSource}
-                className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
+                className="p-1.5 text-gray-400 hover:text-orange-500 transition-colors"
+                title="View source"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
@@ -168,7 +167,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
     <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
       <div className="flex flex-col gap-3 p-3 md:p-4">
         {/* Thumbnail moved to top for docked layout */}
-        <div className="w-full h-20 md:h-24 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+  <div className="w-full h-20 md:h-20 lg:h-28 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
@@ -263,8 +262,8 @@ const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { ti
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
         <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
-            // 45% width reduction for full-width layout as requested
-            <div key={a.id} className={large ? 'min-w-[148px] max-w-[148px]' : 'min-w-[124px] max-w-[124px]'}>
+            // Reduced card width for better density on desktop
+            <div key={a.id} className={large ? 'min-w-[140px] max-w-[140px]' : 'min-w-[120px] max-w-[120px]'}>
               <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
             </div>
           ))}
@@ -381,6 +380,9 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
 
   loadNews();
   }, [country, continent]);
+
+  // Constrain full-width desktop layout to a comfortable reading width
+  const desktopWrapperClass = `w-full ${simpleMode ? '' : 'max-w-[1100px] mx-auto px-4'}`;
 
   // Detect simple mode (docked) if not provided
   useEffect(() => {
