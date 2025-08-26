@@ -384,12 +384,12 @@ export default function SocialNewsPanel() {
 
     {/* Main content (existing) */}
 
-      <div className="flex-1 overflow-hidden">
+  <div className="flex-1 overflow-y-auto">
         <div className="h-full max-w-[1200px] mx-auto flex flex-col gap-4 p-4">
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
-            <main className="w-full bg-black flex-1">
+    <main className="w-full bg-gray-50 flex-1">
               <div ref={gridRef} className="">
                 {/* Breaking headline full width (no borders) */}
                 {breaking && (
@@ -422,7 +422,7 @@ export default function SocialNewsPanel() {
           )}
 
           {layoutMode === 'reader' && (
-            <main className="w-full bg-black flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <main className="w-full bg-gray-50 flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               {!selected ? (
                 <div className="flex items-center justify-center h-80 text-gray-400">No article selected.</div>
               ) : (
