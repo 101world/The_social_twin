@@ -3365,12 +3365,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
                       className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
-                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
-                      aria-label="Send"
+                      title={canAffordGeneration ? `Send to Atom AI` : `Need ${generationCost} credits`}
+                      aria-label="Send to Atom AI"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      {/* Custom Atom SVG Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-400">
+                        {/* Atom nucleus */}
+                        <circle cx="12" cy="12" r="2" fill="#fff" className="group-hover:fill-blue-400"/>
+                        
+                        {/* Electron orbits */}
+                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400"/>
+                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400"/>
+                        <ellipse cx="12" cy="12" rx="6.5" ry="6.5" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400" transform="rotate(45 12 12)"/>
+                        
+                        {/* Electrons */}
+                        <circle cx="20" cy="12" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
+                        <circle cx="4" cy="12" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
+                        <circle cx="12" cy="4" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
+                        <circle cx="12" cy="20" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
                       </svg>
                     </button>
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
