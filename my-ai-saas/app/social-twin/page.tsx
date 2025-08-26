@@ -28,6 +28,7 @@ function IconButton({ children, title, onClick, className }: { children: React.R
 import GenerationCostDisplay from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useSafeCredits } from "@/hooks/useSafeCredits";
+import { cloudflareAI } from "@/lib/cloudflare-ai";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
 type Mode = 'text'|'image'|'image-modify'|'video';
@@ -137,6 +138,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>("");
   const [mode, setMode] = useState<Mode>('text');
+  const [chatMode, setChatMode] = useState<'normal' | 'prompt' | 'creative' | 'think'>('normal');
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
   const [feedCursor, setFeedCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -1421,7 +1423,72 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       };
       setMessages((prev)=> [...prev, placeholder]);
       
-      // Use the new tracking API endpoint
+      // For text mode, use Cloudflare Workers AI
+      if (mode === 'text') {
+        try {
+          // Check if user uploaded an image - if so, use vision mode
+          if (attached && attached.type.startsWith('image')) {
+            // Convert current messages to format expected by Cloudflare AI
+            const conversationHistory = messages
+              .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+              .filter(msg => !msg.loading) // Exclude loading messages
+              .map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+              }));
+
+            const response = await cloudflareAI.sendMessageWithImage(
+              trimmed,
+              attached.dataUrl, // Base64 image data
+              conversationHistory,
+              userId || 'anonymous'
+            );
+            
+            setMessages((prev) => prev.map(msg => 
+              msg.id === tempId 
+                ? { ...msg, content: response, loading: false }
+                : msg
+            ));
+            
+            // Clear the attachment after sending
+            setAttached(null);
+            return;
+          } else {
+            // Text-only conversation
+            const conversationHistory = messages
+              .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+              .filter(msg => !msg.loading) // Exclude loading messages
+              .map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+              }));
+
+            const response = await cloudflareAI.sendMessage(
+              trimmed,
+              conversationHistory,
+              chatMode,
+              userId || 'anonymous'
+            );
+            
+            setMessages((prev) => prev.map(msg => 
+              msg.id === tempId 
+                ? { ...msg, content: response, loading: false }
+                : msg
+            ));
+            return;
+          }
+        } catch (error) {
+          console.error('Cloudflare AI error:', error);
+          setMessages((prev) => prev.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, content: 'Error: Failed to generate response. Please try again.', loading: false, role: 'error' }
+              : msg
+          ));
+          return;
+        }
+      }
+      
+      // Use the new tracking API endpoint for image/video generation
   const res = await fetch("/api/generate-with-tracking", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
@@ -2878,14 +2945,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
                       <select
-                        value={textProvider}
-                        onChange={(e)=> setTextProvider(e.target.value as any)}
+                        value={chatMode}
+                        onChange={(e)=> setChatMode(e.target.value as any)}
                         className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Provider"
+                        title="AI Mode"
                       >
-                        <option value="social">Social</option>
-                        <option value="openai">OpenAI</option>
-                        <option value="deepseek">DeepSeek</option>
+                        <option value="normal">General</option>
+                        <option value="prompt">Prompt</option>
+                        <option value="creative">Creative</option>
+                        <option value="think">Think</option>
                       </select>
                     )}
                     
