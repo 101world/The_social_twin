@@ -25,6 +25,37 @@ export default function FriendSearchModal({ isOpen, onClose, currentUserClerkId 
   const [isSearching, setIsSearching] = useState(false);
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState('');
+  const [selfRegistered, setSelfRegistered] = useState(false);
+
+  // Ensure the current user is registered in messenger so others can find them
+  useEffect(() => {
+    if (!isOpen || !currentUserClerkId || selfRegistered) return;
+    (async () => {
+      try {
+        // Try to fetch from Clerk if available on window to get username/email/avatar
+        const maybeUser = (window as any)?.Clerk?.user || (window as any)?.__clerkUser;
+        const username = maybeUser?.username || maybeUser?.primaryEmailAddress?.emailAddress?.split('@')[0] || currentUserClerkId.slice(0, 8);
+        const displayName = maybeUser?.fullName || maybeUser?.firstName || username;
+        const email = maybeUser?.primaryEmailAddress?.emailAddress;
+        const avatarUrl = maybeUser?.imageUrl || undefined;
+        const res = await fetch('/api/messenger/register-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clerkId: currentUserClerkId,
+            username,
+            displayName,
+            email,
+            avatarUrl
+          })
+        });
+        if (res.ok) setSelfRegistered(true);
+      } catch (e) {
+        // Non-fatal; search will still work for others, but this user may not be discoverable until they send a request
+        console.warn('Messenger auto-register skipped:', e);
+      }
+    })();
+  }, [isOpen, currentUserClerkId, selfRegistered]);
 
   // Search users function
   const searchUsers = async (term: string) => {

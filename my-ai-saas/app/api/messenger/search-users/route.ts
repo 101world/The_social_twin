@@ -15,17 +15,22 @@ function getSupabaseClient() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabaseClient();
-    const { searchTerm, currentUserClerkId, limitCount = 10 } = await request.json();
+  const { searchTerm, currentUserClerkId, limitCount = 10 } = await request.json();
 
     if (!searchTerm?.trim()) {
       return NextResponse.json([]);
     }
 
-    // Call the messenger_search_users function
+    // Enforce username/email-only discovery with normalization
+    const term = String(searchTerm).trim();
+    const isEmail = term.includes('@');
+    // Prefer exact match on username or email; fall back to ILIKE prefix
     const { data, error } = await supabase.rpc('messenger_search_users', {
-      search_term: searchTerm.trim(),
+      search_term: term,
       current_user_clerk_id: currentUserClerkId,
-      limit_count: limitCount
+      limit_count: Math.min(25, Math.max(1, Number(limitCount) || 10)),
+      exact: true,
+      by_email: isEmail
     });
 
     if (error) {
@@ -36,7 +41,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(data || []);
+  // Shape to consistent array for client
+  return NextResponse.json(Array.isArray(data) ? data : []);
   } catch (error) {
     console.error('Search users API error:', error);
     return NextResponse.json(
