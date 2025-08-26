@@ -949,7 +949,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
 
   function openComposeModalFromNode(nodeId: string) {
-    // Collect all connected images and text from orange string connections
+    // Collect all connected images and text from cable connections
     const connectedItems = getConnectedItemsForPDF(nodeId);
     
     if (connectedItems.length > 0) {
@@ -982,7 +982,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setMessages(prev=> [...prev, { 
         id: generateId(), 
         role:'assistant', 
-        content:'No images or text connected. Connect items using the orange string (male port → female port) and try again.', 
+        content:'No images or text connected. Connect items using cables (male port → female port) and try again.', 
         createdAt: new Date().toISOString() 
       }]);
     }
@@ -1715,7 +1715,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return dedup;
   }
 
-  // New function to collect both images and text from orange string connections
+  // New function to collect both images and text from cable connections
   function getConnectedItemsForPDF(nodeId: string): Array<{ id:string; type:'image'|'text'; url?:string; text?:string; x:number; y:number; w:number; h:number; fontScale?:number }> {
     const visited = new Set<string>();
     const result: Array<{ id:string; type:'image'|'text'; url?:string; text?:string; x:number; y:number; w:number; h:number; fontScale?:number }> = [];
@@ -1814,7 +1814,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const videoInputs = allMedia.filter(i=> i.type==='video');
       
       if (!videoInputs.length) {
-        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No videos connected to Compile operator. Connect videos using the orange string (male port → female port) to build a compilation chain.', createdAt: new Date().toISOString() }]);
+        setMessages(prev=> [...prev, { id: generateId(), role:'assistant', content:'No videos connected to Compile operator. Connect videos using cables (male port → female port) to build a compilation chain.', createdAt: new Date().toISOString() }]);
         return;
       }
       
@@ -1981,25 +1981,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   return (
   <>
     <style jsx global>{`
-      @keyframes pulseBlue {
+      @keyframes pulseGray {
         0%, 100% {
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+          box-shadow: 0 0 20px rgba(100, 100, 100, 0.4), 0 0 40px rgba(100, 100, 100, 0.2);
         }
         50% {
-          box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+          box-shadow: 0 0 30px rgba(100, 100, 100, 0.6), 0 0 60px rgba(100, 100, 100, 0.3);
         }
       }
       
-      @keyframes pulseOrange {
+      @keyframes pulseWhite {
         0%, 100% {
-          box-shadow: 0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2);
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.2);
         }
         50% {
-          box-shadow: 0 0 30px rgba(255, 165, 0, 0.6), 0 0 60px rgba(255, 165, 0, 0.3);
+          box-shadow: 0 0 30px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.3);
         }
       }
     `}</style>
-  <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
+  <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-gray-50'} max-w-full`}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
@@ -2019,7 +2019,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Collapse handle - Hidden on mobile in simple mode to avoid interfering with mobile UX */}
         {!(simpleMode && isMobile) && (
         <button
-          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-gray-600 to-gray-800 hover:from-gray-700 hover:to-gray-900 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
           onClick={()=> setChatCollapsed(v=>!v)}
           title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
           aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}

@@ -124,7 +124,7 @@ export default function StudioPage() {
           <button onClick={() => setTab("projects")} className={`rounded border px-3 py-1 text-sm ${tab === "projects" ? "bg-white text-black" : "text-white border-white/30"}`}>Projects</button>
           <button onClick={() => setTab("character")} className={`rounded border px-3 py-1 text-sm ${tab === "character" ? "bg-white text-black" : "text-white border-white/30"}`}>Characters</button>
           <button 
-            className="rounded border border-green-400 px-3 py-1 text-sm text-green-400 hover:bg-green-400 hover:text-black"
+            className="rounded border border-gray-400 px-3 py-1 text-sm text-gray-400 hover:bg-gray-400 hover:text-black"
             onClick={async () => {
               try {
                 const response = await fetch('/api/debug/auto-setup-billing', { method: 'POST' });
@@ -203,12 +203,12 @@ export default function StudioPage() {
             <div className="mb-3 text-sm opacity-70">Your projects</div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
               {projects.map((p) => (
-                 <a key={p.id} className="rounded border p-2 cursor-pointer block hover:border-blue-300 transition-colors" href={`/social-twin?projectId=${encodeURIComponent(p.id)}`}>
+                 <a key={p.id} className="rounded border p-2 cursor-pointer block hover:border-gray-300 transition-colors" href={`/social-twin?projectId=${encodeURIComponent(p.id)}`}>
                   <div className="group aspect-video overflow-hidden rounded border relative">
                     <img src={(p.thumbnail_url && p.thumbnail_url.startsWith('http')) ? p.thumbnail_url : (p.thumbnail_url || "/placeholder.png")} alt={p.title} className="h-full w-full origin-center object-cover transition-transform duration-200 group-hover:scale-[1.12]" />
                     {/* Enhanced project badge */}
                     {p.enhanced && (
-                      <div className="absolute top-2 right-2 bg-blue-500 text-white px-1.5 py-0.5 rounded text-[9px] font-medium">
+                      <div className="absolute top-2 right-2 bg-gray-500 text-white px-1.5 py-0.5 rounded text-[9px] font-medium">
                         ENHANCED
                       </div>
                     )}
@@ -245,7 +245,7 @@ export default function StudioPage() {
               {projects.length === 0 ? (
                 <div className="opacity-60">
                   No projects yet. After arranging items on the grid, click Save Project (or type "save project" in chat), then refresh this tab.
-                  <div className="mt-2 text-[11px] bg-blue-50 border border-blue-200 rounded p-2">
+                  <div className="mt-2 text-[11px] bg-gray-50 border border-gray-200 rounded p-2">
                     💡 <strong>New!</strong> Enhanced Projects now save both your grid layout <em>and</em> chat conversation together.
                   </div>
                 </div>

@@ -55,7 +55,7 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
   const src = getImageUrl(article, 900, 506);
   return (
     <article
-      className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:border-orange-500 transition-all cursor-pointer"
+      className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all cursor-pointer"
       onClick={() => onOpen(article)}
     >
   <div className="relative aspect-[16/9]">
@@ -72,7 +72,7 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       </div>
       <div className="p-5">
-        <h2 className="text-2xl font-bold text-white leading-tight mb-3 line-clamp-3 group-hover:text-orange-400" style={{ fontFamily: 'Times New Roman, serif' }}>
+        <h2 className="text-2xl font-bold text-white leading-tight mb-3 line-clamp-3 group-hover:text-gray-300" style={{ fontFamily: 'Times New Roman, serif' }}>
           {article.title}
         </h2>
         {(article.snippet || article.summary) && (
@@ -81,13 +81,13 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
           </p>
         )}
         <div className="flex items-center gap-3 text-sm text-gray-400">
-          <span className="font-medium text-orange-400">{article.source_name || article.source || 'Source'}</span>
+          <span className="font-medium text-gray-200">{article.source_name || article.source || 'Source'}</span>
           <span>•</span>
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDate(article.published_at)}</span>
           {article.category && article.category !== 'General' && (
             <>
               <span>•</span>
-              <span className="px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-xs">
+              <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700 text-xs">
                 {article.category}
               </span>
             </>
@@ -104,7 +104,7 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
   const src = getImageUrl(article, 450, 300);
   return (
     <article
-      className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-orange-500 transition-colors cursor-pointer"
+      className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-600 transition-colors cursor-pointer"
       onClick={() => onOpen(article)}
     >
   <div className="aspect-[4/3]">
@@ -124,7 +124,7 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
           {article.title}
         </h3>
         <div className="flex items-center justify-between text-xs text-gray-400">
-          <span className="text-orange-400 font-medium">{article.source_name || article.source || 'Source'}</span>
+          <span className="text-gray-200 font-medium">{article.source_name || article.source || 'Source'}</span>
           <span>{formatDate(article.published_at).split(',')[0]}</span>
         </div>
       </div>
@@ -165,7 +165,7 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
             {article.category && (
               <>
                 <span>•</span>
-                <span className="px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-[11px]">
+                <span className="px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700 text-[11px]">
                   {article.category}
                 </span>
               </>
@@ -189,7 +189,7 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
               <h4 className="text-lg font-semibold text-white mb-3">More on this topic</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {related.slice(0, 6).map((r) => (
-                  <div key={r.id} className="flex gap-3 items-start p-2 border border-gray-800 rounded-lg hover:border-orange-500 transition-colors">
+                  <div key={r.id} className="flex gap-3 items-start p-2 border border-gray-800 rounded-lg hover:border-gray-600 transition-colors">
                     <img
                       src={getImageUrl(r, 240, 150)}
                       alt={r.title}
@@ -295,9 +295,9 @@ export default function NewsPage() {
           </h1>
           <div className="flex items-center justify-center h-32">
             <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-gray-400 rounded-full animate-pulse"></div>
               <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              <div className="w-4 h-4 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
               <span className="ml-4 text-gray-300 font-medium text-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
                 Loading latest global news...
               </span>
@@ -331,7 +331,7 @@ export default function NewsPage() {
           <p className="text-xl text-gray-300 mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>
             Breaking News • Global Coverage • Real-time Updates
           </p>
-          <div className="w-24 h-0.5 bg-gradient-to-r from-orange-500 to-red-500 mx-auto"></div>
+          <div className="w-24 h-0.5 bg-gradient-to-r from-gray-500 to-gray-300 mx-auto"></div>
         </div>
 
         {/* Search Bar */}
@@ -344,7 +344,7 @@ export default function NewsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-white placeholder-gray-400"
+              className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none text-white placeholder-gray-400"
             />
             {/* Controls: Refresh + Last updated */}
             <div className="mt-3 flex items-center gap-3">

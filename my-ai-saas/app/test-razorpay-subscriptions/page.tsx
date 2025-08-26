@@ -162,7 +162,7 @@ export default function TestRazorpaySubscriptions() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-center">
           <h1 className="text-2xl mb-4">Please sign in to test Razorpay subscriptions</h1>
-          <a href="/sign-in" className="text-orange-500 hover:text-orange-400">
+          <a href="/sign-in" className="text-gray-500 hover:text-gray-400">
             Sign In
           </a>
         </div>
@@ -192,7 +192,7 @@ export default function TestRazorpaySubscriptions() {
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <p className="text-neutral-400">Credits Balance</p>
-                <p className="text-2xl font-bold text-orange-500">
+                <p className="text-2xl font-bold text-gray-500">
                   {userInfo.credits?.toLocaleString() || 0}
                 </p>
               </div>
@@ -205,7 +205,7 @@ export default function TestRazorpaySubscriptions() {
               <div>
                 <p className="text-neutral-400">Status</p>
                 <p className={`text-lg font-semibold ${
-                  userInfo.subscription_active ? 'text-green-500' : 'text-red-500'
+                  userInfo.subscription_active ? 'text-gray-500' : 'text-gray-400'
                 }`}>
                   {userInfo.subscription_active ? 'Active' : 'Inactive'}
                 </p>
@@ -215,23 +215,23 @@ export default function TestRazorpaySubscriptions() {
         )}
 
         {/* Test Environment Info */}
-        <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-6 mb-8">
-          <h3 className="text-lg font-semibold mb-4 text-blue-400">🔧 Test Environment</h3>
+        <div className="bg-gray-900/20 border border-gray-500/50 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-semibold mb-4 text-gray-400">🔧 Test Environment</h3>
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-blue-300">Razorpay Key ID:</p>
+              <p className="text-gray-300">Razorpay Key ID:</p>
               <p className="font-mono">rzp_test_R7CcdMXFPJJh8H</p>
             </div>
             <div>
-              <p className="text-blue-300">Webhook Secret:</p>
+              <p className="text-gray-300">Webhook Secret:</p>
               <p className="font-mono">Patnibillions09!</p>
             </div>
             <div>
-              <p className="text-blue-300">Test Cards:</p>
+              <p className="text-gray-300">Test Cards:</p>
               <p className="font-mono">4111 1111 1111 1111 (Visa)</p>
             </div>
             <div>
-              <p className="text-blue-300">CVV & Expiry:</p>
+              <p className="text-gray-300">CVV & Expiry:</p>
               <p className="font-mono">Any future date, CVV: 123</p>
             </div>
           </div>
@@ -251,13 +251,13 @@ export default function TestRazorpaySubscriptions() {
                     key={planId}
                     className={`relative rounded-lg p-6 border-2 transition-all ${
                       isPopular 
-                        ? 'border-orange-500 bg-orange-500/10' 
+                        ? 'border-gray-500 bg-gray-500/10' 
                         : 'border-neutral-700 bg-neutral-800'
                     }`}
                   >
                     {isPopular && (
                       <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                        <span className="bg-orange-500 text-black px-3 py-1 rounded-full text-xs font-bold">
+                        <span className="bg-gray-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                           MOST POPULAR
                         </span>
                       </div>
@@ -266,7 +266,7 @@ export default function TestRazorpaySubscriptions() {
                     <div className="text-center mb-4">
                       <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
                       <div className="mb-2">
-                        <div className="text-2xl font-bold text-orange-400">
+                        <div className="text-2xl font-bold text-gray-400">
                           ₹{plan.inr_price.toLocaleString()}
                         </div>
                         <div className="text-sm text-neutral-400">
@@ -278,7 +278,7 @@ export default function TestRazorpaySubscriptions() {
 
                     <div className="space-y-2 mb-4 text-sm">
                       <div className="flex items-center">
-                        <span className="text-green-400 mr-2">✓</span>
+                        <span className="text-gray-400 mr-2">✓</span>
                         {plan.credits.toLocaleString()} credits monthly
                       </div>
                       <div className="flex items-center">
@@ -296,7 +296,7 @@ export default function TestRazorpaySubscriptions() {
                       disabled={loading}
                       className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
                         isPopular
-                          ? 'bg-orange-500 hover:bg-orange-600 text-black'
+                          ? 'bg-gray-500 hover:bg-gray-600 text-white'
                           : 'bg-neutral-700 hover:bg-neutral-600 text-white'
                       } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
@@ -324,7 +324,7 @@ export default function TestRazorpaySubscriptions() {
             <p>3. <strong>Complete payment</strong> to test the full subscription flow</p>
             <p>4. <strong>Check webhooks</strong> in your Razorpay dashboard to see events</p>
             <p>5. <strong>Verify credits</strong> are granted correctly after payment</p>
-            <p className="text-yellow-400 mt-4">⚠️ This is TEST MODE - no real money will be charged</p>
+            <p className="text-gray-400 mt-4">⚠️ This is TEST MODE - no real money will be charged</p>
           </div>
         </div>
       </div>
