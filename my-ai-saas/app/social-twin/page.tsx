@@ -2094,76 +2094,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ))}
             </div>
             
-            {/* Center: Context-Aware Dropdown - Mobile-specific positioning */}
+            {/* Center: Context dropdown removed for desktop as requested */}
             {!isMobile ? (
-              <div className="flex-1 flex justify-center px-4">
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDropdownOpen(!dropdownOpen);
-                    }}
-                    className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-lg border transition-colors min-w-40 justify-between ${
-                      darkMode
-                        ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
-                        : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
-                    }`}
-                  >
-                    <span className="truncate">
-                      {activeTab === 'chat' ? selectedProject : 
-                       activeTab === 'news' ? selectedTopic : 
-                       activeTab === 'messenger' ? selectedMessengerFilter :
-                       'Settings'}
-                    </span>
-                    <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  
-                  {dropdownOpen && (
-                    <div 
-                      onClick={(e) => e.stopPropagation()}
-                      className={`absolute top-full left-0 right-0 mt-0.5 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
-                        darkMode
-                          ? 'bg-neutral-800 border-neutral-700'
-                          : 'bg-white border-neutral-300'
-                      }`}
-                    >
-                      {(activeTab === 'chat' ? projectOptions : 
-                        activeTab === 'news' ? topicOptions : 
-                        activeTab === 'messenger' ? messengerOptions :
-                        ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
-                        <button
-                          key={option}
-                          onClick={() => {
-                            if (activeTab === 'chat') {
-                              setSelectedProject(option);
-                            } else if (activeTab === 'news') {
-                              setSelectedTopic(option);
-                            } else if (activeTab === 'messenger') {
-                              setSelectedMessengerFilter(option);
-                            }
-                            setDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 transition-colors ${
-                            darkMode
-                              ? 'hover:bg-white text-neutral-100'
-                              : 'hover:bg-black text-neutral-900'
-                          } ${(activeTab === 'chat' && option === selectedProject) || 
-                               (activeTab === 'news' && option === selectedTopic) ||
-                               (activeTab === 'messenger' && option === selectedMessengerFilter)
-                              ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
-                              : ''}`}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <div className="flex-1 px-4" />
             ) : (
-              <div className="flex-1"></div>
+              <div className="flex-1" />
             )}
             
             {/* Right: Clean top bar */}
