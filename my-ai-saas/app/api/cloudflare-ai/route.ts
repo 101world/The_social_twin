@@ -117,6 +117,8 @@ export async function POST(request: NextRequest) {
 
     const aiResult = await aiResponse.json();
 
+    console.log('Debug - Cloudflare Worker Response:', JSON.stringify(aiResult, null, 2));
+
     // Deduct credits using Supabase RPC function
     let didDeduct = false;
     let newBalance: number | null = null;
