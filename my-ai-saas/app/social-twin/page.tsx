@@ -2896,7 +2896,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
                 {/* Mode buttons row - DIFFERENT FOR MOBILE AND DESKTOP */}
-                <div className={`${isMobile ? 'mb-1' : 'mb-2'} flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
+                <div className={`${isMobile ? 'mt-4 mb-1' : 'mb-2'} flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
                   <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
                     {/* Mode buttons - SVG icons for mobile, text for desktop - Collapsible */}
                     <div className={`flex items-center gap-1 transition-all duration-300 ${
