@@ -4665,7 +4665,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <div className="flex-shrink-0">
                                   <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-cyan-500/20 transition-shadow duration-500">
                                     <img
-                                      src={newsArticles[0].urlToImage}
+                                      src={getDisplayUrl(newsArticles[0].urlToImage)}
                                       alt={newsArticles[0].title}
                                       className="w-48 h-32 lg:w-64 lg:h-40 object-cover group-hover:scale-105 transition-transform duration-500"
                                       onError={(e) => {
@@ -4695,7 +4695,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 {article.urlToImage && (
                                   <div className="flex-shrink-0">
                                     <img
-                                      src={article.urlToImage}
+                                      src={getDisplayUrl(article.urlToImage)}
                                       alt={article.title}
                                       className="w-20 h-20 object-cover rounded-xl border border-neutral-700/50 group-hover:border-cyan-500/50 transition-colors duration-300"
                                       onError={(e) => {
@@ -4831,7 +4831,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <div className="flex-shrink-0">
                                   <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-teal-500/20 transition-shadow duration-500">
                                     <img
-                                      src={newsArticles[3].urlToImage}
+                                      src={getDisplayUrl(newsArticles[3].urlToImage)}
                                       alt={newsArticles[3].title}
                                       className="w-56 h-40 object-cover group-hover:scale-105 transition-transform duration-500"
                                       onError={(e) => {
@@ -4865,7 +4865,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   {article.urlToImage && (
                                     <div className="flex-shrink-0">
                                       <img
-                                        src={article.urlToImage}
+                                        src={getDisplayUrl(article.urlToImage)}
                                         alt={article.title}
                                         className="w-16 h-16 object-cover rounded-lg border border-neutral-700/50"
                                         onError={(e) => {
@@ -5015,7 +5015,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {selectedArticle.urlToImage && (
                   <div className="relative overflow-hidden rounded-2xl shadow-2xl">
                     <img
-                      src={selectedArticle.urlToImage}
+                      src={getDisplayUrl(selectedArticle.urlToImage)}
                       alt={selectedArticle.title}
                       className="w-full h-64 lg:h-80 object-cover"
                       onError={(e) => {
