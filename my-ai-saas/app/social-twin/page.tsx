@@ -7,7 +7,6 @@ import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
 import MessengerComponent from "@/components/SimpleMessengerComponent";
-import SocialNewsPanel from "@/components/SocialNewsPanel";
 
 // Utility function to safely get location origin
 function getLocationOrigin(): string {
@@ -696,13 +695,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       loadProjects();
     }
   }, [dashProjectsOpen, userId]);
-
-  // Load news content when switching to News tab
-  useEffect(() => {
-    if (activeTab === 'news') {
-      // News content loads via iframe, no additional loading needed
-    }
-  }, [activeTab, userId]);
 
   // Load project from URL if projectId is provided
   useEffect(() => {
@@ -3315,10 +3307,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Projects tab removed - now accessible via Dashboard */}
 
           {activeTab === 'news' && (
-            <div className="flex-1 overflow-hidden bg-gray-50">
-              {/* Social-tailored news reader: two-column headlines + article pane */}
-              <SocialNewsPanel />
-            </div>
+            <SimpleNewsTab />
           )}
 
           {activeTab === 'messenger' && (
@@ -6220,6 +6209,98 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
         onMouseDown={(e)=>{ e.stopPropagation(); onStartLink && onStartLink('male'); }}
         onMouseUp={(e)=>{ e.stopPropagation(); onFinishLink && onFinishLink('male', item.id); }}
         title="Male port" />
+    </div>
+  );
+}
+
+// Simple News Tab Component - matches chat tab styling
+function SimpleNewsTab() {
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/news?limit=50&media=images', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        const articles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
+        setArticles(articles.map((a: any, i: number) => ({
+          id: a.id || a.url || `n-${i}`,
+          title: a.title || a.headline || 'Untitled',
+          snippet: a.snippet || a.summary || a.description || '',
+          published_at: a.published_at || a.publishDate || new Date().toISOString(),
+          source_name: a.source_name || a.source || a.source?.name || '',
+          url: a.url || a.source_url,
+          image_url: a.image_url || a.imageUrl || a.image || undefined,
+        })));
+      } catch (e) {
+        console.error('News fetch error:', e);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+    // Refresh every 20 minutes
+    const interval = setInterval(fetchNews, 20 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 overflow-y-auto bg-gray-50 p-3">
+        <div className="flex h-full items-center justify-center text-gray-500">
+          Loading news...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto bg-gray-50 p-3">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Latest News</h1>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {articles.map((article) => (
+            <div 
+              key={article.id} 
+              className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => article.url && window.open(article.url, '_blank')}
+            >
+              {article.image_url && (
+                <div className="aspect-video bg-gray-100">
+                  <img 
+                    src={article.image_url} 
+                    alt={article.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+              <div className="p-4">
+                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{article.title}</h3>
+                {article.snippet && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-3">{article.snippet}</p>
+                )}
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{article.source_name}</span>
+                  <span>{new Date(article.published_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {articles.length === 0 && (
+          <div className="text-center text-gray-500 py-12">
+            No news articles available
+          </div>
+        )}
+      </div>
     </div>
   );
 }
