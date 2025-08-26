@@ -72,20 +72,21 @@ const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: {
 // Build a resilient image URL (placeholder if missing) like the standalone News page
 function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
   if (article.image_url) {
-  // Request larger images with higher quality for full-width display
-  if (size === 'large') return opt(article.image_url, 900, 900, 92);
-  if (size === 'small') return opt(article.image_url, 180, 120, 90);
-  return opt(article.image_url, 600, 360, 90);
+    // For hero/large cards prefer the original full-res image to avoid proxy downsampling
+    if (size === 'large') return article.image_url;
+    // For medium/small still request higher-res, but in portrait proportions
+    if (size === 'small') return opt(article.image_url, 360, 540, 92);
+    return opt(article.image_url, 800, 1200, 92);
   }
   const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
   const colorIndex = article.title.length % fallbackColors.length;
   const color = fallbackColors[colorIndex];
   const maxLen = size === 'small' ? 30 : size === 'large' ? 60 : 40;
   const encodedTitle = encodeURIComponent(article.title.slice(0, maxLen) || 'News');
-  // 25% smaller fallbacks
-  if (size === 'large') return `https://via.placeholder.com/900x900/${color}/ffffff?text=${encodedTitle}`;
-  if (size === 'small') return `https://via.placeholder.com/180x120/${color}/ffffff?text=${encodedTitle}`;
-  return `https://via.placeholder.com/600x360/${color}/ffffff?text=${encodedTitle}`;
+  // Portrait fallbacks for better visual consistency
+  if (size === 'large') return `https://via.placeholder.com/900x1200/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'small') return `https://via.placeholder.com/360x540/${color}/ffffff?text=${encodedTitle}`;
+  return `https://via.placeholder.com/800x1200/${color}/ffffff?text=${encodedTitle}`;
 }
 
 // Modern news card with mobile-optimized smaller thumbnails and high quality images
@@ -114,7 +115,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
     // Breaking/large card — remove border and make image more square (1:1-ish) for stronger visuals
     return (
       <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 relative">
-        <div className="aspect-square md:aspect-[4/3] h-56 md:h-80 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="aspect-[3/4] md:aspect-[3/4] h-72 md:h-96 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'large')} 
             alt={article.title}
@@ -122,7 +123,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/900/900?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/900/1200?random=${article.id || Math.random()}`;
             }}
           />
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -167,8 +168,8 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
   return (
     <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
       <div className="flex flex-col gap-3 p-3 md:p-4">
-        {/* Thumbnail moved to top for docked layout */}
-  <div className="w-full h-28 md:h-32 lg:h-44 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        {/* Thumbnail moved to top for docked layout (portrait thumbnails) */}
+  <div className="w-full h-36 md:h-44 lg:h-56 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
@@ -176,7 +177,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/180/120?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/360/540?random=${article.id || Math.random()}`;
             }}
           />
         </div>
