@@ -2587,12 +2587,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               
               {/* Menu Items */}
-              <div className="p-4 space-y-4">
-                {/* Tab Navigation */}
+              <div className="p-4 space-y-6">
+                {/* Main Navigation */}
                 <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${
-                    darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Navigation</h3>
+                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Main Navigation</h3>
                   {[
                     { id: 'chat', label: 'Chat', icon: '💬' },
                     { id: 'generated', label: 'Generated', icon: '🎨' },
@@ -2620,65 +2618,51 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </button>
                   ))}
                 </div>
-                
-                {/* Mode Toggle - Hidden on mobile, Pro mode not available on mobile */}
-                {/* 
+
+                {/* Account & Billing */}
                 <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${
-                    darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Mode</h3>
-                  <button
-                    onClick={() => {
-                      const newMode = !simpleMode;
-                      setSimpleMode(newMode);
-                      if (!newMode) setGridEnabled(true);
-                      localStorage.setItem('social_twin_simple', newMode ? '1' : '0');
-                      setMobileMenuOpen(false);
-                    }}
+                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Account & Billing</h3>
+                  <Link
+                    href="/"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       darkMode
                         ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-black'
                     }`}
                   >
-                    <span className="text-lg">{simpleMode ? '🎯' : '🏗️'}</span>
-                    <div>
-                      <div className="font-medium">{simpleMode ? 'Simple Mode' : 'Pro Mode'}</div>
-                      <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                        Tap to switch to {simpleMode ? 'Pro' : 'Simple'}
-                      </div>
-                    </div>
-                  </button>
-                </div>
-                */}
-                
-                {/* Theme Toggle */}
-                <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${
-                    darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Appearance</h3>
-                  <button
-                    onClick={() => {
-                      setDarkMode(!darkMode);
-                      localStorage.setItem('social_twin_dark', !darkMode ? '1' : '0');
-                      setMobileMenuOpen(false);
-                    }}
+                    <span className="text-lg">🏠</span>
+                    <span>Home</span>
+                  </Link>
+                  <Link
+                    href="/subscription"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
                       darkMode
                         ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-black'
                     }`}
                   >
-                    <span className="text-lg">{darkMode ? '🌙' : '☀️'}</span>
-                    <span>{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
-                  </button>
+                    <span className="text-lg">💳</span>
+                    <span>Subscription</span>
+                  </Link>
+                  <Link
+                    href="/user"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">👤</span>
+                    <span>Profile</span>
+                  </Link>
                 </div>
-                
-                {/* Save Project - Mobile Quick Access */}
+
+                {/* Quick Actions */}
                 <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${
-                    darkMode ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Quick Actions</h3>
+                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Quick Actions</h3>
                   <button
                     onClick={() => {
                       setProjectModalOpen(true);
@@ -2708,13 +2692,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <span>Settings</span>
                   </button>
                 </div>
-                
-                {/* Projects Quick Access */}
+
+                {/* Appearance */}
+                <div className="space-y-2">
+                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Appearance</h3>
+                  <button
+                    onClick={() => {
+                      setDarkMode(!darkMode);
+                      localStorage.setItem('social_twin_dark', !darkMode ? '1' : '0');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">{darkMode ? '🌙' : '☀️'}</span>
+                    <span>{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                  </button>
+                </div>
+
+                {/* Recent Projects */}
                 {projects.length > 0 && (
                   <div className="space-y-2">
-                    <h3 className={`text-sm font-medium ${
-                      darkMode ? 'text-gray-400' : 'text-gray-600'
-                    }`}>Recent Projects</h3>
+                    <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Recent Projects</h3>
                     {projects.slice(0, 3).map((project) => (
                       <button
                         key={project.id}
