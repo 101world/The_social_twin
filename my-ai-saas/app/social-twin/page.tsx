@@ -422,6 +422,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [modeRowExpanded, setModeRowExpanded] = useState(false);
   // Helper: format relative time like "3h ago"
   function formatRelativeTime(dateInput: string | number | Date | null | undefined): string {
     try {
@@ -3038,8 +3039,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
-                <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'}`}>
+                {/* Collapsible Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
+                {modeRowExpanded && (
+                  <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'} transition-all duration-300 animate-in slide-in-from-top-2`}>
                   <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
                     {/* Mode buttons - SVG icons for mobile, text for desktop */}
                     {isMobile ? (
@@ -3423,6 +3425,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Prompt input area - no outer background/border; keep inner layout */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}>
@@ -3542,19 +3545,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: AI Settings + Generated Bin Button - consistent sizing */}
+                    {/* Bottom row: Atom AI Toggle + Generated Bin Button - consistent sizing */}
                     <button 
-                      title="AI Settings" 
-                      onClick={() => setShowSettings(!showSettings)}
+                      title="Toggle AI Controls" 
+                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center ${
-                        showSettings
+                        modeRowExpanded
                           ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
                           : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
                       }`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showSettings ? 'stroke-blue-500' : 'stroke-current'}`}>
-                        <circle cx="12" cy="12" r="3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      {/* Atom SVG Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${modeRowExpanded ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        {/* Atom nucleus */}
+                        <circle cx="12" cy="12" r="1.5" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        
+                        {/* Electron orbits */}
+                        <ellipse cx="12" cy="12" rx="6" ry="2" stroke="currentColor" strokeWidth="1" fill="none"/>
+                        <ellipse cx="12" cy="12" rx="2" ry="6" stroke="currentColor" strokeWidth="1" fill="none"/>
+                        <ellipse cx="12" cy="12" rx="4.5" ry="4.5" stroke="currentColor" strokeWidth="1" fill="none" transform="rotate(45 12 12)"/>
+                        
+                        {/* Electrons */}
+                        <circle cx="18" cy="12" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        <circle cx="6" cy="12" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        <circle cx="12" cy="6" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        <circle cx="12" cy="18" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
                       </svg>
                     </button>
                     {/* Generated Bin button */}
