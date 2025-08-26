@@ -544,13 +544,41 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Mobile detection effect
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+      const newIsMobile = window.innerWidth < 640;
+      setIsMobile(newIsMobile);
+      
+      // Close mobile menu when switching to desktop
+      if (!newIsMobile && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
     };
     
     checkMobile(); // Initial check
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  }, [mobileMenuOpen]);
+
+  // Handle mobile menu interactions (escape key and outside clicks)
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    // Prevent body scroll when mobile menu is open
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -2272,11 +2300,39 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </button>
         )}
   <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <h1 className="text-base md:text-lg font-semibold tracking-tight">
+          {/* Mobile: Hamburger menu on the left */}
+          {isMobile && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
+                darkMode 
+                  ? 'text-white hover:bg-neutral-800' 
+                  : 'text-black hover:bg-gray-100'
+              }`}
+              aria-label="Toggle menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path 
+                  d="M3 12H21M3 6H21M3 18H21" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+          
+          {/* Desktop: Empty div for spacing, Mobile: Hidden */}
+          {!isMobile && <div></div>}
+          
+          {/* Center: Atom title */}
+          <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
             Atom
           </h1>
           
-            <div className="flex items-center gap-2">
+          {/* Right side: Credits */}
+          <div className="flex items-center gap-2">
             {/* Credits */}
             <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
               <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
@@ -2290,6 +2346,166 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Settings and Theme toggles moved to Dashboard tab */}
           </div>
         </header>
+
+        {/* Mobile Menu Overlay */}
+        {isMobile && mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50" 
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            
+            {/* Menu Panel */}
+            <div className={`fixed left-0 top-0 h-full w-80 transform transition-transform duration-300 ease-in-out ${
+              darkMode ? 'bg-neutral-900' : 'bg-white'
+            } shadow-xl`}>
+              {/* Menu Header */}
+              <div className={`flex items-center justify-between p-4 border-b ${
+                darkMode ? 'border-neutral-800' : 'border-gray-200'
+              }`}>
+                <h2 className={`text-lg font-semibold ${
+                  darkMode ? 'text-white' : 'text-black'
+                }`}>Menu</h2>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`p-2 rounded-md transition-colors ${
+                    darkMode 
+                      ? 'text-white hover:bg-neutral-800' 
+                      : 'text-black hover:bg-gray-100'
+                  }`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path 
+                      d="M18 6L6 18M6 6L18 18" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Menu Items */}
+              <div className="p-4 space-y-4">
+                {/* Tab Navigation */}
+                <div className="space-y-2">
+                  <h3 className={`text-sm font-medium ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Navigation</h3>
+                  {[
+                    { id: 'chat', label: 'Chat', icon: '💬' },
+                    { id: 'generated', label: 'Generated', icon: '🎨' },
+                    { id: 'dashboard', label: 'Dashboard', icon: '📊' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as any);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeTab === tab.id
+                          ? (darkMode
+                              ? 'bg-neutral-800 text-white'
+                              : 'bg-gray-100 text-black')
+                          : (darkMode
+                              ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                              : 'text-gray-700 hover:bg-gray-50 hover:text-black')
+                      }`}
+                    >
+                      <span className="text-lg">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Mode Toggle */}
+                <div className="space-y-2">
+                  <h3 className={`text-sm font-medium ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Mode</h3>
+                  <button
+                    onClick={() => {
+                      const newMode = !simpleMode;
+                      setSimpleMode(newMode);
+                      if (!newMode) setGridEnabled(true);
+                      localStorage.setItem('social_twin_simple', newMode ? '1' : '0');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">{simpleMode ? '🎯' : '🏗️'}</span>
+                    <div>
+                      <div className="font-medium">{simpleMode ? 'Simple Mode' : 'Pro Mode'}</div>
+                      <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        Tap to switch to {simpleMode ? 'Pro' : 'Simple'}
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Theme Toggle */}
+                <div className="space-y-2">
+                  <h3 className={`text-sm font-medium ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Appearance</h3>
+                  <button
+                    onClick={() => {
+                      setDarkMode(!darkMode);
+                      localStorage.setItem('social_twin_dark', !darkMode ? '1' : '0');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">{darkMode ? '🌙' : '☀️'}</span>
+                    <span>{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                  </button>
+                </div>
+                
+                {/* Projects Quick Access */}
+                {projects.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className={`text-sm font-medium ${
+                      darkMode ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Recent Projects</h3>
+                    {projects.slice(0, 3).map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => {
+                          switchToProject(project.id, project.title);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                          darkMode
+                            ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        }`}
+                      >
+                        <span className="text-lg">📁</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{project.title}</div>
+                          <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            {formatRelativeTime(project.updatedAt)}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
