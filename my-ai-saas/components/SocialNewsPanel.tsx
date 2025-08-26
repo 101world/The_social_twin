@@ -412,9 +412,9 @@ export default function SocialNewsPanel() {
                   </article>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {gridItems.map((a, idx) => (
-                    <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-white border border-neutral-200 rounded-lg overflow-hidden hover:border-neutral-300 cursor-pointer">
+          <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-gray-100 border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 cursor-pointer">
                       <div className="relative aspect-square sm:aspect-[4/3]">
                         <ProgressiveImage src={a.image_url} alt={a.title} />
                       </div>
@@ -455,7 +455,7 @@ export default function SocialNewsPanel() {
                       <button onClick={readerNext} className="px-3 py-1 rounded border border-gray-800 text-sm text-gray-300 hover:bg-gray-900">Next</button>
                     </div>
                     <div>
-                      <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>
+                      <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-300 text-sm bg-gray-100 text-gray-900">Open source</a>
                     </div>
                   </div>
                 </article>

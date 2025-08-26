@@ -2004,7 +2004,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
+  className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-gray-50' : 'bg-gray-50 border-neutral-300')} min-w-0`}
         style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' }}
       >
         {/* Full-rail click target when collapsed */}
@@ -2035,7 +2035,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-gray-50'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           <h1 className="text-base md:text-lg font-semibold tracking-tight">
             {creditInfo?.subscription_active && creditInfo?.subscription_plan
               ? (()=>{
@@ -2132,7 +2132,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
                                     isUser
                                       ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600')
-                                      : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
+                                      : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-gray-50 text-black border-neutral-300')
                                   }`
                             }
                             style={isAssistantPlain ? undefined : { borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}
@@ -2325,14 +2325,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       placeholder="character.safetensors"
                       value={loraName}
                       onChange={(e) => setLoraName(e.target.value)}
-                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
+                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-gray-50 border-neutral-300 placeholder-gray-400'}`}
                     />
                   </div>
                 )}
 
                 {/* Advanced Options - Comprehensive Creator Studio Integration */}
                 {advancedOpen && (
-                  <div className={`mb-0 rounded-xl border p-4 space-y-4 ${darkMode ? 'border-neutral-700 bg-neutral-900/50 backdrop-blur-sm' : 'border-neutral-400 bg-white/80 backdrop-blur-sm'} max-h-[60vh] overflow-y-auto`}>
+                  <div className={`mb-0 rounded-xl border p-4 space-y-4 ${darkMode ? 'border-neutral-700 bg-neutral-900/50 backdrop-blur-sm' : 'border-neutral-300 bg-gray-50/90 backdrop-blur-sm'} max-h-[60vh] overflow-y-auto`}>
                     
                     {/* Workflow & Model Selection */}
                     <div className="space-y-3">
@@ -2507,7 +2507,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <select
                               value={batchSize === '' ? '' : String(batchSize)}
                               onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                             >
                               <option value="">Auto (1)</option>
                               {BATCH_CHOICES.map((n) => (
@@ -2520,7 +2520,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <select
                               value={aspectRatio}
                               onChange={(e) => setAspectRatio(e.target.value)}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                             >
                               <option value="">Auto (1:1)</option>
                               {AR_CHOICES.map((ar) => (
@@ -2555,7 +2555,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'video' ? '3.0' : '1.0'}
                                 value={cfgScale}
                                 onChange={(e) => setCfgScale(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               />
                             </div>
                             <div className="space-y-1">
@@ -2578,7 +2578,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'image-modify' ? '2.5' : '3.5'}
                                 value={guidance}
                                 onChange={(e) => setGuidance(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               />
                             </div>
                             <div className="space-y-1">
@@ -2600,7 +2600,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'image' ? '23' : mode === 'video' ? '30' : '20'}
                                 value={steps}
                                 onChange={(e) => setSteps(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               />
                             </div>
                           </div>
@@ -2612,7 +2612,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Frame Rate</label>
                                 <select
                                   value="25"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                                 >
                                   <option value="24">24 FPS (Cinema)</option>
                                   <option value="25">25 FPS (PAL)</option>
@@ -2623,7 +2623,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Length</label>
                                 <select
                                   value="97"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                                 >
                                   <option value="49">2s (49 frames)</option>
                                   <option value="73">3s (73 frames)</option>
@@ -2635,7 +2635,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Resolution</label>
                                 <select
                                   value="768x512"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                                 >
                                   <option value="768x512">768×512 (HD)</option>
                                   <option value="1024x576">1024×576 (FHD)</option>
@@ -2652,7 +2652,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Sampler</label>
                                 <select
                                   value="euler"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                                 >
                                   <option value="euler">Euler (Default)</option>
                                   <option value="euler_ancestral">Euler Ancestral</option>
@@ -2664,7 +2664,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Scheduler</label>
                                 <select
                                   value="simple"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                                 >
                                   <option value="simple">Simple</option>
                                   <option value="normal">Normal</option>
@@ -2694,7 +2694,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setLoraName(loraName || '');
                                 else setLoraName(v);
                               }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
@@ -2713,7 +2713,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder="custom-character.safetensors"
                                 value={loraName}
                                 onChange={(e) => setLoraName(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               />
                             )}
                           </div>
@@ -2751,7 +2751,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setEffectLora(effectLora || '');
                                 else setEffectLora(v);
                               }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
@@ -2769,7 +2769,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder="effects-style.safetensors"
                                 value={effectLora}
                                 onChange={(e) => setEffectLora(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                               />
                             )}
                           </div>
@@ -2836,7 +2836,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <input
                               type="number"
                               placeholder="Random"
-                              className={`flex-1 rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`flex-1 rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-50 border-neutral-300'}`}
                             />
                             <button
                               onClick={() => {
