@@ -28,7 +28,7 @@ function IconButton({ children, title, onClick, className }: { children: React.R
 import GenerationCostDisplay from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useSafeCredits } from "@/hooks/useSafeCredits";
-import { cloudflareAI } from "@/lib/cloudflare-ai";
+import { cloudflareAI } from "@/lib/cloudflare-ai-new";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
 type Mode = 'text'|'image'|'image-modify'|'video';
@@ -1437,11 +1437,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 content: msg.content
               }));
 
-            const response = await cloudflareAI.sendMessageWithImage(
-              trimmed,
-              attached.dataUrl, // Base64 image data
-              conversationHistory,
-              userId || 'anonymous'
+            const response = await handleCreditDeductingAPI(() => 
+              cloudflareAI.sendMessageWithImage(
+                trimmed,
+                attached.dataUrl, // Base64 image data
+                conversationHistory,
+                userId || 'anonymous'
+              )
             );
             
             setMessages((prev) => prev.map(msg => 
@@ -1463,11 +1465,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 content: msg.content
               }));
 
-            const response = await cloudflareAI.sendMessage(
-              trimmed,
-              conversationHistory,
-              chatMode,
-              userId || 'anonymous'
+            const response = await handleCreditDeductingAPI(() => 
+              cloudflareAI.sendMessage(
+                trimmed,
+                conversationHistory,
+                chatMode,
+                userId || 'anonymous'
+              )
             );
             
             setMessages((prev) => prev.map(msg => 
