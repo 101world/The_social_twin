@@ -98,6 +98,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
