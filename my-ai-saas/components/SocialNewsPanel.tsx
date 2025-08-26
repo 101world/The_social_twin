@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import { Clock, ExternalLink, Search, List, LayoutGrid, Maximize2, Bookmark, Share2 } from 'lucide-react';
 
@@ -35,8 +35,8 @@ function ProgressiveImage({ src, alt, className, small }: { src?: string; alt?: 
     <div className={`relative overflow-hidden ${className || ''}`}>
       {/* low-res blurred fallback */}
       <img src={low} alt={alt} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-0 scale-105' : 'opacity-100 filter blur-sm'}`} />
-      {/* high-res using Next/Image for better optimization */}
-      <Image src={high} alt={alt || ''} fill sizes={small ? '160px' : '600px'} loading="lazy" onLoadingComplete={() => setLoaded(true)} className={`relative object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
+  {/* high-res using Next/Image for better optimization */}
+  <Image src={high} alt={alt || ''} fill sizes={small ? '160px' : '600px'} loading="lazy" onLoadingComplete={() => setLoaded(true)} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
     </div>
   );
 }
@@ -115,6 +115,17 @@ export default function SocialNewsPanel() {
     if (!query) return list;
     return list.filter(a => (a.title || '').toLowerCase().includes(query.toLowerCase()) || (a.source_name||'').toLowerCase().includes(query.toLowerCase()));
   }, [query, articles]);
+
+  // Grid container ref to enable scrolling into view for selected items
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  // Determine a breaking headline (prefer category/title marker)
+  const breaking = useMemo(() => {
+    return filtered.find(a => /breaking/i.test((a.category || '') + ' ' + (a.title || '')) ) || null;
+  }, [filtered]);
+
+  // Items to render in the grid (exclude breaking if present)
+  const gridItems = useMemo(() => filtered.filter(a => !breaking || a.id !== breaking.id), [filtered, breaking]);
 
   // Load bookmarks from localStorage
   useEffect(() => {
@@ -211,6 +222,19 @@ export default function SocialNewsPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [filtered, selectedIndex]);
+
+  // Scroll selected card into view when selection changes (only for grid layout)
+  useEffect(() => {
+    if (layoutMode !== 'grid') return;
+    if (selectedIndex < 0) return;
+    const id = filtered[selectedIndex]?.id;
+    if (!id) return;
+    const el = document.getElementById(`news-card-${id}`);
+    if (el && gridRef.current) {
+      // Scroll the container so the element is visible and centered
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+  }, [selectedIndex, layoutMode, filtered]);
 
   // Persist layout preference
   useEffect(() => {
@@ -328,7 +352,7 @@ export default function SocialNewsPanel() {
   }, [selected]);
 
   return (
-  <div ref={mainContentRef} className="h-full bg-black text-white flex flex-col" aria-live="polite">
+  <div ref={mainContentRef} className="h-full bg-gray-50 text-white flex flex-col" aria-live="polite">
       <div className="flex-shrink-0 p-4 border-b border-gray-800">
         <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
           <div>
@@ -361,24 +385,38 @@ export default function SocialNewsPanel() {
     {/* Main content (existing) */}
 
       <div className="flex-1 overflow-hidden">
-        <div className="h-full max-w-[1200px] mx-auto flex flex-col md:flex-row gap-4 p-4">
+        <div className="h-full max-w-[1200px] mx-auto flex flex-col gap-4 p-4">
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
             <main className="w-full bg-black flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map((a, idx) => (
-                  <article key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 cursor-pointer">
-                    <div className="aspect-square sm:aspect-[4/3]">
-                      {/* Grid cards: 1:1 on mobile for better visual framing, keep 4:3 on larger screens */}
-                      <ProgressiveImage src={a.image_url} alt={a.title} />
+              <div ref={gridRef} className="">
+                {/* Breaking headline full width (no borders) */}
+                {breaking && (
+                  <article key={breaking.id} className="w-full mb-3 rounded-none overflow-hidden cursor-pointer bg-transparent">
+                    <div className="w-full aspect-[3/1] relative">
+                      <ProgressiveImage src={breaking.image_url} alt={breaking.title} className="w-full h-full" />
                     </div>
-                    <div className="p-4">
-                      <div className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
-                      <div className="text-xs text-gray-400 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
+                    <div className="-mt-16 p-6">
+                      <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Times New Roman, serif' }}>{breaking.title}</h2>
+                      <div className="text-sm text-gray-300 mt-1">{breaking.source_name || breaking.source} • {readingTime(breaking)}</div>
                     </div>
                   </article>
-                ))}
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {gridItems.map((a, idx) => (
+                    <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 cursor-pointer">
+                      <div className="aspect-square sm:aspect-[4/3]">
+                        <ProgressiveImage src={a.image_url} alt={a.title} />
+                      </div>
+                      <div className="p-3">
+                        <div className="text-lg font-semibold text-white mb-1" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
+                        <div className="text-xs text-gray-400 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </div>
             </main>
           )}
