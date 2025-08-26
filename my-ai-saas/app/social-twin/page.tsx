@@ -3266,7 +3266,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <path d="M2 7l10 5 10-5M12 22V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    {/* Library quick button removed */}
+                    {/* Library button (single SVG) */}
+                    <button
+                      onClick={() => setLibraryOpen(true)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="View Library"
+                      aria-label="Open Library"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" stroke="currentColor"/>
+                        <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 {attached ? (
