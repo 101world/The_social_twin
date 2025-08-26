@@ -4489,7 +4489,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <button
                         key={t.id}
                         onClick={()=> setQuickImageStyle(t.id)}
-                        className={`px-2 py-1 text-xs ${quickImageStyle===t.id ? (darkMode?'bg-neutral-800 text-white':'bg-neutral-100') : (darkMode?'bg-neutral-900 text-neutral-200':'bg-white text-neutral-700')} border-r last:border-r-0 ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}
+                        className={`px-2 py-1 text-xs ${quickImageStyle===t.id ? (darkMode?'bg-neutral-800 text-white':'bg-neutral-100') : (darkMode?'bg-neutral-900 text-neutral-200':'bg-gray-50 text-neutral-700')} border-r last:border-r-0 ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}
                       >
                         {t.label}
                       </button>
