@@ -250,7 +250,11 @@ export async function GET(request: NextRequest) {
         const isStale = !latestTs || (Date.now() - latestTs) > tenMinutes;
         if (isStale) {
           // Fire-and-forget: let the scraper refresh data for everyone; don't block response
-          fetch('/api/news/trigger', { cache: 'no-store' }).catch(() => {});
+          try {
+            const origin = request.nextUrl?.origin || '';
+            const url = origin ? `${origin}/api/news/trigger` : '/api/news/trigger';
+            fetch(url, { cache: 'no-store' }).catch(() => {});
+          } catch {}
         }
       } catch (e) {
         console.warn('Staleness check failed:', (e as Error).message);

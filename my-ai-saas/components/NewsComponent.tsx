@@ -315,6 +315,8 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const [continent, setContinent] = useState<string>('');
   const [country, setCountry] = useState<string>('');
   const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const quickChips = ['AI', 'Business', 'Science', 'World', 'Crypto'];
 
   // Load real news from API
@@ -337,6 +339,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
           const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
           if (list.length) {
             setArticles(list.slice(0, 30));
+            setLastUpdated(new Date().toISOString());
           } else {
             // Fallback: daily brief
             const briefRes = await fetch('/api/news/daily-brief', { cache: 'no-store' });
@@ -358,6 +361,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
                 image_url: a.imageUrl || undefined,
               }));
               setArticles(mapped);
+              setLastUpdated(new Date().toISOString());
             } else {
               setArticles([]);
             }
@@ -448,8 +452,44 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
               ))}
             </div>
 
-            {/* Region selects */}
+            {/* Controls */}
             <div className="flex items-center gap-2 ml-auto">
+              {/* Refresh */}
+              <button
+                onClick={async () => {
+                  try {
+                    setRefreshing(true);
+                    await fetch('/api/news/trigger', { cache: 'no-store' }).catch(() => {});
+                    // Reload with current filters
+                    const qs = new URLSearchParams();
+                    qs.set('limit', '50');
+                    qs.set('media', 'images');
+                    if (country) qs.set('country', country);
+                    else if (continent) qs.set('continent', continent);
+                    const res = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
+                    if (res.ok) {
+                      const data = await res.json();
+                      const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+                      setArticles(list.slice(0, 30));
+                      setLastUpdated(new Date().toISOString());
+                    }
+                  } finally {
+                    setRefreshing(false);
+                  }
+                }}
+                className={`px-2.5 md:px-3 py-1.5 rounded-lg text-xs border border-orange-600 text-orange-400 hover:bg-orange-600/10 transition-colors ${refreshing ? 'opacity-70 cursor-wait' : ''}`}
+                title="Refresh news"
+                aria-busy={refreshing}
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+
+              {lastUpdated && (
+                <span className="text-[11px] text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+              )}
+
+              {/* Region selects */}
               <select
                 value={continent}
                 onChange={(e) => { setContinent(e.target.value); setCountry(''); }}

@@ -198,6 +198,8 @@ export default function NewsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchNews();
@@ -215,6 +217,7 @@ export default function NewsPage() {
             new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
           );
           setArticles(sorted);
+          setLastUpdated(new Date().toISOString());
           return;
         }
       }
@@ -305,6 +308,31 @@ export default function NewsPage() {
               onFocus={() => setIsSearchOpen(true)}
               className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-white placeholder-gray-400"
             />
+            {/* Controls: Refresh + Last updated */}
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    setRefreshing(true);
+                    // Ask server to refresh in background, then reload feed
+                    await fetch('/api/news/trigger', { cache: 'no-store' }).catch(() => {});
+                    await fetchNews();
+                  } finally {
+                    setRefreshing(false);
+                  }
+                }}
+                className={`px-3 py-1.5 text-xs rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-600/10 transition-colors ${refreshing ? 'opacity-70 cursor-wait' : ''}`}
+                disabled={refreshing}
+                aria-busy={refreshing}
+                aria-label="Refresh news"
+                title="Refresh news"
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+              {lastUpdated && (
+                <span className="text-xs text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+              )}
+            </div>
             {isSearchOpen && searchQuery && (
               <div className="absolute z-40 mt-2 w-full bg-black border border-gray-800 rounded-lg shadow max-h-72 overflow-y-auto">
                 {searchResults.slice(0, 6).map(article => (

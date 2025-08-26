@@ -122,6 +122,32 @@ async function extractImageUrl(item: any) {
   return null;
 }
 
+// Fetch Open Graph metadata from an article page to improve image/title/description
+async function fetchOpenGraph(url: string): Promise<{ image?: string | null; title?: string | null; description?: string | null }> {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 101WorldBot/1.0; +https://101.world)' },
+      signal: controller.signal as any
+    } as any);
+    clearTimeout(id);
+    if (!res.ok) return {};
+    const html = await res.text();
+    const pick = (re: RegExp) => {
+      const m = html.match(re);
+      return m && m[1] ? m[1].trim() : null;
+    };
+    const ogImage = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i);
+    const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
+    const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i);
+    return { image: ogImage || null, title: ogTitle || null, description: ogDesc || null };
+  } catch {
+    return {};
+  }
+}
+
 async function calculateQualityScore(item: any) {
   let score = 1;
   
@@ -148,13 +174,25 @@ async function scrapeRSSFeed(feedConfig: any) {
     const articles = [];
     
     for (const item of (feed.items || []).slice(0, 20)) {
-      const imageUrl = await extractImageUrl(item);
+      let imageUrl = await extractImageUrl(item);
       const qualityScore = await calculateQualityScore(item);
       
+      let title = item.title || 'Untitled';
+      let summary = item.contentSnippet || item.summary || item.content?.slice(0, 300) || '';
+      const url = item.link;
+
+      // If we couldn't get a solid image or title/snippet is weak, try Open Graph
+      if ((!imageUrl || !/\.(jpg|jpeg|png|gif|webp)$/i.test(imageUrl)) && url) {
+        const og = await fetchOpenGraph(url);
+        if (og?.image) imageUrl = og.image;
+        if (og?.title && (!title || title.toLowerCase() === 'untitled')) title = og.title;
+        if (og?.description && (!summary || summary.length < 40)) summary = og.description;
+      }
+
       const article = {
-        title: item.title || 'Untitled',
-        summary: item.contentSnippet || item.summary || item.content?.slice(0, 300) || '',
-        url: item.link,
+        title,
+        summary,
+        url,
         image_url: imageUrl,
         video_url: null,
         youtube_url: null,
