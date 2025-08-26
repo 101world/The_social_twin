@@ -95,27 +95,72 @@ async function extractImageUrl(item: any) {
   } else if (item.enclosure && item.enclosure.url && item.enclosure.type?.includes('image')) {
     imageUrl = item.enclosure.url;
   } else if (item.content && item.content.includes('<img')) {
-    // Extract first image from content
-    const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/i);
-    if (imgMatch) imageUrl = imgMatch[1];
+    // Extract high-quality images from content, prioritizing larger ones
+    const imgMatches = [...item.content.matchAll(/<img[^>]+src="([^">]+)"[^>]*>/gi)];
+    for (const match of imgMatches) {
+      const src = match[1];
+      // Prefer images with size indicators or from known quality sources
+      if (src.includes('large') || src.includes('big') || src.includes('featured') || 
+          src.includes('hero') || src.match(/\d{3,4}x\d{3,4}/) || 
+          src.includes('wordpress.com') || src.includes('medium.com')) {
+        imageUrl = src;
+        break;
+      } else if (!imageUrl) {
+        imageUrl = src; // Fallback to first image
+      }
+    }
   } else if (item.description && item.description.includes('<img')) {
-    // Extract first image from description
-    const imgMatch = item.description.match(/<img[^>]+src="([^">]+)"/i);
-    if (imgMatch) imageUrl = imgMatch[1];
+    // Extract high-quality images from description
+    const imgMatches = [...item.description.matchAll(/<img[^>]+src="([^">]+)"[^>]*>/gi)];
+    for (const match of imgMatches) {
+      const src = match[1];
+      if (src.includes('large') || src.includes('big') || src.includes('featured') || 
+          src.includes('hero') || src.match(/\d{3,4}x\d{3,4}/)) {
+        imageUrl = src;
+        break;
+      } else if (!imageUrl) {
+        imageUrl = src;
+      }
+    }
   }
   
   // Clean and validate image URL
   if (imageUrl) {
-    // Remove query parameters that might break images
-    imageUrl = imageUrl.split('?')[0];
+    // Convert relative URLs to absolute if possible
+    if (imageUrl.startsWith('//')) {
+      imageUrl = 'https:' + imageUrl;
+    }
+    
+    // Remove tracking parameters but keep size/quality parameters
+    const url = new URL(imageUrl);
+    const keepParams = ['w', 'h', 'width', 'height', 'size', 'quality', 'q', 'crop', 'fit', 'format'];
+    const newParams = new URLSearchParams();
+    for (const [key, value] of url.searchParams) {
+      if (keepParams.some(param => key.toLowerCase().includes(param))) {
+        newParams.set(key, value);
+      }
+    }
+    url.search = newParams.toString();
+    imageUrl = url.toString();
     
     // Ensure it's a valid image extension or from known image sources
-    if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
+    if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i) || 
         imageUrl.includes('images.') || 
         imageUrl.includes('img.') ||
         imageUrl.includes('cdn.') ||
-        imageUrl.includes('static.')) {
-      return imageUrl;
+        imageUrl.includes('static.') ||
+        imageUrl.includes('media.') ||
+        imageUrl.includes('wordpress.com') ||
+        imageUrl.includes('medium.com') ||
+        imageUrl.includes('unsplash.com') ||
+        imageUrl.includes('pexels.com')) {
+      
+      // Filter out obviously small or icon images
+      if (!imageUrl.includes('icon') && !imageUrl.includes('favicon') && 
+          !imageUrl.includes('avatar') && !imageUrl.match(/\d+x\d+/) || 
+          imageUrl.match(/[2-9]\d{2,}x[2-9]\d{2,}/)) { // At least 200x200
+        return imageUrl;
+      }
     }
   }
   
@@ -126,22 +171,84 @@ async function extractImageUrl(item: any) {
 async function fetchOpenGraph(url: string): Promise<{ image?: string | null; title?: string | null; description?: string | null }> {
   try {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 8000);
+    const id = setTimeout(() => controller.abort(), 10000); // Increased timeout for better image discovery
     const res = await fetch(url, {
       redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; 101WorldBot/1.0; +https://101.world)' },
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
+      },
       signal: controller.signal as any
     } as any);
     clearTimeout(id);
     if (!res.ok) return {};
     const html = await res.text();
+    
     const pick = (re: RegExp) => {
       const m = html.match(re);
       return m && m[1] ? m[1].trim() : null;
     };
-    const ogImage = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i);
-    const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<title[^>]*>([^<]+)<\/title>/i);
-    const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i);
+    
+    // Enhanced image extraction with priority order for higher quality images
+    let ogImage = 
+      // Twitter card image (often high quality)
+      pick(/<meta[^>]+name=["']twitter:image:src["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      pick(/<meta[^>]+property=["']twitter:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      // Open Graph image
+      pick(/<meta[^>]+property=["']og:image:secure_url["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      pick(/<meta[^>]+property=["']og:image:url["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      // Article image
+      pick(/<meta[^>]+property=["']article:image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      // Schema.org image
+      pick(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+      // Fallback to first img src with size indicators
+      pick(/<img[^>]+src=["']([^"'>]*(?:large|big|main|featured|hero|banner)[^"'>]*)["'][^>]*>/i) ||
+      pick(/<img[^>]+src=["']([^"'>]*\d{3,4}x\d{3,4}[^"'>]*)["'][^>]*>/i);
+      
+    // Validate and improve image URL quality
+    if (ogImage) {
+      // Convert relative URLs to absolute
+      if (ogImage.startsWith('//')) {
+        ogImage = 'https:' + ogImage;
+      } else if (ogImage.startsWith('/')) {
+        const baseUrl = new URL(url);
+        ogImage = baseUrl.origin + ogImage;
+      }
+      
+      // Filter out small or low-quality images
+      if (ogImage.includes('icon') || ogImage.includes('favicon') || 
+          ogImage.includes('logo') && !ogImage.includes('large')) {
+        ogImage = null;
+      }
+      
+      // Prefer higher resolution variants if available
+      if (ogImage && ogImage.includes('?')) {
+        // Try to upgrade image quality by modifying URL parameters
+        const url = new URL(ogImage);
+        if (url.hostname.includes('wordpress.com') || url.hostname.includes('wp.com')) {
+          url.searchParams.set('w', '800');
+          url.searchParams.set('h', '600');
+          url.searchParams.set('crop', '1');
+          ogImage = url.toString();
+        } else if (url.hostname.includes('medium.com')) {
+          // Medium image optimization
+          ogImage = ogImage.replace(/\*\d+$/, '*800');
+        }
+      }
+    }
+    
+    const ogTitle = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || 
+                     pick(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+                     pick(/<title[^>]*>([^<]+)<\/title>/i);
+    const ogDesc = pick(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) || 
+                   pick(/<meta[^>]+name=["']twitter:description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i) ||
+                   pick(/<meta[^>]+name=["']description["'][^>]+content=["']([^"'>]+)["'][^>]*>/i);
     return { image: ogImage || null, title: ogTitle || null, description: ogDesc || null };
   } catch {
     return {};

@@ -166,9 +166,9 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
 
   return (
     <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
-  <div className="flex gap-3 md:gap-4 p-3 md:p-4">
-        {/* 25% smaller thumbnail */}
-        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+      <div className="flex flex-col gap-3 p-3 md:p-4">
+        {/* Thumbnail moved to top for docked layout */}
+        <div className="w-full h-20 md:h-24 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
@@ -181,6 +181,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
           />
         </div>
         
+        {/* Content below thumbnail for docked layout */}
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold tracking-tight text-white text-sm md:text-base leading-snug mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
             {article.title}
@@ -262,8 +263,8 @@ const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { ti
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
         <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
-            // 25% narrower cards in horizontal scroller
-            <div key={a.id} className={large ? 'min-w-[270px] max-w-[270px]' : 'min-w-[225px] max-w-[225px]'}>
+            // 45% width reduction for full-width layout as requested
+            <div key={a.id} className={large ? 'min-w-[148px] max-w-[148px]' : 'min-w-[124px] max-w-[124px]'}>
               <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
             </div>
           ))}
