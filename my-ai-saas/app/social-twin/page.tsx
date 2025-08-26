@@ -429,37 +429,170 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
 
-  // News fetching function
+  // News fetching function with multiple APIs and Supabase caching
   const fetchNews = async (category: string = 'technology') => {
     setNewsLoading(true);
     setNewsError('');
-    try {
-      // Using NewsAPI - you'll need to add your API key to environment variables
-      const apiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY || 'demo-key';
-      const response = await fetch(
-        `https://newsapi.org/v2/top-headlines?category=${category}&country=us&apiKey=${apiKey}&pageSize=20`
-      );
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch news');
+    try {
+      // First, try to load from Supabase cache if it's less than 20 minutes old
+      let cachedArticles = null;
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          const { data: cacheData, error } = await supabase
+            .from('news_cache')
+            .select('articles, updated_at')
+            .eq('category', category)
+            .single();
+
+          if (!error && cacheData) {
+            const cacheAge = Date.now() - new Date(cacheData.updated_at).getTime();
+            const twentyMinutes = 20 * 60 * 1000;
+
+            if (cacheAge < twentyMinutes) {
+              // Use cached data
+              cachedArticles = JSON.parse(cacheData.articles);
+              console.log(`Using cached news for ${category} (${Math.round(cacheAge / 1000 / 60)} minutes old)`);
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Cache check failed:', error);
       }
 
-      const data = await response.json();
-      setNewsArticles(data.articles || []);
+      // If we have valid cached data, use it
+      if (cachedArticles && cachedArticles.length > 0) {
+        setNewsArticles(cachedArticles);
+        setNewsLoading(false);
+        return;
+      }
+
+      // Otherwise, fetch fresh data from APIs
+      let articles = [];
+
+      // 1. Try NewsAPI.org first
+      try {
+        const newsApiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY || '3bf80b934d154d3790c54f292c2a81a9';
+        const response = await fetch(
+          `https://newsapi.org/v2/top-headlines?category=${category}&country=us&apiKey=${newsApiKey}&pageSize=15`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.articles && data.articles.length > 0) {
+            articles = data.articles.map((article: any) => ({
+              ...article,
+              source: { name: article.source?.name || 'NewsAPI' },
+              apiSource: 'NewsAPI'
+            }));
+          }
+        }
+      } catch (error) {
+        console.log('NewsAPI failed:', error);
+      }
+
+      // 2. Try GNews.io if NewsAPI didn't return enough articles
+      if (articles.length < 10) {
+        try {
+          const gnewsApiKey = process.env.NEXT_PUBLIC_GNEWS_IO_KEY || 'a8bcacc75413f60e5087c825d04e5c6a';
+          const response = await fetch(
+            `https://gnews.io/api/v4/top-headlines?category=${category}&lang=en&country=us&max=15&apikey=${gnewsApiKey}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.articles && data.articles.length > 0) {
+              const gnewsArticles = data.articles.map((article: any) => ({
+                ...article,
+                source: { name: article.source?.name || 'GNews' },
+                apiSource: 'GNews'
+              }));
+
+              // Merge with existing articles, avoiding duplicates
+              const existingUrls = new Set(articles.map((a: any) => a.url));
+              const uniqueGnewsArticles = gnewsArticles.filter((article: any) => !existingUrls.has(article.url));
+              articles = [...articles, ...uniqueGnewsArticles].slice(0, 20);
+            }
+          }
+        } catch (error) {
+          console.log('GNews.io failed:', error);
+        }
+      }
+
+      // 3. Try NewsData.io as final fallback
+      if (articles.length < 10) {
+        try {
+          const newsDataApiKey = process.env.NEXT_PUBLIC_NEWSDATA_KEY || 'pub_22f3393a92744498a4535f2e65643d95';
+          const response = await fetch(
+            `https://newsdata.io/api/1/news?category=${category}&language=en&size=15&apikey=${newsDataApiKey}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const newsDataArticles = data.results.map((article: any) => ({
+                title: article.title,
+                description: article.description || article.content?.substring(0, 200) + '...',
+                url: article.link,
+                urlToImage: article.image_url,
+                publishedAt: article.pubDate,
+                source: { name: article.source_id || 'NewsData' },
+                apiSource: 'NewsData'
+              }));
+
+              // Merge with existing articles, avoiding duplicates
+              const existingUrls = new Set(articles.map((a: any) => a.url));
+              const uniqueNewsDataArticles = newsDataArticles.filter((article: any) => !existingUrls.has(article.url));
+              articles = [...articles, ...uniqueNewsDataArticles].slice(0, 20);
+            }
+          }
+        } catch (error) {
+          console.log('NewsData.io failed:', error);
+        }
+      }
+
+      // If no articles from any API, throw error
+      if (articles.length === 0) {
+        throw new Error('Unable to fetch news from any source. Please check your internet connection.');
+      }
+
+      // Cache articles in Supabase for 20-minute intervals
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          // Store news in Supabase
+          const { error } = await supabase
+            .from('news_cache')
+            .upsert({
+              category,
+              articles: JSON.stringify(articles),
+              updated_at: new Date().toISOString()
+            });
+
+          if (error) {
+            console.log('Supabase cache error:', error);
+          }
+        }
+      } catch (error) {
+        console.log('Supabase caching failed:', error);
+      }
+
+      setNewsArticles(articles);
     } catch (error) {
       console.error('News fetch error:', error);
-      setNewsError('Failed to load news. Please try again later.');
-      // Fallback to demo data if API fails
-      setNewsArticles([
-        {
-          title: "Welcome to Atom News",
-          description: "Your personalized news feed is loading...",
-          url: "#",
-          urlToImage: "/readme/hero.png",
-          publishedAt: new Date().toISOString(),
-          source: { name: "Atom AI" }
-        }
-      ]);
+      setNewsError(error instanceof Error ? error.message : 'Failed to load news. Please try again later.');
+      setNewsArticles([]);
     } finally {
       setNewsLoading(false);
     }
@@ -470,6 +603,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     if (activeTab === 'news') {
       fetchNews(newsCategory);
     }
+  }, [activeTab, newsCategory]);
+
+  // Auto-refresh news every 20 minutes
+  useEffect(() => {
+    if (activeTab !== 'news') return;
+
+    const interval = setInterval(() => {
+      fetchNews(newsCategory);
+    }, 20 * 60 * 1000); // 20 minutes
+
+    return () => clearInterval(interval);
   }, [activeTab, newsCategory]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [modeRowExpanded, setModeRowExpanded] = useState(false);
@@ -4372,106 +4516,94 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
 
           {activeTab === 'news' && (
-            <div className={`flex-1 overflow-y-auto p-4 ${simpleMode ? 'max-w-3xl mx-auto w-full' : ''}`}>
-              {/* News Header */}
-              <div className="mb-4 flex items-center justify-between">
+            <div className="flex-1 overflow-y-auto p-4 bg-neutral-950">
+              {/* News Header - Dark Theme Only */}
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>📰 News Feed</h2>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Stay updated with the latest news</p>
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <span className="text-2xl">📰</span>
+                    <span className="bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+                      Live News Feed
+                    </span>
+                  </h2>
+                  <p className="text-sm text-gray-400 mt-1">Real-time news from trusted sources • Updates every 20 minutes</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {/* Category Selector */}
+                <div className="flex items-center gap-3">
+                  {/* Category Selector - Dark Theme */}
                   <select
                     value={newsCategory}
                     onChange={(e) => setNewsCategory(e.target.value)}
-                    className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                      darkMode
-                        ? 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
-                        : 'bg-white border-gray-300 text-black hover:bg-gray-50'
-                    }`}
+                    className="bg-neutral-800 border border-neutral-700 text-white px-4 py-2 rounded-lg text-sm hover:bg-neutral-700 hover:border-cyan-500/50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
                   >
-                    <option value="technology">Technology</option>
-                    <option value="business">Business</option>
-                    <option value="science">Science</option>
-                    <option value="health">Health</option>
-                    <option value="sports">Sports</option>
-                    <option value="entertainment">Entertainment</option>
+                    <option value="technology" className="bg-neutral-800">Technology</option>
+                    <option value="business" className="bg-neutral-800">Business</option>
+                    <option value="science" className="bg-neutral-800">Science</option>
+                    <option value="health" className="bg-neutral-800">Health</option>
+                    <option value="sports" className="bg-neutral-800">Sports</option>
+                    <option value="entertainment" className="bg-neutral-800">Entertainment</option>
                   </select>
-                  {/* Refresh Button */}
+                  {/* Refresh Button - Dark Theme */}
                   <button
                     onClick={() => fetchNews(newsCategory)}
                     disabled={newsLoading}
-                    className={`rounded-lg p-2 transition-all duration-200 ${
-                      darkMode
-                        ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-700'
-                        : 'bg-white hover:bg-gray-50 border border-gray-300'
-                    } ${newsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-cyan-500/50 text-white p-2 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                     title="Refresh News"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={darkMode ? 'text-white' : 'text-black'}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-cyan-400">
                       <path d="M4 4V9H4.582M4.582 9C5.1506 7.56584 6.3534 6.56584 7.8284 6.19248M4.582 9H9M20 20V15H19.418M19.418 15C18.8494 16.4342 17.6466 17.4342 16.1716 17.8075M19.418 15H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </button>
                 </div>
               </div>
 
-              {/* News Content */}
+              {/* News Content - Dark Theme Only */}
               {newsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-cyan-500 border-t-transparent"></div>
-                    <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading news...</span>
+                <div className="flex items-center justify-center py-16">
+                  <div className="flex items-center gap-4 bg-neutral-900/50 rounded-xl p-6 border border-neutral-800">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-500 border-t-transparent"></div>
+                    <div>
+                      <div className="text-white font-medium">Fetching Latest News...</div>
+                      <div className="text-gray-400 text-sm mt-1">Connecting to news sources...</div>
+                    </div>
                   </div>
                 </div>
               ) : newsError ? (
-                <div className={`rounded-xl border p-6 text-center ${
-                  darkMode ? 'bg-red-950/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="text-red-500 mb-2">⚠️</div>
-                  <div className={`font-medium ${darkMode ? 'text-red-400' : 'text-red-600'}`}>Error Loading News</div>
-                  <div className={`text-sm mt-1 ${darkMode ? 'text-red-300' : 'text-red-500'}`}>{newsError}</div>
+                <div className="bg-red-950/20 border border-red-800/50 rounded-xl p-6 text-center">
+                  <div className="text-red-400 text-4xl mb-3">⚠️</div>
+                  <div className="text-red-300 font-medium text-lg mb-2">News Feed Unavailable</div>
+                  <div className="text-red-400/80 text-sm mb-4">{newsError}</div>
                   <button
                     onClick={() => fetchNews(newsCategory)}
-                    className={`mt-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                      darkMode
-                        ? 'bg-red-900/50 hover:bg-red-900/70 text-red-300 border border-red-800'
-                        : 'bg-red-100 hover:bg-red-200 text-red-700 border border-red-300'
-                    }`}
+                    className="bg-red-900/50 hover:bg-red-900/70 text-red-300 border border-red-800 hover:border-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   >
-                    Try Again
+                    Retry Connection
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {newsArticles.length === 0 ? (
-                    <div className={`rounded-xl border p-8 text-center ${
-                      darkMode ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'
-                    }`}>
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-8 text-center">
                       <div className="text-4xl mb-3">📰</div>
-                      <div className={`font-medium ${darkMode ? 'text-white' : 'text-black'}`}>No News Available</div>
-                      <div className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Try selecting a different category or refresh the page.
+                      <div className="text-white font-medium text-lg mb-2">No News Available</div>
+                      <div className="text-gray-400 text-sm">
+                        Unable to load news for this category. Please try a different category or check back later.
                       </div>
                     </div>
                   ) : (
                     newsArticles.map((article, index) => (
                       <article
                         key={index}
-                        className={`group rounded-xl border transition-all duration-200 hover:shadow-lg ${
-                          darkMode
-                            ? 'bg-neutral-900/50 border-neutral-800 hover:bg-neutral-900/70 hover:border-neutral-700'
-                            : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                        }`}
+                        className="group bg-neutral-900/50 border border-neutral-800 rounded-xl transition-all duration-300 hover:bg-neutral-900/70 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10"
                       >
-                        <div className="p-4">
-                          <div className="flex gap-4">
+                        <div className="p-5">
+                          <div className="flex gap-5">
                             {/* Article Image */}
                             {article.urlToImage && (
                               <div className="flex-shrink-0">
                                 <img
                                   src={article.urlToImage}
                                   alt={article.title}
-                                  className="w-24 h-24 object-cover rounded-lg"
+                                  className="w-28 h-28 object-cover rounded-lg border border-neutral-700"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
                                   }}
@@ -4481,36 +4613,43 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                             {/* Article Content */}
                             <div className="flex-1 min-w-0">
-                              <h3 className={`font-semibold text-sm leading-tight mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors ${
-                                darkMode ? 'text-white' : 'text-black'
-                              }`}>
+                              <h3 className="font-semibold text-white text-base leading-tight mb-3 line-clamp-2 group-hover:text-cyan-400 transition-colors">
                                 <a
                                   href={article.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="hover:underline"
+                                  className="hover:underline decoration-cyan-400/50"
                                 >
                                   {article.title}
                                 </a>
                               </h3>
 
                               {article.description && (
-                                <p className={`text-sm leading-relaxed mb-3 line-clamp-3 ${
-                                  darkMode ? 'text-gray-300' : 'text-gray-700'
-                                }`}>
+                                <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-3">
                                   {article.description}
                                 </p>
                               )}
 
-                              <div className="flex items-center justify-between text-xs">
-                                <div className={`flex items-center gap-2 ${
-                                  darkMode ? 'text-gray-400' : 'text-gray-600'
-                                }`}>
-                                  <span className="font-medium">{article.source?.name || 'Unknown'}</span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 text-xs text-gray-400">
+                                  <span className="bg-neutral-800 px-2 py-1 rounded-md font-medium">
+                                    {article.source?.name || 'Unknown'}
+                                  </span>
                                   {article.publishedAt && (
                                     <>
                                       <span>•</span>
-                                      <span>{new Date(article.publishedAt).toLocaleDateString()}</span>
+                                      <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}</span>
+                                    </>
+                                  )}
+                                  {article.apiSource && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="text-cyan-400/70">{article.apiSource}</span>
                                     </>
                                   )}
                                 </div>
@@ -4519,9 +4658,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   href={article.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors text-cyan-500 hover:text-cyan-400 hover:bg-cyan-500/10`}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all duration-200 group-hover:shadow-lg group-hover:shadow-cyan-500/20"
                                 >
-                                  <span>Read More</span>
+                                  <span>Read Full Article</span>
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                                     <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
@@ -4536,19 +4675,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
               )}
 
-              {/* News API Info */}
-              <div className={`mt-8 rounded-lg border p-4 ${
-                darkMode ? 'bg-neutral-900/30 border-neutral-800' : 'bg-gray-50 border-gray-200'
-              }`}>
-                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <div className="font-medium mb-1">📡 News API Integration</div>
-                  <div className="space-y-1">
-                    <div>• Powered by NewsAPI.org</div>
-                    <div>• Real-time news from trusted sources</div>
-                    <div>• Category-based filtering</div>
-                    <div>• To use your own API key, add <code className={`px-1 py-0.5 rounded text-xs ${
-                      darkMode ? 'bg-neutral-800 text-cyan-400' : 'bg-gray-200 text-cyan-600'
-                    }`}>NEXT_PUBLIC_NEWS_API_KEY</code> to your environment variables</div>
+              {/* News Status Footer */}
+              <div className="mt-8 bg-neutral-900/30 border border-neutral-800 rounded-lg p-4">
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <div className="flex items-center gap-4">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      Live Updates
+                    </span>
+                    <span>•</span>
+                    <span>{newsArticles.length} articles loaded</span>
+                    <span>•</span>
+                    <span>Category: {newsCategory}</span>
+                  </div>
+                  <div className="text-cyan-400/70">
+                    Powered by NewsAPI • GNews • NewsData
                   </div>
                 </div>
               </div>
