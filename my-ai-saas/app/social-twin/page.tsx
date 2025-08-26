@@ -3307,7 +3307,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Projects tab removed - now accessible via Dashboard */}
 
           {activeTab === 'news' && (
-            <SimpleNewsTab />
+            <div className="flex-1 overflow-hidden bg-gray-50">
+              <SimpleNewsTab />
+            </div>
           )}
 
           {activeTab === 'messenger' && (
@@ -6215,7 +6217,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
 
 // Simple News Tab Component - matches chat tab styling
 function SimpleNewsTab() {
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -6225,8 +6227,8 @@ function SimpleNewsTab() {
         const res = await fetch('/api/news?limit=50&media=images', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
-        const articles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
-        setArticles(articles.map((a: any, i: number) => ({
+        const fetchedArticles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
+        setArticles(fetchedArticles.map((a, i) => ({
           id: a.id || a.url || `n-${i}`,
           title: a.title || a.headline || 'Untitled',
           snippet: a.snippet || a.summary || a.description || '',
@@ -6244,62 +6246,61 @@ function SimpleNewsTab() {
     };
 
     fetchNews();
-    // Refresh every 20 minutes
     const interval = setInterval(fetchNews, 20 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
   if (loading) {
     return (
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-3">
-        <div className="flex h-full items-center justify-center text-gray-500">
-          Loading news...
-        </div>
+      <div className="h-full w-full bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">Loading news...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 p-3">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Latest News</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
-            <div 
-              key={article.id} 
-              className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => article.url && window.open(article.url, '_blank')}
-            >
-              {article.image_url && (
-                <div className="aspect-video bg-gray-100">
-                  <img 
-                    src={article.image_url} 
-                    alt={article.title}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{article.title}</h3>
-                {article.snippet && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-3">{article.snippet}</p>
+    <div className="h-full w-full bg-gray-50 overflow-y-auto">
+      <div className="min-h-full bg-gray-50 p-6">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Latest News</h1>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {articles.map((article) => (
+              <div 
+                key={article.id} 
+                className="bg-gray-100 rounded-lg border border-gray-300 overflow-hidden hover:shadow-lg hover:bg-gray-200 transition-all cursor-pointer"
+                onClick={() => article.url && window.open(article.url, '_blank')}
+              >
+                {article.image_url && (
+                  <div className="aspect-video bg-gray-200">
+                    <img 
+                      src={article.image_url} 
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 )}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{article.source_name}</span>
-                  <span>{new Date(article.published_at).toLocaleDateString()}</span>
+                <div className="p-4 bg-gray-100">
+                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{article.title}</h3>
+                  {article.snippet && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-3">{article.snippet}</p>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{article.source_name}</span>
+                    <span>{new Date(article.published_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-        {articles.length === 0 && (
-          <div className="text-center text-gray-500 py-12">
-            No news articles available
+            ))}
           </div>
-        )}
+          {articles.length === 0 && (
+            <div className="text-center text-gray-500 py-12 bg-gray-50">
+              No news articles available
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
