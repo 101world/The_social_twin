@@ -2517,8 +2517,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - hidden when mobile menu is open */}
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile && mobileMenuOpen ? 'hidden' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        {/* Top Navigation - hidden completely on mobile, visible on desktop only */}
+          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile ? 'hidden' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
