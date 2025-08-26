@@ -3861,27 +3861,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <button 
                       title="Toggle AI Controls" 
                       onClick={() => setModeRowExpanded(!modeRowExpanded)}
-                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center ${
-                        modeRowExpanded
-                          ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
-                          : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
                       }`}
                     >
                       {/* Atom SVG Icon */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${modeRowExpanded ? 'stroke-blue-500' : 'stroke-current'}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
                         {/* Atom nucleus */}
-                        <circle cx="12" cy="12" r="1.5" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
                         
                         {/* Electron orbits */}
-                        <ellipse cx="12" cy="12" rx="6" ry="2" stroke="currentColor" strokeWidth="1" fill="none"/>
-                        <ellipse cx="12" cy="12" rx="2" ry="6" stroke="currentColor" strokeWidth="1" fill="none"/>
-                        <ellipse cx="12" cy="12" rx="4.5" ry="4.5" stroke="currentColor" strokeWidth="1" fill="none" transform="rotate(45 12 12)"/>
+                        <ellipse cx="12" cy="12" rx="6" ry="2" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
+                        <ellipse cx="12" cy="12" rx="2" ry="6" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
+                        <ellipse cx="12" cy="12" rx="4.5" ry="4.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" transform="rotate(45 12 12)" className="transition-colors"/>
                         
                         {/* Electrons */}
-                        <circle cx="18" cy="12" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
-                        <circle cx="6" cy="12" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
-                        <circle cx="12" cy="6" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
-                        <circle cx="12" cy="18" r="1" fill="currentColor" className={modeRowExpanded ? 'fill-blue-500' : ''}/>
+                        <circle cx="18" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="6" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="6" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="18" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
                       </svg>
                     </button>
                     {/* Generated Bin button */}
