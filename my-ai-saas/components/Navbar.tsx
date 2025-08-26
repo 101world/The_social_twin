@@ -7,6 +7,9 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const Navbar = () => {
+  // Mobile detection state
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  
   // Minimal credits pill (compact)
   const [credits, setCredits] = useState<number | null>(null);
   const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
@@ -20,6 +23,34 @@ const Navbar = () => {
   
   // Animation state for navbar click effects
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
+  
+  // Mobile detection effect - Enhanced for iOS devices
+  useEffect(() => {
+    const checkMobile = () => {
+      // Primary check: screen width < 640px
+      const isSmallScreen = window.innerWidth < 640;
+      
+      // Secondary check: touch capability (for tablets/phones)
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      // Tertiary check: user agent for iOS devices
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      // Consider mobile if: small screen OR (touch device AND iOS) OR (iOS regardless of screen size)
+      const isMobileDevice = isSmallScreen || (isTouchDevice && isIOS) || isIOS;
+      
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile(); // Initial check
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
   
   // Trigger animation on navigation
   const triggerNavAnimation = () => {
@@ -108,6 +139,11 @@ const Navbar = () => {
     document.addEventListener('landing:state', onEvt as any);
     return () => document.removeEventListener('landing:state', onEvt as any);
   }, []);
+
+  // Hide navbar on mobile devices
+  if (isMobile) {
+    return null;
+  }
 
   return (
   <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 z-[20000] flex items-center justify-center transition-opacity duration-500" style={{ 

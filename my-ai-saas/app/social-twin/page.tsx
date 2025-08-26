@@ -402,6 +402,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [newsLoading, setNewsLoading] = useState<boolean>(false);
   const [newsCategory, setNewsCategory] = useState<string>('technology');
   const [newsError, setNewsError] = useState<string>('');
+  const [newsSearch, setNewsSearch] = useState<string>('');
+  const [newsView, setNewsView] = useState<'cards' | 'list'>('cards');
+  const [bookmarkedArticles, setBookmarkedArticles] = useState<Set<string>>(new Set());
+  const [imageLoadingStates, setImageLoadingStates] = useState<Map<string, boolean>>(new Map());
+  const [imageErrorStates, setImageErrorStates] = useState<Map<string, boolean>>(new Map());
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [articleModalOpen, setArticleModalOpen] = useState<boolean>(false);
 
   // Reset viewer details when opening a new item
   useEffect(() => {
@@ -557,10 +564,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         }
       }
 
-      // If no articles from any API, throw error
-      if (articles.length === 0) {
-        throw new Error('Unable to fetch news from any source. Please check your internet connection.');
-      }
+      // Process articles to add better image handling
+      articles = articles.map((article: any) => ({
+        ...article,
+        // Enhance image URLs with proxy support and fallbacks
+        urlToImage: article.urlToImage ? getDisplayUrl(article.urlToImage) : null,
+        rawImageUrl: article.urlToImage, // Keep original for fallbacks
+        // Add image loading state
+        imageLoaded: false,
+        imageError: false
+      }));
 
       // Cache articles in Supabase for 20-minute intervals
       try {
@@ -4608,14 +4621,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               {/* Content */}
                               <div className="flex-1 text-center lg:text-left">
                                 <h3 className="font-bold text-white text-2xl lg:text-3xl leading-tight mb-4 group-hover:text-cyan-300 transition-colors duration-300">
-                                  <a
-                                    href={newsArticles[0].url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="hover:underline decoration-cyan-400/50"
+                                  <button
+                                    onClick={() => {
+                                      setSelectedArticle(newsArticles[0]);
+                                      setArticleModalOpen(true);
+                                    }}
+                                    className="hover:underline decoration-cyan-400/50 text-left"
                                   >
                                     {newsArticles[0].title}
-                                  </a>
+                                  </button>
                                 </h3>
 
                                 {newsArticles[0].description && (
@@ -4694,14 +4708,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 {/* Article Content */}
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-white text-base leading-tight mb-3 line-clamp-2 group-hover:text-cyan-300 transition-colors duration-300">
-                                    <a
-                                      href={article.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="hover:underline decoration-cyan-400/50"
+                                    <button
+                                      onClick={() => {
+                                        setSelectedArticle(article);
+                                        setArticleModalOpen(true);
+                                      }}
+                                      className="hover:underline decoration-cyan-400/50 text-left"
                                     >
                                       {article.title}
-                                    </a>
+                                    </button>
                                   </h4>
 
                                   {article.description && (
@@ -4723,17 +4738,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       )}
                                     </div>
 
-                                    <a
-                                      href={article.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                                    <button
+                                      onClick={() => {
+                                        setSelectedArticle(article);
+                                        setArticleModalOpen(true);
+                                      }}
                                       className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all duration-200"
                                     >
                                       <span>Read</span>
                                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                                         <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                       </svg>
-                                    </a>
+                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -4758,14 +4774,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               {/* Content */}
                               <div className="flex-1">
                                 <h4 className="font-bold text-white text-xl lg:text-2xl leading-tight mb-4 group-hover:text-teal-300 transition-colors duration-300">
-                                  <a
-                                    href={newsArticles[3].url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="hover:underline decoration-teal-400/50"
+                                  <button
+                                    onClick={() => {
+                                      setSelectedArticle(newsArticles[3]);
+                                      setArticleModalOpen(true);
+                                    }}
+                                    className="hover:underline decoration-teal-400/50 text-left"
                                   >
                                     {newsArticles[3].title}
-                                  </a>
+                                  </button>
                                 </h4>
 
                                 {newsArticles[3].description && (
@@ -4795,17 +4812,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   )}
                                 </div>
 
-                                <a
-                                  href={newsArticles[3].url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
+                                <button
+                                  onClick={() => {
+                                    setSelectedArticle(newsArticles[3]);
+                                    setArticleModalOpen(true);
+                                  }}
                                   className="inline-flex items-center gap-2 px-6 py-3 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/40 rounded-xl text-sm font-medium transition-all duration-300 group-hover:shadow-lg group-hover:shadow-teal-500/20"
                                 >
                                   <span>Read Full Article</span>
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                                     <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                   </svg>
-                                </a>
+                                </button>
                               </div>
 
                               {/* Image */}
@@ -4860,14 +4878,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   {/* Article Content */}
                                   <div className="flex-1 min-w-0">
                                     <h6 className="font-semibold text-white text-sm leading-tight mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors">
-                                      <a
-                                        href={article.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="hover:underline decoration-cyan-400/50"
+                                      <button
+                                        onClick={() => {
+                                          setSelectedArticle(article);
+                                          setArticleModalOpen(true);
+                                        }}
+                                        className="hover:underline decoration-cyan-400/50 text-left"
                                       >
                                         {article.title}
-                                      </a>
+                                      </button>
                                     </h6>
 
                                     <div className="flex items-center justify-between">
@@ -4883,17 +4902,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         )}
                                       </div>
 
-                                      <a
-                                        href={article.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <button
+                                        onClick={() => {
+                                          setSelectedArticle(article);
+                                          setArticleModalOpen(true);
+                                        }}
                                         className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded text-xs font-medium transition-all duration-200"
                                       >
                                         <span>Read</span>
                                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
                                           <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                         </svg>
-                                      </a>
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -4929,6 +4949,115 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </div>
       </section>
+
+      {/* Article Preview Modal */}
+      {articleModalOpen && selectedArticle && (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setArticleModalOpen(false)}>
+          <div className={`w-full max-w-4xl max-h-[90vh] rounded-2xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${darkMode ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'}`}>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Article Preview</h2>
+                  <p className="text-sm text-neutral-400">Quick preview without leaving the page</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setArticleModalOpen(false)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg ${darkMode ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-neutral-100 text-neutral-500'} transition-all`}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Article Header */}
+                <div className="space-y-4">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white leading-tight">
+                    {selectedArticle.title}
+                  </h1>
+
+                  {/* Article Meta */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
+                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                      {selectedArticle.source?.name || 'Unknown Source'}
+                    </span>
+                    {selectedArticle.publishedAt && (
+                      <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                        {new Date(selectedArticle.publishedAt).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
+                    {selectedArticle.apiSource && (
+                      <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg">
+                        {selectedArticle.apiSource}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Article Image */}
+                {selectedArticle.urlToImage && (
+                  <div className="relative overflow-hidden rounded-2xl shadow-2xl">
+                    <img
+                      src={selectedArticle.urlToImage}
+                      alt={selectedArticle.title}
+                      className="w-full h-64 lg:h-80 object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+                )}
+
+                {/* Article Content */}
+                <div className="space-y-4">
+                  {selectedArticle.description && (
+                    <div className="bg-neutral-800/40 backdrop-blur-sm border border-neutral-700/50 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-white mb-3">Summary</h3>
+                      <p className="text-neutral-300 leading-relaxed text-base">
+                        {selectedArticle.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Read Full Article Button */}
+                  <div className="flex justify-center pt-4">
+                    <a
+                      href={selectedArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-cyan-500/25 transform hover:scale-105"
+                    >
+                      <span>Read Full Article</span>
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {settingsOpen && (
         <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
