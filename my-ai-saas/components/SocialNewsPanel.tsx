@@ -32,7 +32,7 @@ function ProgressiveImage({ src, alt, className, small }: { src?: string; alt?: 
   const low = src ? `${src}?w=${small ? 160 : 300}&q=30` : thumbUrl(alt || 'News', small);
   const high = src || low;
   return (
-    <div className={`relative overflow-hidden ${className || ''}`}>
+  <div className={`relative overflow-hidden w-full h-full ${className || ''}`}>
       {/* low-res blurred fallback */}
       <img src={low} alt={alt} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-0 scale-105' : 'opacity-100 filter blur-sm'}`} />
   {/* high-res using Next/Image for better optimization */}
@@ -352,7 +352,7 @@ export default function SocialNewsPanel() {
   }, [selected]);
 
   return (
-  <div ref={mainContentRef} className="h-full bg-gray-50 text-white flex flex-col" aria-live="polite">
+  <div ref={mainContentRef} className="h-full bg-gray-100 text-gray-900 flex flex-col" aria-live="polite">
       <div className="flex-shrink-0 p-4 border-b border-gray-800">
         <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
           <div>
@@ -389,17 +389,17 @@ export default function SocialNewsPanel() {
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
-    <main className="w-full bg-gray-50 flex-1">
+            <main className="w-full bg-gray-100 flex-1">
               <div ref={gridRef} className="">
                 {/* Breaking headline full width (no borders) */}
                 {breaking && (
                   <article key={breaking.id} className="w-full mb-3 rounded-none overflow-hidden cursor-pointer bg-transparent">
-                    <div className="w-full aspect-[3/1] relative">
+                    <div className="relative w-full aspect-[3/1]">
                       <ProgressiveImage src={breaking.image_url} alt={breaking.title} className="w-full h-full" />
                     </div>
                     <div className="-mt-16 p-6">
-                      <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Times New Roman, serif' }}>{breaking.title}</h2>
-                      <div className="text-sm text-gray-300 mt-1">{breaking.source_name || breaking.source} • {readingTime(breaking)}</div>
+                      <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Times New Roman, serif' }}>{breaking.title}</h2>
+                      <div className="text-sm text-gray-700 mt-1">{breaking.source_name || breaking.source} • {readingTime(breaking)}</div>
                     </div>
                   </article>
                 )}
@@ -407,7 +407,7 @@ export default function SocialNewsPanel() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {gridItems.map((a, idx) => (
                     <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 cursor-pointer">
-                      <div className="aspect-square sm:aspect-[4/3]">
+                      <div className="relative aspect-square sm:aspect-[4/3]">
                         <ProgressiveImage src={a.image_url} alt={a.title} />
                       </div>
                       <div className="p-3">
