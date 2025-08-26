@@ -2159,7 +2159,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 }}
               />
 
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 border-t p-2'} ${darkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-neutral-300'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''}`}
+  {/* Composer container - removed dark grey background/border, transparent */}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 p-2'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''} ${activeTab !== 'chat' ? 'hidden' : ''}`}
           style={{ 
             bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))'
           }}>
@@ -3045,8 +3046,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
-                {/* Prompt input area - unified desktop feel */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${darkMode ? 'bg-neutral-900/90 border border-neutral-700' : 'bg-white border border-neutral-200'} ${isMobile ? 'relative' : ''}`}>
+                {/* Prompt input area - no outer background/border; keep inner layout */}
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -3095,66 +3096,34 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Folder + Debug (mobile only) */}
-                    <button
-                      onClick={() => setFolderModalOpen(true)}
-                      className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                      title="Organize in folder"
+                    {/* Bottom row: AI Toggle + Library Button - consistent sizing */}
+                    <button 
+                      title="Toggle AI Features" 
+                      onClick={() => setShowAIFeatures(!showAIFeatures)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center ${
+                        showAIFeatures
+                          ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
+                          : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
+                      }`}
                     >
-                      <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 7l10 5 10-5M12 22V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    {isMobile ? (
-                      <button
-                        onClick={() => {
-                          console.log('=== MOBILE DEBUG INFO ===');
-                          console.log('User agent:', navigator.userAgent);
-                          console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
-                          console.log('isMobile state:', isMobile);
-                          console.log('Credits raw:', creditInfo);
-                          console.log('Credits value:', creditInfo?.credits);
-                          console.log('Credits type:', typeof creditInfo?.credits);
-                          console.log('Can afford:', canAffordGeneration);
-                          console.log('Generation cost:', generationCost);
-                          console.log('Active endpoint:', activeEndpoint);
-                          console.log('Current mode:', mode);
-                          console.log('Input value:', input);
-                          console.log('Available LoRAs:', availableLoras.length, availableLoras);
-                          console.log('LoRAs loading:', lorasLoading);
-                          console.log('Image URL:', imageUrl);
-                          console.log('Image Modify URL:', imageModifyUrl);
-                          console.log('User ID:', userId);
-                          const creditStr = creditInfo?.credits !== undefined ? creditInfo.credits : 'UNDEFINED';
-                          alert(`Debug: Credits=${creditStr}, CanAfford=${canAffordGeneration}, Cost=${generationCost}, Endpoint=${activeEndpoint ? 'SET' : 'MISSING'}, UserID=${userId ? 'SET' : 'MISSING'}, LoRAs=${availableLoras.length}`);
-                        }}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                        title="Debug info"
-                      >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M12 17h.01" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          // Simple save functionality - could be enhanced later
-                          const data = { messages, input, mode };
-                          console.log('Saving conversation:', data);
-                        }}
-                        disabled={!messages.length}
-                        className={`${isMobile ? 'p-1.5' : 'p-2'} rounded border transition-colors ${!messages.length ? 'opacity-50 cursor-not-allowed' : ''} ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'}`}
-                        title="Save as recipe"
-                      >
-                        <svg width={isMobile ? "14" : "16"} height={isMobile ? "14" : "16"} viewBox="0 0 24 24" fill="none">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="17,21 17,13 7,13 7,21" stroke="currentColor" strokeWidth="2"/>
-                          <polyline points="7,3 7,8 15,8" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                      </button>
-                    )}
+                    {/* Library button (single SVG) */}
+                    <button
+                      onClick={() => setLibraryOpen(true)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="View Library"
+                      aria-label="Open Library"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" stroke="currentColor"/>
+                        <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
                 {attached ? (
