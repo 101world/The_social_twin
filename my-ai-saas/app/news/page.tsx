@@ -72,13 +72,26 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       </div>
       <div className="p-5">
-        <h2 className="text-2xl font-bold text-white leading-tight mb-2 line-clamp-3 group-hover:text-orange-400">
+        <h2 className="text-2xl font-bold text-white leading-tight mb-3 line-clamp-3 group-hover:text-orange-400" style={{ fontFamily: 'Times New Roman, serif' }}>
           {article.title}
         </h2>
+        {(article.snippet || article.summary) && (
+          <p className="text-gray-300 text-sm leading-relaxed mb-3 line-clamp-2">
+            {article.snippet || article.summary}
+          </p>
+        )}
         <div className="flex items-center gap-3 text-sm text-gray-400">
-          <span className="font-medium text-gray-300">{article.source_name || article.source || 'Source'}</span>
+          <span className="font-medium text-orange-400">{article.source_name || article.source || 'Source'}</span>
           <span>•</span>
           <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDate(article.published_at)}</span>
+          {article.category && article.category !== 'General' && (
+            <>
+              <span>•</span>
+              <span className="px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-xs">
+                {article.category}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </article>
@@ -106,9 +119,15 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
           }}
         />
       </div>
-      <h3 className="p-3 text-white font-semibold leading-snug line-clamp-2">
-        {article.title}
-      </h3>
+      <div className="p-3">
+        <h3 className="text-white font-semibold leading-snug line-clamp-2 mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>
+          {article.title}
+        </h3>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <span className="text-orange-400 font-medium">{article.source_name || article.source || 'Source'}</span>
+          <span>{formatDate(article.published_at).split(',')[0]}</span>
+        </div>
+      </div>
     </article>
   );
 };
@@ -151,6 +170,7 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
                 </span>
               </>
             )}
+              {/* external link moved to a subtle control in the header area; modal remains primary */}
           </div>
 
           {/* Everything we scraped: show all available text fields */}
@@ -269,12 +289,19 @@ export default function NewsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black">
-        <div className="flex items-center justify-center h-96">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-            <span className="ml-3 text-gray-300 font-medium">Loading latest news...</span>
+        <div className="text-center pt-20">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-8" style={{ fontFamily: 'Times New Roman, serif' }}>
+            ONE World News
+          </h1>
+          <div className="flex items-center justify-center h-32">
+            <div className="flex items-center gap-3">
+              <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse"></div>
+              <div className="w-4 h-4 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              <span className="ml-4 text-gray-300 font-medium text-lg" style={{ fontFamily: 'Times New Roman, serif' }}>
+                Loading latest global news...
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -296,9 +323,20 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4" style={{ fontFamily: 'Times New Roman, serif' }}>
+            ONE World News
+          </h1>
+          <p className="text-xl text-gray-300 mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>
+            Breaking News • Global Coverage • Real-time Updates
+          </p>
+          <div className="w-24 h-0.5 bg-gradient-to-r from-orange-500 to-red-500 mx-auto"></div>
+        </div>
+
         {/* Search Bar */}
         <div className="mb-6">
-          <div className="relative max-w-2xl">
+          <div className="relative max-w-2xl mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
@@ -354,7 +392,9 @@ export default function NewsPage() {
         <section className="space-y-8" onClick={() => setIsSearchOpen(false)}>
           {/* Breaking News - 2 posts */}
           <div>
-            <h2 className="text-2xl font-bold text-white mb-4">Breaking News</h2>
+            <h2 className="text-3xl font-bold text-white mb-6" style={{ fontFamily: 'Times New Roman, serif' }}>
+              🚨 Breaking News
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {big1.map((a) => (
                 <BigNewsCard key={a.id} article={a} onOpen={setActiveArticle} />

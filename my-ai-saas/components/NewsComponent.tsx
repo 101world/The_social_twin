@@ -288,8 +288,9 @@ const ArticleModal = ({ article, onClose }: { article: NewsArticle | null; onClo
             <p className="text-xs text-gray-400 truncate">{article.source_name || article.source || 'Source'} • {new Date(article.published_at).toLocaleString()}</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Keep external open available but less prominent to encourage modal-first UX */}
             {url && (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="px-2 py-1.5 md:px-3 md:py-1.5 text-xs font-medium rounded-lg bg-gray-800 text-gray-200 hover:bg-gray-700">Open in new tab</a>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[11px] rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700" title="Open original source in a new tab">External</a>
             )}
             <button onClick={onClose} className="px-2 py-1.5 md:px-3 md:py-1.5 text-xs font-medium rounded-lg bg-orange-600 text-white hover:bg-orange-500">Close</button>
           </div>
@@ -319,6 +320,7 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
   const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [providerUsed, setProviderUsed] = useState<string | null>(null);
   const quickChips = ['AI', 'Business', 'Science', 'World', 'Crypto'];
 
   // Load real news from API
@@ -335,9 +337,12 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
     } else if (continent) {
       qs.set('continent', continent);
     }
-    const response = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
+  const response = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
         if (response.ok) {
-          const data = await response.json();
+      const headerProvider = response.headers.get('x-provider-used');
+      const data = await response.json();
+      const jsonProvider = data?.data?.provider_used || data?.data?.metadata?.provider_used;
+      setProviderUsed(headerProvider || jsonProvider || null);
           const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
           if (list.length) {
             setArticles(list.slice(0, 30));
@@ -474,6 +479,9 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
                     const res = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
                     if (res.ok) {
                       const data = await res.json();
+                      const headerProvider2 = res.headers.get('x-provider-used');
+                      const jsonProvider2 = data?.data?.provider_used || data?.data?.metadata?.provider_used;
+                      setProviderUsed(headerProvider2 || jsonProvider2 || null);
                       const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
                       setArticles(list.slice(0, 30));
                       setLastUpdated(new Date().toISOString());
@@ -491,8 +499,11 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
               </button>
 
               {lastUpdated && (
-                <span className="text-[11px] text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+                    <span className="text-[11px] text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
               )}
+                  {providerUsed && (
+                    <span className="text-[11px] text-gray-500">Provider: {providerUsed}</span>
+                  )}
 
               {/* Region selects */}
               <select

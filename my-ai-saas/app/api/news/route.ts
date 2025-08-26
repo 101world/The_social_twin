@@ -105,7 +105,7 @@ async function incrementApiCount(provider: string, by = 1) {
 }
 
 // Wrapper to attempt provider calls respecting daily quotas
-async function fetchFromProviders(limit = 30, country = '', continent = ''): Promise<{ provider: string | null; articles: any[] }> {
+async function fetchFromProviders(limit = 30, country = '', continent = '', opts?: { search?: string | null; category?: string | null }): Promise<{ provider: string | null; articles: any[] }> {
   await ensureApiUsageTableExists();
   const providers: Array<{ name: string; key?: string; limit: number; fn: () => Promise<any[]> }> = [];
 
@@ -120,8 +120,10 @@ async function fetchFromProviders(limit = 30, country = '', continent = ''): Pro
       key: newsApiKey,
       limit: 100,
       fn: async () => {
-        const q = 'news';
-        const url = `https://newsapi.org/v2/top-headlines?pageSize=${Math.min(limit,30)}${country ? `&country=${country.toLowerCase()}` : ''}`;
+        // NewsAPI top-headlines supports: country, category, q, pageSize
+        const q = (opts?.search || '').trim();
+        const cat = (opts?.category || '').trim();
+        const url = `https://newsapi.org/v2/top-headlines?pageSize=${Math.min(limit,30)}${country ? `&country=${country.toLowerCase()}` : ''}${cat && cat !== 'all' ? `&category=${encodeURIComponent(cat.toLowerCase())}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
         const res = await fetch(url, { headers: { 'X-Api-Key': newsApiKey } });
         if (!res.ok) throw new Error('newsapi failed');
         const j = await res.json();
@@ -147,7 +149,12 @@ async function fetchFromProviders(limit = 30, country = '', continent = ''): Pro
       key: gnewsKey,
       limit: 100,
       fn: async () => {
-        const url = `https://gnews.io/api/v4/top-headlines?max=${Math.min(limit,30)}${country ? `&country=${country.toLowerCase()}` : ''}&lang=en&token=${gnewsKey}`;
+        // GNews supports: country, lang, q, and topic (limited set). We'll map common categories.
+        const q = (opts?.search || '').trim();
+        const cat = (opts?.category || '').trim().toLowerCase();
+        const topicMap: Record<string, string> = { business: 'business', world: 'world', nation: 'nation', technology: 'technology', entertainment: 'entertainment', sports: 'sports', science: 'science', health: 'health' };
+        const topic = topicMap[cat] ? `&topic=${topicMap[cat]}` : '';
+        const url = `https://gnews.io/api/v4/top-headlines?max=${Math.min(limit,30)}${country ? `&country=${country.toLowerCase()}` : ''}&lang=en${q ? `&q=${encodeURIComponent(q)}` : ''}${topic}&token=${gnewsKey}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('gnews failed');
         const j = await res.json();
@@ -173,7 +180,10 @@ async function fetchFromProviders(limit = 30, country = '', continent = ''): Pro
       key: newsdataKey,
       limit: 200,
       fn: async () => {
-        const url = `https://newsdata.io/api/1/news?language=en${country ? `&country=${country.toLowerCase()}` : ''}&page=1&apikey=${newsdataKey}`;
+        // NewsData supports: country, category, language, q
+        const q = (opts?.search || '').trim();
+        const cat = (opts?.category || '').trim();
+        const url = `https://newsdata.io/api/1/news?language=en${country ? `&country=${country.toLowerCase()}` : ''}${cat && cat !== 'all' ? `&category=${encodeURIComponent(cat.toLowerCase())}` : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}&page=1&apikey=${newsdataKey}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('newsdata failed');
         const j = await res.json();
@@ -275,7 +285,7 @@ export async function GET(request: NextRequest) {
 
     // Provider-first attempt: try providers immediately
     try {
-      const pr = await fetchFromProviders(Math.min(limit, 50), country, continent);
+  const pr = await fetchFromProviders(Math.min(limit, 50), country, continent, { search, category });
       if (pr && Array.isArray(pr.articles) && pr.articles.length) {
         providerUsed = pr.provider;
         providerArticles = pr.articles.map((a: any) => ({
@@ -316,7 +326,7 @@ export async function GET(request: NextRequest) {
     if ((!providerArticles || providerArticles.length === 0) && (!articles || articles.length === 0)) {
       try {
         // Try hosted providers first (respecting daily quotas)
-        const providerResults = await fetchFromProviders(Math.min(limit, 50), country, continent);
+  const providerResults = await fetchFromProviders(Math.min(limit, 50), country, continent, { search, category });
         if (providerResults && Array.isArray(providerResults.articles) && providerResults.articles.length) {
           providerUsed = providerResults.provider;
           fallbackArticles = providerResults.articles.map((a: any) => ({
@@ -469,6 +479,7 @@ export async function GET(request: NextRequest) {
       data: {
   articles: resultArticles,
   total: resultArticles.length,
+        provider_used: providerUsed || 'none',
         categories: categoryStats,
         filters: {
           category,
@@ -483,7 +494,8 @@ export async function GET(request: NextRequest) {
     with_images: resultArticles.filter((a: any) => a.image_url).length,
     with_videos: resultArticles.filter((a: any) => a.video_url).length,
     with_youtube: resultArticles.filter((a: any) => a.youtube_url).length,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
+          provider_used: providerUsed || 'none'
         }
       }
     });
