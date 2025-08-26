@@ -64,8 +64,6 @@ export async function POST(request: NextRequest) {
     const workerUrl = 'https://101world-ai-api.welcometo101world.workers.dev';
     const endpoint = imageData ? '/chat-vision' : '/chat';
     
-    console.log('Debug - Raw conversationHistory:', JSON.stringify(conversationHistory, null, 2));
-    
     // Prepare messages in OpenAI format, filtering out invalid messages
     const validConversationHistory = conversationHistory
       .filter((msg: any) => msg && msg.role && msg.content && typeof msg.content === 'string')
@@ -73,8 +71,6 @@ export async function POST(request: NextRequest) {
         role: msg.role,
         content: msg.content
       }));
-    
-    console.log('Debug - Valid conversation history:', JSON.stringify(validConversationHistory, null, 2));
     
     const messages = [
       // Add valid conversation history
@@ -102,8 +98,6 @@ export async function POST(request: NextRequest) {
       userId
     };
     
-    console.log('Debug - Final worker payload:', JSON.stringify(workerPayload, null, 2));
-
     const aiResponse = await fetch(`${workerUrl}${endpoint}`, {
       method: 'POST',
       headers: {
