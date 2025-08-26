@@ -227,6 +227,62 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
   
+  // AI thinking phrases for more engaging loading states
+  const THINKING_PHRASES = [
+    "Hmmm…",
+    "Let me see…",
+    "Okay… thinking…",
+    "Well… that's interesting…",
+    "Hmm… I'm considering…",
+    "Alright… let's figure this out…",
+    "Let's see… how do I put this…",
+    "Mmm… give me a moment…",
+    "Okay, let's think this through…",
+    "Ah… this requires some thought…",
+    "Let me reason about that…",
+    "Hmm… interesting question…",
+    "Alright… I'm piecing it together…",
+    "Let's ponder this for a second…",
+    "Okay… breaking it down…",
+    "Mmm… let me weigh the options…",
+    "Hmmm… almost there…",
+    "I see… let me think…",
+    "Alright… connecting the dots…",
+    "Hmm… I need a moment to process…",
+    "Let's analyze this carefully…",
+    "Ah… thinking out loud…",
+    "Mmm… how can I explain this…",
+    "Okay… forming an answer…",
+    "Hmm… let me recall some info…",
+    "Ah… there's more to consider…",
+    "Let's see… what's the best way…",
+    "Hmm… let me reason it step by step…",
+    "Alright… weighing possibilities…",
+    "Mmm… thinking through it…",
+    "Hmmm… let me examine that…",
+    "Okay… trying to make sense of this…",
+    "Ah… I'm figuring it out…",
+    "Hmm… let me reflect on that…",
+    "Alright… I'm considering your request…",
+    "Mmm… let's break it down slowly…",
+    "Hmmm… thinking carefully…",
+    "Okay… let me sort through that…",
+    "Ah… almost there…",
+    "Hmm… I see what you mean…",
+    "Alright… let me think step by step…",
+    "Mmm… this is interesting…",
+    "Hmmm… connecting ideas…",
+    "Okay… let me map this out…",
+    "Ah… thinking about the best answer…",
+    "Hmm… let me reason this…",
+    "Alright… I'm reflecting on your question…",
+    "Mmm… let's think this through carefully…",
+    "Hmmm… almost figured it out…",
+    "Okay… just a bit more thinking…",
+    "Ah… I'm processing that idea…",
+    "Mmm… let me explore the possibilities…"
+  ];
+  
   // Fixed: AR_CHOICES now match desktop with 3:2 and 2:3 ratios
   // Fixed: BATCH_CHOICES now match desktop [1,2,4,8] 
   // Fixed: LORA_CHOICES now load dynamically from API
@@ -241,6 +297,49 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  // Get random thinking phrase
+  const getRandomThinkingPhrase = () => {
+    return THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
+  };
+
+  // Animate thinking phrases
+  const [currentThinkingPhrase, setCurrentThinkingPhrase] = useState("");
+  const thinkingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startThinkingAnimation = (messageId: string) => {
+    const updatePhrase = () => {
+      const newPhrase = getRandomThinkingPhrase();
+      setCurrentThinkingPhrase(newPhrase);
+      
+      // Update the message content with the new thinking phrase
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId && msg.loading 
+          ? { ...msg, content: newPhrase }
+          : msg
+      ));
+    };
+
+    // Start with first phrase immediately
+    updatePhrase();
+    
+    // Then update every 1.5-3 seconds for variety
+    thinkingIntervalRef.current = setInterval(() => {
+      updatePhrase();
+    }, 1500 + Math.random() * 1500); // Random between 1.5-3 seconds
+  };
+
+  const stopThinkingAnimation = () => {
+    if (thinkingIntervalRef.current) {
+      clearInterval(thinkingIntervalRef.current);
+      thinkingIntervalRef.current = null;
+    }
+  };
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => stopThinkingAnimation();
+  }, []);
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
@@ -1417,12 +1516,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const placeholder: ChatMessage = {
         id: tempId,
         role: "assistant",
-        content: (mode==='text') ? 'Generating…' : ((mode==='image' || mode==='image-modify') ? 'Generating image…' : (mode==='video' ? 'Generating video…' : 'Working…')),
+        content: (mode==='text') ? getRandomThinkingPhrase() : ((mode==='image' || mode==='image-modify') ? 'Generating image…' : (mode==='video' ? 'Generating video…' : 'Working…')),
         loading: true,
         pendingType: ((mode==='image' || mode==='image-modify') ? 'image' : (mode==='video' ? 'video' : 'text')),
         createdAt: new Date().toISOString(),
       };
       setMessages((prev)=> [...prev, placeholder]);
+      
+      // Start thinking animation for text mode
+      if (mode === 'text') {
+        startThinkingAnimation(tempId);
+      }
       
       // For text mode, use Cloudflare Workers AI
       if (mode === 'text') {
@@ -1438,11 +1542,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               loading: false 
             };
             
-            // Add AI loading message
+            // Add AI loading message with thinking animation
             const aiLoadingMessage = { 
               id: generateId(), 
               role: 'assistant' as const, 
-              content: '', 
+              content: getRandomThinkingPhrase(), 
               loading: true 
             };
             
@@ -1451,6 +1555,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               userMessageWithImage,
               aiLoadingMessage
             ]);
+
+            // Start thinking animation
+            startThinkingAnimation(aiLoadingMessage.id);
 
             // Convert current messages to format expected by Cloudflare AI
             const conversationHistory = messages
@@ -1469,6 +1576,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 userId || 'anonymous'
               )
             );
+            
+            // Stop thinking animation
+            stopThinkingAnimation();
             
             setMessages((prev) => prev.map(msg => 
               msg.id === aiLoadingMessage.id 
@@ -1498,6 +1608,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               )
             );
             
+            // Stop thinking animation
+            stopThinkingAnimation();
+            
             setMessages((prev) => prev.map(msg => 
               msg.id === tempId 
                 ? { ...msg, content: response, loading: false }
@@ -1507,6 +1620,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           }
         } catch (error) {
           console.error('Cloudflare AI error:', error);
+          // Stop thinking animation on error
+          stopThinkingAnimation();
           setMessages((prev) => prev.map(msg => 
             msg.id === tempId 
               ? { ...msg, content: 'Error: Failed to generate response. Please try again.', loading: false, role: 'error' }
