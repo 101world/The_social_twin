@@ -37,6 +37,7 @@ type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
+  image?: string; // Base64 image data for vision mode
   imageUrl?: string;
   videoUrl?: string;
   pdfUrl?: string;
@@ -1428,6 +1429,29 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         try {
           // Check if user uploaded an image - if so, use vision mode
           if (attached && attached.type.startsWith('image')) {
+            // Add user message with both text and image to chat
+            const userMessageWithImage = { 
+              id: tempId, 
+              role: 'user' as const, 
+              content: trimmed,
+              image: attached.dataUrl, // Store image data in message
+              loading: false 
+            };
+            
+            // Add AI loading message
+            const aiLoadingMessage = { 
+              id: generateId(), 
+              role: 'assistant' as const, 
+              content: '', 
+              loading: true 
+            };
+            
+            setMessages((prev) => [
+              ...prev.filter(msg => msg.id !== tempId), // Remove temp message
+              userMessageWithImage,
+              aiLoadingMessage
+            ]);
+
             // Convert current messages to format expected by Cloudflare AI
             const conversationHistory = messages
               .filter(msg => msg.role === 'user' || msg.role === 'assistant')
@@ -1447,7 +1471,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             );
             
             setMessages((prev) => prev.map(msg => 
-              msg.id === tempId 
+              msg.id === aiLoadingMessage.id 
                 ? { ...msg, content: response, loading: false }
                 : msg
             ));
@@ -2061,7 +2085,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
                               </div>
                             )}
-                            <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>{m.content}</div>
+                            <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>
+                              {/* Display image if present */}
+                              {m.image && (
+                                <div className="mb-2">
+                                  <img 
+                                    src={m.image} 
+                                    alt="User uploaded image" 
+                                    className="max-w-full max-h-64 rounded-lg border object-contain"
+                                    style={{ maxWidth: '250px' }}
+                                  />
+                                </div>
+                              )}
+                              {m.content}
+                            </div>
                             {m.loading && m.pendingType==='image' ? (
                               <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
                             ) : null}
@@ -2948,17 +2985,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     
                     {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
-                      <select
-                        value={chatMode}
-                        onChange={(e)=> setChatMode(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="AI Mode"
-                      >
-                        <option value="normal">General</option>
-                        <option value="prompt">Prompt</option>
-                        <option value="creative">Creative</option>
-                        <option value="think">Think</option>
-                      </select>
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={attached && attached.type.startsWith('image') ? 'vision' : chatMode}
+                          onChange={(e)=> {
+                            if (e.target.value !== 'vision') {
+                              setChatMode(e.target.value as any);
+                            }
+                          }}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation ${attached && attached.type.startsWith('image') ? 'ring-2 ring-purple-500' : ''}`}
+                          title="AI Mode"
+                          disabled={attached && attached.type.startsWith('image')}
+                        >
+                          <option value="normal">General</option>
+                          <option value="prompt">Prompt</option>
+                          <option value="creative">Creative</option>
+                          <option value="think">Think</option>
+                          {attached && attached.type.startsWith('image') && (
+                            <option value="vision">👁️ Vision</option>
+                          )}
+                        </select>
+                        {attached && attached.type.startsWith('image') && (
+                          <span className="text-xs text-purple-600 font-medium">👁️ Vision Mode</span>
+                        )}
+                      </div>
                     )}
                     
                     {(mode === 'image' || mode === 'image-modify') && (
@@ -3158,12 +3208,51 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         onChange={async (e) => {
                           const f = e.target.files?.[0];
                           if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            const dataUrl = String(reader.result || '');
-                            setAttached({ name: f.name, type: f.type, dataUrl });
-                          };
-                          reader.readAsDataURL(f);
+                          
+                          // Process image files for better AI compatibility
+                          if (f.type.startsWith('image/')) {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const img = new Image();
+                            
+                            img.onload = () => {
+                              // Resize if too large (max 1024px on longest side for efficiency)
+                              const maxSize = 1024;
+                              let { width, height } = img;
+                              
+                              if (width > maxSize || height > maxSize) {
+                                if (width > height) {
+                                  height = (height * maxSize) / width;
+                                  width = maxSize;
+                                } else {
+                                  width = (width * maxSize) / height;
+                                  height = maxSize;
+                                }
+                              }
+                              
+                              canvas.width = width;
+                              canvas.height = height;
+                              ctx?.drawImage(img, 0, 0, width, height);
+                              
+                              // Convert to JPEG for better compatibility and smaller size
+                              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                              setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
+                            };
+                            
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              img.src = String(reader.result || '');
+                            };
+                            reader.readAsDataURL(f);
+                          } else {
+                            // For non-image files, use direct FileReader
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const dataUrl = String(reader.result || '');
+                              setAttached({ name: f.name, type: f.type, dataUrl });
+                            };
+                            reader.readAsDataURL(f);
+                          }
                         }}
                       />
                     </label>
