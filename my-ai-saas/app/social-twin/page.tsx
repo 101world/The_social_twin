@@ -1970,22 +1970,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
   }, [isMobile]); // Add isMobile as dependency
 
-  // Force gray background on body when on Social Twin page to override global white background
-  useEffect(() => {
-    const originalBodyBg = document.body.style.backgroundColor;
-    const originalBodyClass = document.body.className;
-    
-    // Force gray background on body to override global CSS
-    document.body.style.backgroundColor = '#f9fafb !important';
-    document.body.style.background = '#f9fafb !important';
-    
-    return () => {
-      // Restore original background when leaving page
-      document.body.style.backgroundColor = originalBodyBg;
-      document.body.className = originalBodyClass;
-    };
-  }, []);
-
   return (
   <>
     <style jsx global>{`
@@ -2005,12 +1989,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         50% {
           box-shadow: 0 0 30px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.3);
         }
-      }
-      
-      /* Force gray background on Social Twin page to override global white */
-      body {
-        background-color: #f9fafb !important;
-        background: #f9fafb !important;
       }
     `}</style>
   <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-gray-50'} max-w-full`}> 
