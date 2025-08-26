@@ -8,6 +8,7 @@ import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
 import MessengerComponent from "@/components/SimpleMessengerComponent";
 import NewsComponent from "@/components/NewsComponent";
+import SocialNewsPanel from "@/components/SocialNewsPanel";
 
 // Utility function to safely get location origin
 function getLocationOrigin(): string {
@@ -3316,8 +3317,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
           {activeTab === 'news' && (
             <div className="flex-1 overflow-hidden">
-              {/* Enforce vertical scroll-only news layout (no horizontal scroll) */}
-              <NewsComponent mode={'vertical'} simpleMode={true} />
+              {/* Social-tailored news reader: two-column headlines + article pane */}
+              <SocialNewsPanel />
             </div>
           )}
 
