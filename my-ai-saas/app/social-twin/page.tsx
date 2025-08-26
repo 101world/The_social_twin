@@ -3096,27 +3096,27 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: AI Toggle + Library Button - consistent sizing */}
+                    {/* Bottom row: AI Settings + Generated Bin Button - consistent sizing */}
                     <button 
-                      title="Toggle AI Features" 
-                      onClick={() => setShowAIFeatures(!showAIFeatures)}
+                      title="AI Settings" 
+                      onClick={() => setShowSettings(!showSettings)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center ${
-                        showAIFeatures
+                        showSettings
                           ? 'bg-blue-500/20 scale-110 ring-2 ring-blue-500/30'
                           : (darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105')
                       }`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showAIFeatures ? 'stroke-blue-500' : 'stroke-current'}`}>
-                        <path d="M12 2L2 7v10l10 5 10-5V7L12 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M2 7l10 5 10-5M12 22V12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className={`transition-colors ${showSettings ? 'stroke-blue-500' : 'stroke-current'}`}>
+                        <circle cx="12" cy="12" r="3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
-                    {/* Library button (single SVG) */}
+                    {/* Generated Bin button */}
                     <button
-                      onClick={() => setLibraryOpen(true)}
+                      onClick={() => setShowBin(true)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
-                      title="View Library"
-                      aria-label="Open Library"
+                      title="View Generated Items"
+                      aria-label="Open Generated Bin"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
