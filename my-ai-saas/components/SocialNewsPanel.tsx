@@ -4,13 +4,41 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import { Clock, ExternalLink, Search, List, LayoutGrid, Maximize2, Bookmark, Share2 } from 'lucide-react';
 
-// Force gray background with CSS
+// ULTRA AGGRESSIVE GRAY BACKGROUND ENFORCEMENT
 const forcedGrayStyle = `
-  .news-panel-force-gray * {
+  .news-panel-force-gray,
+  .news-panel-force-gray *,
+  .news-panel-force-gray > *,
+  .news-panel-force-gray div,
+  .news-panel-force-gray main,
+  .news-panel-force-gray section,
+  .news-panel-force-gray article,
+  .news-panel-force-gray header,
+  .news-panel-force-gray nav,
+  .news-panel-force-gray aside,
+  .news-panel-force-gray footer,
+  .news-panel-force-gray span,
+  .news-panel-force-gray p,
+  .news-panel-force-gray h1,
+  .news-panel-force-gray h2,
+  .news-panel-force-gray h3,
+  .news-panel-force-gray h4,
+  .news-panel-force-gray h5,
+  .news-panel-force-gray h6,
+  .news-panel-force-gray ul,
+  .news-panel-force-gray li,
+  .news-panel-force-gray ol,
+  .news-panel-force-gray .bg-white,
+  .news-panel-force-gray .bg-gray-50,
+  .news-panel-force-gray .bg-gray-100,
+  [class*="bg-white"],
+  [class*="bg-gray-50"] {
     background-color: #f9fafb !important;
+    background: #f9fafb !important;
   }
-  .news-panel-force-gray .bg-gray-100 {
-    background-color: #f3f4f6 !important;
+  body, html {
+    background-color: #f9fafb !important;
+    background: #f9fafb !important;
   }
 `;
 
@@ -372,9 +400,9 @@ export default function SocialNewsPanel() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: forcedGrayStyle }} />
-      <div ref={mainContentRef} className="h-full bg-gray-50 text-gray-900 flex flex-col news-panel-force-gray" style={{backgroundColor: '#f9fafb'}} aria-live="polite">
-      <div className="flex-shrink-0 p-4 border-b border-gray-800" style={{backgroundColor: '#f9fafb'}}>
-        <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
+      <div ref={mainContentRef} className="h-full bg-gray-50 text-gray-900 flex flex-col news-panel-force-gray" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}} aria-live="polite">
+      <div className="flex-shrink-0 p-4 border-b border-gray-800" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+        <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
           <div>
             <h1 className="text-3xl font-bold" style={{ fontFamily: 'Times New Roman, serif' }}>ONE World News</h1>
             <p className="text-sm text-gray-400" style={{ fontFamily: 'Times New Roman, serif' }}>Clean reader — choose layout that fits your workflow</p>
@@ -392,8 +420,8 @@ export default function SocialNewsPanel() {
         </div>
       </div>
       {/* Category filters row */}
-      <div className="flex-shrink-0 p-3 border-b border-gray-800">
-        <div className="max-w-[1100px] mx-auto flex gap-2 items-center overflow-x-auto">
+      <div className="flex-shrink-0 p-3 border-b border-gray-800" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+        <div className="max-w-[1100px] mx-auto flex gap-2 items-center overflow-x-auto" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
           {['All', ...Array.from(new Set(articles.map(a => a.category || 'General')))].map(cat => (
             <button key={cat} onClick={()=>setActiveCategory(cat)} className={`px-3 py-1 rounded-full text-sm ${activeCategory===cat ? 'bg-gray-800 text-white ring-1 ring-gray-700' : 'text-gray-300 border border-gray-800 hover:bg-gray-900'}`}>
               {cat}
@@ -404,33 +432,33 @@ export default function SocialNewsPanel() {
 
     {/* Main content (existing) */}
 
-  <div className="flex-1 overflow-y-auto">
-        <div className="h-full max-w-[1200px] mx-auto flex flex-col gap-4 p-4">
+  <div className="flex-1 overflow-y-auto" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+        <div className="h-full max-w-[1200px] mx-auto flex flex-col gap-4 p-4" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
-            <main className="w-full bg-gray-50 flex-1" style={{backgroundColor: '#f9fafb'}}>
-              <div ref={gridRef} className="" style={{backgroundColor: '#f9fafb'}}>
+            <main className="w-full bg-gray-50 flex-1" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+              <div ref={gridRef} className="" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                 {/* Breaking headline full width (no borders) */}
                 {breaking && (
-                  <article key={breaking.id} className="w-full mb-3 rounded-none overflow-hidden cursor-pointer bg-transparent">
-                    <div className="relative w-full aspect-[3/1]">
+                  <article key={breaking.id} className="w-full mb-3 rounded-none overflow-hidden cursor-pointer bg-transparent" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+                    <div className="relative w-full aspect-[3/1]" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                       <ProgressiveImage src={breaking.image_url} alt={breaking.title} className="w-full h-full" />
                     </div>
-                    <div className="-mt-16 p-6">
+                    <div className="-mt-16 p-6" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                       <h2 className="text-2xl font-bold text-gray-900" style={{ fontFamily: 'Times New Roman, serif' }}>{breaking.title}</h2>
                       <div className="text-sm text-gray-700 mt-1">{breaking.source_name || breaking.source} • {readingTime(breaking)}</div>
                     </div>
                   </article>
                 )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                   {gridItems.map((a, idx) => (
-          <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-gray-100 border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 cursor-pointer">
-                      <div className="relative aspect-square sm:aspect-[4/3]">
+          <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-gray-100 border border-gray-200 rounded-lg overflow-hidden hover:border-gray-300 cursor-pointer" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
+                      <div className="relative aspect-square sm:aspect-[4/3]" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                         <ProgressiveImage src={a.image_url} alt={a.title} />
                       </div>
-                      <div className="p-3">
+                      <div className="p-3" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                         <div className="text-lg font-semibold text-gray-900 mb-1" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
                         <div className="text-xs text-gray-600 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
                       </div>
@@ -442,11 +470,11 @@ export default function SocialNewsPanel() {
           )}
 
           {layoutMode === 'reader' && (
-            <main className="w-full bg-gray-50 flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <main className="w-full bg-gray-50 flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
               {!selected ? (
-                <div className="flex items-center justify-center h-80 text-gray-400">No article selected.</div>
+                <div className="flex items-center justify-center h-80 text-gray-400" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>No article selected.</div>
               ) : (
-                <article className="max-w-4xl mx-auto p-6">
+                <article className="max-w-4xl mx-auto p-6" style={{backgroundColor: '#f9fafb', background: '#f9fafb'}}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="text-xs text-gray-400">{selected.source_name || selected.source}  {new Date(selected.published_at).toLocaleString()}</div>
                     <div className="flex items-center gap-2">
