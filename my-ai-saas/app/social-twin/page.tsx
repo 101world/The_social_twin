@@ -2272,16 +2272,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         )}
   <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           <h1 className="text-base md:text-lg font-semibold tracking-tight">
-            {creditInfo?.subscription_active && creditInfo?.subscription_plan
-              ? (()=>{
-                  const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim();
-                  // Map new plan names: one t -> ONE T, one z -> ONE Z, one pro -> ONE PRO
-                  if (plan === 'one t') return 'ONE T';
-                  if (plan === 'one z') return 'ONE Z';
-                  if (plan === 'one pro') return 'ONE PRO';
-                  return 'ONE';
-                })()
-              : 'ONE'}
+            Atom
           </h1>
           
             <div className="flex items-center gap-2">
@@ -3542,14 +3533,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
                 )}
 
-                {/* Prompt input area - no outer background/border; keep inner layout */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}>
+                {/* Prompt input area with underglow effect */}
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                     placeholder=""
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                     ref={bottomInputRef}
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
@@ -3562,25 +3553,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'bg-gradient-to-r from-cyan-400 to-teal-500 hover:from-cyan-500 hover:to-teal-600 shadow-lg shadow-cyan-500/25' : 'cursor-not-allowed opacity-50 bg-gray-400'}`}
                       title={canAffordGeneration ? `Send to Atom AI` : `Need ${generationCost} credits`}
                       aria-label="Send to Atom AI"
                     >
-                      {/* Custom Atom SVG Icon */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-blue-400">
-                        {/* Atom nucleus */}
-                        <circle cx="12" cy="12" r="2" fill="#fff" className="group-hover:fill-blue-400"/>
-                        
-                        {/* Electron orbits */}
-                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400"/>
-                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400"/>
-                        <ellipse cx="12" cy="12" rx="6.5" ry="6.5" stroke="#fff" strokeWidth="1.5" fill="none" className="group-hover:stroke-blue-400" transform="rotate(45 12 12)"/>
-                        
-                        {/* Electrons */}
-                        <circle cx="20" cy="12" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
-                        <circle cx="4" cy="12" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
-                        <circle cx="12" cy="4" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
-                        <circle cx="12" cy="20" r="1.5" fill="#fff" className="group-hover:fill-blue-400"/>
+                      {/* Clean Send Arrow SVG Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
+                        <path d="M22 2L11 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </button>
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
