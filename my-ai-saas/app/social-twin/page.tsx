@@ -1427,8 +1427,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       // For text mode, use Cloudflare Workers AI
       if (mode === 'text') {
         try {
-          // Check if user uploaded an image - if so, use vision mode
-          if (attached && attached.type.startsWith('image')) {
+          // Check if user uploaded an image or PDF - if so, use vision mode
+          if (attached && (attached.type.startsWith('image') || attached.type === 'application/pdf')) {
             // Add user message with both text and image to chat
             const userMessageWithImage = { 
               id: tempId, 
@@ -2087,7 +2087,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             )}
                             <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>
                               {/* Display image if present */}
-                              {m.image && (
+                              {m.image && m.image.startsWith('data:image') && (
                                 <div className="mb-2">
                                   <img 
                                     src={m.image} 
@@ -2095,6 +2095,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     className="max-w-full max-h-64 rounded-lg border object-contain"
                                     style={{ maxWidth: '250px' }}
                                   />
+                                </div>
+                              )}
+                              {/* Display PDF indicator if present */}
+                              {m.image && m.image.startsWith('data:application/pdf') && (
+                                <div className="mb-2 p-3 border rounded-lg bg-red-50 dark:bg-red-900/20">
+                                  <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="font-medium">📄 PDF Document</span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    PDF uploaded for vision analysis
+                                  </p>
                                 </div>
                               )}
                               {m.content}
@@ -2987,26 +3001,28 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {mode === 'text' && (
                       <div className="flex items-center gap-1">
                         <select
-                          value={attached && attached.type.startsWith('image') ? 'vision' : chatMode}
+                          value={attached && (attached.type.startsWith('image') || attached.type === 'application/pdf') ? 'vision' : chatMode}
                           onChange={(e)=> {
                             if (e.target.value !== 'vision') {
                               setChatMode(e.target.value as any);
                             }
                           }}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation ${attached && attached.type.startsWith('image') ? 'ring-2 ring-purple-500' : ''}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation ${attached && (attached.type.startsWith('image') || attached.type === 'application/pdf') ? 'ring-2 ring-purple-500' : ''}`}
                           title="AI Mode"
-                          disabled={attached && attached.type.startsWith('image')}
+                          disabled={attached && (attached.type.startsWith('image') || attached.type === 'application/pdf')}
                         >
                           <option value="normal">General</option>
                           <option value="prompt">Prompt</option>
                           <option value="creative">Creative</option>
                           <option value="think">Think</option>
-                          {attached && attached.type.startsWith('image') && (
+                          {attached && (attached.type.startsWith('image') || attached.type === 'application/pdf') && (
                             <option value="vision">👁️ Vision</option>
                           )}
                         </select>
-                        {attached && attached.type.startsWith('image') && (
-                          <span className="text-xs text-purple-600 font-medium">👁️ Vision Mode</span>
+                        {attached && (attached.type.startsWith('image') || attached.type === 'application/pdf') && (
+                          <span className="text-xs text-purple-600 font-medium">
+                            👁️ Vision Mode {attached.type === 'application/pdf' ? '(PDF)' : '(Image)'}
+                          </span>
                         )}
                       </div>
                     )}
@@ -3244,8 +3260,25 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               img.src = String(reader.result || '');
                             };
                             reader.readAsDataURL(f);
+                          } else if (f.type === 'application/pdf') {
+                            // For PDF files, convert first page to image for vision processing
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              try {
+                                // For now, store PDF as-is and we'll handle conversion in the API
+                                // In the future, we can implement client-side PDF-to-image conversion
+                                const dataUrl = String(reader.result || '');
+                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                              } catch (error) {
+                                console.error('PDF processing error:', error);
+                                // Fallback: just store the PDF
+                                const dataUrl = String(reader.result || '');
+                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                              }
+                            };
+                            reader.readAsDataURL(f);
                           } else {
-                            // For non-image files, use direct FileReader
+                            // For other files, use direct FileReader
                             const reader = new FileReader();
                             reader.onload = () => {
                               const dataUrl = String(reader.result || '');
@@ -3295,6 +3328,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       ) : attached && attached.type.startsWith('video') ? (
                         <div className={`${isMobile ? 'h-10 w-10' : 'h-16 w-16'} overflow-hidden rounded-lg border`}>
                           <video src={attached.dataUrl} className="h-full w-full object-cover" />
+                        </div>
+                      ) : attached && attached.type === 'application/pdf' ? (
+                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
                         </div>
                       ) : (
                         <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
