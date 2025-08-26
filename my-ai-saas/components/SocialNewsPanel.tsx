@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { Clock, ExternalLink, Search, List, LayoutGrid, Maximize2, Bookmark, Share2 } from 'lucide-react';
 
 interface NewsArticle {
@@ -32,10 +33,10 @@ function ProgressiveImage({ src, alt, className, small }: { src?: string; alt?: 
   const high = src || low;
   return (
     <div className={`relative overflow-hidden ${className || ''}`}>
-      {/* low-res blurred */}
+      {/* low-res blurred fallback */}
       <img src={low} alt={alt} className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-0 scale-105' : 'opacity-100 filter blur-sm'}`} />
-      {/* high-res */}
-      <img src={high} alt={alt} loading="lazy" onLoad={() => setLoaded(true)} className={`relative w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
+      {/* high-res using Next/Image for better optimization */}
+      <Image src={high} alt={alt || ''} fill sizes={small ? '160px' : '600px'} loading="lazy" onLoadingComplete={() => setLoaded(true)} className={`relative object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
     </div>
   );
 }
@@ -261,12 +262,12 @@ export default function SocialNewsPanel() {
       if (mainEl) mainEl.setAttribute('aria-hidden', 'true');
       lockBody();
 
-      const container = showModal ? modalRef.current : bookmarksRef.current;
+  const container = showModal ? modalRef.current : bookmarksRef.current;
       if (container) {
         // focus first focusable
         const focusable = Array.from(container.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
         if (focusable.length) focusable[0].focus();
-        else container.focus();
+  else container.focus();
       }
 
       // trap Tab key
@@ -301,6 +302,24 @@ export default function SocialNewsPanel() {
     }
     return undefined;
   }, [showModal, showBookmarks]);
+
+  // Persist last-read article
+  useEffect(() => {
+    try {
+      const id = localStorage.getItem('news_last_read');
+      if (id && articles.length) {
+        const found = articles.find(a => a.id === id);
+        if (found) {
+          setSelected(found);
+          setSelectedIndex(articles.indexOf(found));
+        }
+      }
+    } catch {}
+  }, [articles]);
+
+  useEffect(() => {
+    try { if (selected) localStorage.setItem('news_last_read', selected.id); } catch {}
+  }, [selected]);
 
   return (
   <div ref={mainContentRef} className="h-full bg-black text-white flex flex-col" aria-live="polite">
@@ -467,7 +486,8 @@ export default function SocialNewsPanel() {
       {showBookmarks && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={()=>setShowBookmarks(false)} />
-          <div ref={bookmarksRef} tabIndex={-1} className="relative w-full sm:max-w-lg bg-black border border-gray-800 rounded-lg p-4">
+          <div ref={bookmarksRef} tabIndex={-1} className="relative w-full sm:max-w-lg bg-black border border-gray-800 rounded-lg p-4 transform transition-all duration-200 scale-100 opacity-100">
+            <div tabIndex={0} aria-hidden className="focus-sentinel-start" />
             <div className="flex items-center justify-between mb-3">
               <div className="text-lg font-semibold">Bookmarks</div>
               <div className="flex items-center gap-2">
@@ -494,6 +514,7 @@ export default function SocialNewsPanel() {
                 </ul>
               )}
             </div>
+            <div tabIndex={0} aria-hidden className="focus-sentinel-end" />
           </div>
         </div>
       )}
@@ -501,7 +522,8 @@ export default function SocialNewsPanel() {
       {showModal && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80" onClick={()=>setShowModal(false)} />
-          <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-black border border-gray-800 rounded-lg p-6">
+          <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-black border border-gray-800 rounded-lg p-6 transform transition-all duration-200 scale-100 opacity-100">
+            <div tabIndex={0} aria-hidden className="focus-sentinel-start" />
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="text-xs text-gray-400">{selected.source_name || selected.source} • {new Date(selected.published_at).toLocaleString()}</div>
@@ -528,6 +550,7 @@ export default function SocialNewsPanel() {
                 {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>}
               </div>
             </div>
+            <div tabIndex={0} aria-hidden className="focus-sentinel-end" />
           </div>
         </div>
       )}
