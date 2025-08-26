@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock, ExternalLink, Search } from 'lucide-react';
+import { Clock, ExternalLink, Search, List, LayoutGrid, Maximize2, Bookmark, Share2 } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
@@ -44,7 +44,18 @@ export default function SocialNewsPanel() {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<NewsArticle | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [query, setQuery] = useState('');
+  const [bookmarks, setBookmarks] = useState<Record<string, { id: string; title: string; url?: string }>>({});
+  const [toast, setToast] = useState<string | null>(null);
+  const listRootRef = React.useRef<HTMLDivElement | null>(null);
+  const [layoutMode, setLayoutMode] = useState<'split'|'grid'|'reader'>(() => {
+    try { return (localStorage.getItem('news_layout') as any) || 'split'; } catch { return 'split'; }
+  });
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('All');
+  const touchStartX = React.useRef<number | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -59,7 +70,7 @@ export default function SocialNewsPanel() {
         const data = await res.json();
         const list = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
         if (!mounted) return;
-        setArticles(list.map((a: any, i: number) => ({
+        const mapped = list.map((a: any, i: number) => ({
           id: a.id || a.url || `n-${i}`,
           title: a.title || a.headline || 'Untitled',
           snippet: a.snippet || a.summary || a.description || '',
@@ -68,7 +79,13 @@ export default function SocialNewsPanel() {
           url: a.url || a.source_url,
           image_url: a.image_url || a.imageUrl || a.image || undefined,
           category: a.category || 'General'
-        })));
+        }));
+        setArticles(mapped);
+        // Auto-select first article for quicker reading
+        if (mounted && mapped.length > 0) {
+          setSelectedIndex(0);
+          setSelected(mapped[0]);
+        }
       } catch (e) {
         console.error('SocialNewsPanel load error', e);
         setArticles([]);
@@ -80,45 +97,236 @@ export default function SocialNewsPanel() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!query) return articles;
-    return articles.filter(a => (a.title || '').toLowerCase().includes(query.toLowerCase()) || (a.source_name||'').toLowerCase().includes(query.toLowerCase()));
+    let list = articles;
+    if (activeCategory && activeCategory !== 'All') {
+      list = list.filter(a => (a.category || 'General') === activeCategory);
+    }
+    if (!query) return list;
+    return list.filter(a => (a.title || '').toLowerCase().includes(query.toLowerCase()) || (a.source_name||'').toLowerCase().includes(query.toLowerCase()));
   }, [query, articles]);
 
+  // Load bookmarks from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('news_bookmarks');
+      if (raw) setBookmarks(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+
+  const toggleBookmark = (a: NewsArticle) => {
+    setBookmarks(prev => {
+      const copy = { ...prev };
+      if (copy[a.id]) {
+        delete copy[a.id];
+        setToast('Removed bookmark');
+      } else {
+        copy[a.id] = { id: a.id, title: a.title, url: a.url };
+        setToast('Bookmarked');
+      }
+      try { localStorage.setItem('news_bookmarks', JSON.stringify(copy)); } catch {}
+      return copy;
+    });
+  };
+
+  const removeBookmark = (id: string) => {
+    setBookmarks(prev => {
+      const copy = { ...prev };
+      if (copy[id]) delete copy[id];
+      try { localStorage.setItem('news_bookmarks', JSON.stringify(copy)); } catch {}
+      return copy;
+    });
+  };
+
+  const shareArticle = async (a: NewsArticle) => {
+    try {
+      if (navigator.share && a.url) {
+        await navigator.share({ title: a.title, url: a.url });
+        setToast('Shared');
+        return;
+      }
+      if (a.url) {
+        await navigator.clipboard.writeText(a.url);
+        setToast('Link copied');
+      } else {
+        setToast('No link to share');
+      }
+    } catch (e) {
+      console.error('Share failed', e);
+      setToast('Share failed');
+    }
+  };
+
+  const readingTime = (a: NewsArticle) => {
+    const text = (a.snippet || a.summary || a.content || a.title || '').trim();
+    const words = text.split(/\s+/).filter(Boolean).length || 0;
+    const mins = Math.max(1, Math.round(words / 200));
+    return `${mins} min read`;
+  };
+
+  // Keyboard navigation for the headline list
+  useEffect(() => {
+    const el = listRootRef.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (document.activeElement && el.contains(document.activeElement)) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex(i => {
+            const next = Math.min(filtered.length - 1, Math.max(0, i + 1));
+            setSelected(filtered[next] || null);
+            return next;
+          });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex(i => {
+            const prev = Math.max(0, Math.min(filtered.length - 1, i - 1));
+            setSelected(filtered[prev] || null);
+            return prev;
+          });
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          const cur = filtered[selectedIndex];
+          if (cur?.url) window.open(cur.url, '_blank');
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [filtered, selectedIndex]);
+
+  // Persist layout preference
+  useEffect(() => {
+    try { localStorage.setItem('news_layout', layoutMode); } catch {}
+  }, [layoutMode]);
+
+  // Move selection by index safely across filtered list
+  const safeSelectIndex = (idx: number) => {
+    const bounded = Math.max(0, Math.min(filtered.length - 1, idx));
+    setSelectedIndex(bounded);
+    setSelected(filtered[bounded] || null);
+  };
+
+  // Reader navigation
+  const readerPrev = () => safeSelectIndex((selectedIndex === -1 ? 0 : selectedIndex) - 1);
+  const readerNext = () => safeSelectIndex((selectedIndex === -1 ? 0 : selectedIndex) + 1);
+
+  // Touch/swipe handlers for reader mode (mobile)
+  const onTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches?.[0]?.clientX ?? null; };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartX.current;
+    const end = e.changedTouches?.[0]?.clientX ?? null;
+    if (start == null || end == null) return;
+    const delta = end - start;
+    const threshold = 60; // px
+    if (delta > threshold) readerPrev();
+    else if (delta < -threshold) readerNext();
+    touchStartX.current = null;
+  };
+
+  // Modal keyboard handling
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!showModal) return;
+      if (e.key === 'Escape') setShowModal(false);
+      if (e.key === 'ArrowRight') readerNext();
+      if (e.key === 'ArrowLeft') readerPrev();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showModal, selectedIndex, filtered]);
+
   return (
-    <div className="h-full bg-black text-white flex flex-col">
+  <div className="h-full bg-black text-white flex flex-col" aria-live="polite">
       <div className="flex-shrink-0 p-4 border-b border-gray-800">
-        <div className="max-w-[1100px] mx-auto">
-          <h1 className="text-3xl font-bold" style={{ fontFamily: 'Times New Roman, serif' }}>ONE World News</h1>
-          <p className="text-sm text-gray-400" style={{ fontFamily: 'Times New Roman, serif' }}>Compact reader — headlines on the left, detailed view on the right</p>
+        <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold" style={{ fontFamily: 'Times New Roman, serif' }}>ONE World News</h1>
+            <p className="text-sm text-gray-400" style={{ fontFamily: 'Times New Roman, serif' }}>Clean reader — choose layout that fits your workflow</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-black border border-gray-800 rounded-lg p-1">
+              <button aria-pressed={layoutMode==='split'} title="Split view (headlines + reader)" onClick={()=>setLayoutMode('split')} className={`p-2 rounded ${layoutMode==='split' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><List className="w-4 h-4" /></button>
+              <button aria-pressed={layoutMode==='grid'} title="Grid view" onClick={()=>setLayoutMode('grid')} className={`p-2 rounded ${layoutMode==='grid' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><LayoutGrid className="w-4 h-4" /></button>
+              <button aria-pressed={layoutMode==='reader'} title="Immersive reader" onClick={()=>setLayoutMode('reader')} className={`p-2 rounded ${layoutMode==='reader' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><Maximize2 className="w-4 h-4" /></button>
+            </div>
+            <div className="hidden sm:flex items-center gap-2">
+              <button title="Bookmarks" onClick={()=>{ setShowBookmarks(true); setToast(Object.keys(bookmarks).length ? `Bookmarks: ${Object.keys(bookmarks).length}` : 'No bookmarks'); }} className="px-3 py-1 rounded border border-gray-800 text-sm text-gray-300 hover:bg-gray-900 flex items-center gap-2"><Bookmark className="w-4 h-4"/> Bookmarks</button>
+              <button title="Share selected" onClick={()=> selected && shareArticle(selected)} className="px-3 py-1 rounded border border-gray-800 text-sm text-gray-300 hover:bg-gray-900 flex items-center gap-2"><Share2 className="w-4 h-4"/> Share</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Category filters row */}
+      <div className="flex-shrink-0 p-3 border-b border-gray-800">
+        <div className="max-w-[1100px] mx-auto flex gap-2 items-center overflow-x-auto">
+          {['All', ...Array.from(new Set(articles.map(a => a.category || 'General')))].map(cat => (
+            <button key={cat} onClick={()=>setActiveCategory(cat)} className={`px-3 py-1 rounded-full text-sm ${activeCategory===cat ? 'bg-gray-800 text-white ring-1 ring-gray-700' : 'text-gray-300 border border-gray-800 hover:bg-gray-900'}`}>
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 
+    {/* Main content (existing) */}
+
       <div className="flex-1 overflow-hidden">
         <div className="h-full max-w-[1200px] mx-auto flex flex-col md:flex-row gap-4 p-4">
-          {/* Left column: search + headlines */}
-          <aside className="w-full md:w-1/3 h-full flex flex-col gap-3">
+          {/* Layout-specific rendering */}
+          {layoutMode === 'split' && (
+            <> 
+              {/* Left column: search + headlines */}
+              <aside className="w-full md:w-1/3 h-full flex flex-col gap-3" aria-label="News headlines">
             <div>
               <label className="relative block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search headlines" className="w-full pl-9 pr-3 py-2 text-sm bg-black border border-gray-800 rounded-lg outline-none text-white placeholder-gray-500" />
               </label>
             </div>
-
-            <div className="overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 220px)' }}>
+            <div className="overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 220px)' }} ref={listRootRef} tabIndex={0}>
               {loading ? (
-                <div className="text-gray-400 py-8">Loading headlines…</div>
+                // skeleton list
+                <div className="space-y-3 py-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2">
+                      <div className="w-20 h-14 bg-gray-800 animate-pulse rounded" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-800 rounded w-3/4 animate-pulse" />
+                        <div className="h-3 bg-gray-800 rounded w-1/2 mt-2 animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="text-gray-400 py-8">No articles found.</div>
               ) : (
-                <ul className="space-y-2">
-                  {filtered.map(a => (
-                    <li key={a.id} className="flex items-start gap-3 p-2 rounded hover:bg-gray-900 cursor-pointer" onClick={() => setSelected(a)}>
-                      <div className="w-20 h-14 rounded overflow-hidden flex-shrink-0">
+                <ul className="space-y-2" role="list">
+                  {filtered.map((a, idx) => (
+                    <li
+                      key={a.id}
+                      role="button"
+                      aria-pressed={selected?.id === a.id}
+                      aria-selected={selectedIndex === idx}
+                      tabIndex={0}
+                      onClick={() => { setSelected(a); setSelectedIndex(idx); setShowModal(true); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') { setSelected(a); setSelectedIndex(idx); }
+                      }}
+                      className={`flex items-start gap-3 p-2 rounded transition-colors ${selected?.id === a.id ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900 cursor-pointer'}`}
+                    >
+                      <div className="w-20 h-20 sm:h-14 rounded overflow-hidden flex-shrink-0">
+                        {/* Mobile: square thumb (1:1), Small screens and up: original rectangular */}
                         <ProgressiveImage src={a.image_url} alt={a.title} small />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold truncate" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
-                        <div className="text-[12px] text-gray-500 mt-1 truncate">{a.source_name || a.source} • {new Date(a.published_at).toLocaleDateString()}</div>
+                        <div className="text-[12px] text-gray-500 mt-1 truncate">{a.source_name || a.source}  {new Date(a.published_at).toLocaleDateString()}</div>
                       </div>
                     </li>
                   ))}
@@ -126,43 +334,143 @@ export default function SocialNewsPanel() {
               )}
             </div>
           </aside>
+          {/* Intentionally no persistent right reader in split layout — items open in modal for a clean, distraction-free experience */}
+            </>
+          )}
 
-          {/* Right column: article pane */}
-          <main className="w-full md:w-2/3 bg-black border border-gray-800 rounded-lg p-4 flex flex-col" style={{ minHeight: 360 }}>
-            {!selected ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-400">
-                <div className="text-xl font-semibold mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>Select a headline</div>
-                <div className="text-sm max-w-[520px]">Choose an item from the list to read a clean, distraction-free preview. Use the search box to quickly filter headlines.</div>
+          {layoutMode === 'grid' && (
+            <main className="w-full bg-black flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filtered.map((a, idx) => (
+                  <article key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 cursor-pointer">
+                    <div className="aspect-square sm:aspect-[4/3]">
+                      {/* Grid cards: 1:1 on mobile for better visual framing, keep 4:3 on larger screens */}
+                      <ProgressiveImage src={a.image_url} alt={a.title} />
+                    </div>
+                    <div className="p-4">
+                      <div className="text-lg font-semibold text-white mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
+                      <div className="text-xs text-gray-400 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
+                    </div>
+                  </article>
+                ))}
               </div>
-            ) : (
-              <article className="flex-1 flex flex-col gap-4">
-                <div className="w-full h-56 md:h-72 overflow-hidden rounded">
-                  <ProgressiveImage src={selected.image_url} alt={selected.title} />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold" style={{ fontFamily: 'Times New Roman, serif' }}>{selected.title}</h2>
-                  <div className="flex items-center gap-3 text-sm text-gray-500 mt-2">
-                    <div className="flex items-center gap-1"><Clock className="w-4 h-4" /> {new Date(selected.published_at).toLocaleString()}</div>
-                    <div>•</div>
-                    <div>{selected.source_name || selected.source}</div>
+            </main>
+          )}
+
+          {layoutMode === 'reader' && (
+            <main className="w-full bg-black flex-1" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+              {!selected ? (
+                <div className="flex items-center justify-center h-80 text-gray-400">No article selected.</div>
+              ) : (
+                <article className="max-w-4xl mx-auto p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-xs text-gray-400">{selected.source_name || selected.source}  {new Date(selected.published_at).toLocaleString()}</div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => toggleBookmark(selected)} className="p-2 rounded hover:bg-gray-900"><Bookmark className="w-4 h-4"/></button>
+                      <button onClick={() => shareArticle(selected)} className="p-2 rounded hover:bg-gray-900"><Share2 className="w-4 h-4"/></button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="prose prose-invert max-w-none text-gray-200" style={{ fontFamily: 'Georgia, Times, "Times New Roman", serif' }}>
-                  <p>{selected.snippet || selected.summary || selected.content || 'No preview available. Open source to read the full article.'}</p>
-                </div>
-
-                <div className="mt-auto flex items-center gap-2">
-                  {selected.url && (
-                    <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>
-                  )}
-                  <button onClick={() => window.open(selected.url || '#', '_blank')} className="px-3 py-1 rounded border border-gray-700 text-sm text-gray-300 hover:bg-gray-900">Open in new tab</button>
-                </div>
-              </article>
-            )}
-          </main>
+                  <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: 'Times New Roman, serif' }}>{selected.title}</h2>
+                  <div className="mb-6">
+                    <ProgressiveImage src={selected.image_url} alt={selected.title} />
+                  </div>
+                  <div className="prose prose-invert text-gray-200 mb-8" style={{ fontFamily: 'Georgia, Times, "Times New Roman", serif' }}>
+                    <p>{selected.snippet || selected.summary || selected.content || 'No preview available.'}</p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button onClick={readerPrev} className="px-3 py-1 rounded border border-gray-800 text-sm text-gray-300 hover:bg-gray-900">Previous</button>
+                      <button onClick={readerNext} className="px-3 py-1 rounded border border-gray-800 text-sm text-gray-300 hover:bg-gray-900">Next</button>
+                    </div>
+                    <div>
+                      <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>
+                    </div>
+                  </div>
+                </article>
+              )}
+            </main>
+          )}
         </div>
       </div>
+
+      {/* Mobile bottom toolbar */}
+      <div className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40">
+        <div className="bg-black border border-gray-800 rounded-full px-2 py-1 flex items-center gap-2">
+          <button onClick={()=>setLayoutMode('split')} className={`p-2 rounded ${layoutMode==='split' ? 'bg-gray-900' : ''}`} aria-label="Split"><List className="w-5 h-5"/></button>
+          <button onClick={()=>setLayoutMode('grid')} className={`p-2 rounded ${layoutMode==='grid' ? 'bg-gray-900' : ''}`} aria-label="Grid"><LayoutGrid className="w-5 h-5"/></button>
+          <button onClick={()=>setLayoutMode('reader')} className={`p-2 rounded ${layoutMode==='reader' ? 'bg-gray-900' : ''}`} aria-label="Reader"><Maximize2 className="w-5 h-5"/></button>
+          <button onClick={()=>setShowBookmarks(true)} className="p-2 rounded" aria-label="Bookmarks"><Bookmark className="w-5 h-5"/></button>
+        </div>
+      </div>
+
+      {/* Bookmarks modal */}
+      {showBookmarks && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={()=>setShowBookmarks(false)} />
+          <div className="relative w-full sm:max-w-lg bg-black border border-gray-800 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-lg font-semibold">Bookmarks</div>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>{ setShowBookmarks(false); }} className="px-3 py-1 rounded border border-gray-800">Close</button>
+              </div>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {Object.keys(bookmarks).length === 0 ? (
+                <div className="text-gray-400">No bookmarks yet.</div>
+              ) : (
+                <ul className="space-y-2">
+                  {Object.values(bookmarks).map(b => (
+                    <li key={b.id} className="flex items-center justify-between gap-2 p-2 border border-gray-800 rounded">
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate font-semibold">{b.title}</div>
+                        <div className="text-xs text-gray-500 truncate">{b.url}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={()=>{ window.open(b.url || '#', '_blank'); }} className="px-2 py-1 rounded border border-gray-800 text-sm">Open</button>
+                        <button onClick={()=>removeBookmark(b.id)} className="px-2 py-1 rounded border border-gray-800 text-sm">Remove</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Article modal viewer (opened from list or grid) */}
+      {showModal && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80" onClick={()=>setShowModal(false)} />
+          <div role="dialog" aria-modal="true" className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-black border border-gray-800 rounded-lg p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="text-xs text-gray-400">{selected.source_name || selected.source} • {new Date(selected.published_at).toLocaleString()}</div>
+                <h2 className="text-2xl font-bold mt-2" style={{ fontFamily: 'Times New Roman, serif' }}>{selected.title}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>{ toggleBookmark(selected); }} className="p-2 rounded hover:bg-gray-900"><Bookmark className="w-5 h-5"/></button>
+                <button onClick={()=>{ shareArticle(selected); }} className="p-2 rounded hover:bg-gray-900"><Share2 className="w-5 h-5"/></button>
+                <button onClick={()=>setShowModal(false)} className="px-3 py-1 rounded border border-gray-800">Close</button>
+              </div>
+            </div>
+            <div className="mb-4">
+              <div className="w-full h-64 overflow-hidden rounded mb-4"><ProgressiveImage src={selected.image_url} alt={selected.title} /></div>
+              <div className="prose prose-invert text-gray-200" style={{ fontFamily: 'Georgia, Times, "Times New Roman", serif' }}>
+                <p>{selected.snippet || selected.summary || selected.content || 'No preview available.'}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-2">
+                <button onClick={() => { readerPrev(); }} className="px-3 py-1 rounded border border-gray-800 text-sm">Previous</button>
+                <button onClick={() => { readerNext(); }} className="px-3 py-1 rounded border border-gray-800 text-sm">Next</button>
+              </div>
+              <div className="flex items-center gap-2">
+                {selected.url && <a href={selected.url} target="_blank" rel="noreferrer" className="px-3 py-1 rounded border border-gray-700 text-sm bg-white text-black">Open source</a>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
