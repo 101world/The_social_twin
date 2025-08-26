@@ -280,7 +280,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'news-one' | 'messenger' | 'dashboard'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'news-one' | '101' | 'messenger' | 'dashboard'>('chat');
   
   // Centralized dropdown state
   const [selectedProject, setSelectedProject] = useState<string>('Default Project');
@@ -2066,6 +2066,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           { id: 'chat', label: 'Chat', icon: '💬' },
           { id: 'news', label: 'News', icon: '📰' },
           { id: 'news-one', label: 'News - One', icon: '🗞️' },
+          { id: '101', label: '1 O 1', icon: '⭐' },
           { id: 'messenger', label: 'Messenger', icon: '💌' },
           { id: 'dashboard', label: 'Dashboard', icon: '📊' }
         ].map((tab) => (
@@ -3314,8 +3315,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
 
           {activeTab === 'news-one' && (
-            <div className="flex-1 bg-gray-50" style={{backgroundColor: '#f9fafb'}}>
+            <div 
+              className="flex-1 bg-gray-50" 
+              style={{
+                backgroundColor: '#f9fafb !important',
+                background: '#f9fafb !important',
+                minHeight: '100vh',
+                width: '100%'
+              }}
+            >
               <NewsOneTab />
+            </div>
+          )}
+
+          {activeTab === '101' && (
+            <div className="h-full w-full" style={{backgroundColor: '#f9fafb'}}>
+              <div style={{height: '100vh', backgroundColor: '#f9fafb'}}>
+              </div>
             </div>
           )}
 
@@ -6224,7 +6240,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
 
 // News - One Tab Component - with forced gray background
 function NewsOneTab() {
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -6235,7 +6251,7 @@ function NewsOneTab() {
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         const fetchedArticles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
-        setArticles(fetchedArticles.map((a, i) => ({
+        setArticles(fetchedArticles.map((a: any, i: number) => ({
           id: a.id || a.url || `n-${i}`,
           title: a.title || a.headline || 'Untitled',
           snippet: a.snippet || a.summary || a.description || '',
@@ -6259,46 +6275,102 @@ function NewsOneTab() {
 
   if (loading) {
     return (
-      <div style={{backgroundColor: '#f9fafb', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div style={{
+        backgroundColor: '#f9fafb', 
+        background: '#f9fafb',
+        minHeight: '100vh', 
+        height: '100%',
+        width: '100%',
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+      }}>
         <div style={{color: '#6b7280'}}>Loading News - One...</div>
       </div>
     );
   }
 
+  // EXTREME GRAY STYLING - CANNOT BE OVERRIDDEN
+  const containerStyle = {
+    backgroundColor: '#f9fafb',
+    background: '#f9fafb',
+    minHeight: '100vh',
+    height: '100%',
+    width: '100%',
+    overflow: 'auto',
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1
+  };
+
+  const innerStyle = {
+    backgroundColor: '#f9fafb',
+    background: '#f9fafb',
+    padding: '24px',
+    minHeight: '100vh',
+    width: '100%'
+  };
+
   return (
-    <div style={{backgroundColor: '#f9fafb', minHeight: '100vh', overflow: 'auto'}}>
-      <div style={{backgroundColor: '#f9fafb', padding: '24px'}}>
-        <div style={{maxWidth: '1200px', margin: '0 auto'}}>
-          <h1 style={{fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '32px', fontFamily: 'Times New Roman, serif'}}>
-            News - One 🗞️
+    <div style={containerStyle}>
+      <div style={innerStyle}>
+        <div style={{maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f9fafb'}}>
+          <h1 style={{
+            fontSize: '32px', 
+            fontWeight: 'bold', 
+            color: '#111827', 
+            marginBottom: '32px', 
+            fontFamily: 'Times New Roman, serif',
+            backgroundColor: '#f9fafb',
+            padding: '16px'
+          }}>
+            News - One 🗞️ (FORCED GRAY)
           </h1>
-          <div style={{display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'}}>
-            {articles.map((article) => (
+          <div style={{
+            display: 'grid', 
+            gap: '24px', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            backgroundColor: '#f9fafb',
+            padding: '16px'
+          }}>
+            {articles.map((article: any) => (
               <div 
                 key={article.id} 
                 style={{
-                  backgroundColor: '#e5e7eb',
+                  backgroundColor: '#d1d5db',
+                  background: '#d1d5db',
                   borderRadius: '12px',
-                  border: '2px solid #d1d5db',
+                  border: '3px solid #9ca3af',
                   overflow: 'hidden',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  position: 'relative'
                 }}
                 onClick={() => article.url && window.open(article.url, '_blank')}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#d1d5db';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  e.currentTarget.style.backgroundColor = '#9ca3af';
+                  e.currentTarget.style.background = '#9ca3af';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.2)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                  e.currentTarget.style.backgroundColor = '#d1d5db';
+                  e.currentTarget.style.background = '#d1d5db';
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
                 }}
               >
                 {article.image_url && (
-                  <div style={{aspectRatio: '16/9', backgroundColor: '#f3f4f6'}}>
+                  <div style={{aspectRatio: '16/9', backgroundColor: '#f3f4f6', background: '#f3f4f6'}}>
                     <img 
                       src={article.image_url} 
                       alt={article.title}
@@ -6309,16 +6381,40 @@ function NewsOneTab() {
                     />
                   </div>
                 )}
-                <div style={{padding: '16px', backgroundColor: '#e5e7eb'}}>
-                  <h3 style={{fontWeight: '600', color: '#111827', marginBottom: '8px', fontSize: '18px', lineHeight: '1.4'}}>
+                <div style={{
+                  padding: '16px', 
+                  backgroundColor: '#d1d5db',
+                  background: '#d1d5db'
+                }}>
+                  <h3 style={{
+                    fontWeight: '600', 
+                    color: '#111827', 
+                    marginBottom: '8px', 
+                    fontSize: '18px', 
+                    lineHeight: '1.4',
+                    backgroundColor: 'transparent'
+                  }}>
                     {article.title}
                   </h3>
                   {article.snippet && (
-                    <p style={{fontSize: '14px', color: '#374151', marginBottom: '12px', lineHeight: '1.5'}}>
+                    <p style={{
+                      fontSize: '14px', 
+                      color: '#374151', 
+                      marginBottom: '12px', 
+                      lineHeight: '1.5',
+                      backgroundColor: 'transparent'
+                    }}>
                       {article.snippet.length > 120 ? article.snippet.substring(0, 120) + '...' : article.snippet}
                     </p>
                   )}
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280'}}>
+                  <div style={{
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    fontSize: '12px', 
+                    color: '#6b7280',
+                    backgroundColor: 'transparent'
+                  }}>
                     <span>{article.source_name}</span>
                     <span>{new Date(article.published_at).toLocaleDateString()}</span>
                   </div>
@@ -6327,8 +6423,16 @@ function NewsOneTab() {
             ))}
           </div>
           {articles.length === 0 && (
-            <div style={{textAlign: 'center', color: '#6b7280', padding: '48px', backgroundColor: '#f9fafb'}}>
-              No news articles available
+            <div style={{
+              textAlign: 'center', 
+              color: '#6b7280', 
+              padding: '48px', 
+              backgroundColor: '#f9fafb',
+              background: '#f9fafb',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              No news articles available (GRAY BACKGROUND)
             </div>
           )}
         </div>
