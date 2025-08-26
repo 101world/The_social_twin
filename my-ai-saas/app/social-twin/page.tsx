@@ -2094,73 +2094,77 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ))}
             </div>
             
-            {/* Center: Context-Aware Dropdown - Moved closer to prompt area */}
-            <div className="flex-1 flex justify-center px-4">
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDropdownOpen(!dropdownOpen);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-lg border transition-colors min-w-40 justify-between ${
-                    darkMode
-                      ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
-                      : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
-                  }`}
-                >
-                  <span className="truncate">
-                    {activeTab === 'chat' ? selectedProject : 
-                     activeTab === 'news' ? selectedTopic : 
-                     activeTab === 'messenger' ? selectedMessengerFilter :
-                     'Settings'}
-                  </span>
-                  <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {dropdownOpen && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    className={`absolute top-full left-0 right-0 mt-0.5 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
+            {/* Center: Context-Aware Dropdown - Mobile-specific positioning */}
+            {!isMobile ? (
+              <div className="flex-1 flex justify-center px-4">
+                <div className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDropdownOpen(!dropdownOpen);
+                    }}
+                    className={`flex items-center gap-2 px-4 py-1.5 text-sm rounded-lg border transition-colors min-w-40 justify-between ${
                       darkMode
-                        ? 'bg-neutral-800 border-neutral-700'
-                        : 'bg-white border-neutral-300'
+                        ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
+                        : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
                     }`}
                   >
-                    {(activeTab === 'chat' ? projectOptions : 
-                      activeTab === 'news' ? topicOptions : 
-                      activeTab === 'messenger' ? messengerOptions :
-                      ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
-                      <button
-                        key={option}
-                        onClick={() => {
-                          if (activeTab === 'chat') {
-                            setSelectedProject(option);
-                          } else if (activeTab === 'news') {
-                            setSelectedTopic(option);
-                          } else if (activeTab === 'messenger') {
-                            setSelectedMessengerFilter(option);
-                          }
-                          setDropdownOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 transition-colors ${
-                          darkMode
-                            ? 'hover:bg-white text-neutral-100'
-                            : 'hover:bg-black text-neutral-900'
-                        } ${(activeTab === 'chat' && option === selectedProject) || 
-                             (activeTab === 'news' && option === selectedTopic) ||
-                             (activeTab === 'messenger' && option === selectedMessengerFilter)
-                            ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
-                            : ''}`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    <span className="truncate">
+                      {activeTab === 'chat' ? selectedProject : 
+                       activeTab === 'news' ? selectedTopic : 
+                       activeTab === 'messenger' ? selectedMessengerFilter :
+                       'Settings'}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute top-full left-0 right-0 mt-0.5 rounded-lg border shadow-lg z-50 max-h-48 overflow-y-auto ${
+                        darkMode
+                          ? 'bg-neutral-800 border-neutral-700'
+                          : 'bg-white border-neutral-300'
+                      }`}
+                    >
+                      {(activeTab === 'chat' ? projectOptions : 
+                        activeTab === 'news' ? topicOptions : 
+                        activeTab === 'messenger' ? messengerOptions :
+                        ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => {
+                            if (activeTab === 'chat') {
+                              setSelectedProject(option);
+                            } else if (activeTab === 'news') {
+                              setSelectedTopic(option);
+                            } else if (activeTab === 'messenger') {
+                              setSelectedMessengerFilter(option);
+                            }
+                            setDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 transition-colors ${
+                            darkMode
+                              ? 'hover:bg-white text-neutral-100'
+                              : 'hover:bg-black text-neutral-900'
+                          } ${(activeTab === 'chat' && option === selectedProject) || 
+                               (activeTab === 'news' && option === selectedTopic) ||
+                               (activeTab === 'messenger' && option === selectedMessengerFilter)
+                              ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
+                              : ''}`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex-1"></div>
+            )}
             
             {/* Right: Clean top bar */}
             <div className="flex items-center gap-2">
@@ -3266,77 +3270,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
+                {/* Mobile-only Social Dropdown removed as requested */}
+
                 {/* Prompt input area - no outer background/border; keep inner layout */}
                 <div 
                   className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}
                   ref={composerRef}
                 >
-                  {/* Project/Context Dropdown - positioned closer to prompt */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDropdownOpen(!dropdownOpen);
-                      }}
-                      className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg border transition-colors ${isMobile ? 'min-w-[80px]' : 'min-w-[100px]'} justify-between ${
-                        darkMode
-                          ? 'bg-neutral-800 border-neutral-700 text-neutral-100 hover:bg-neutral-700'
-                          : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
-                      } mb-auto`}
-                    >
-                      <span className="truncate text-xs">
-                        {activeTab === 'chat' ? selectedProject : 
-                         activeTab === 'news' ? selectedTopic : 
-                         activeTab === 'messenger' ? selectedMessengerFilter :
-                         'Settings'}
-                      </span>
-                      <svg className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    
-                    {dropdownOpen && (
-                      <div 
-                        onClick={(e) => e.stopPropagation()}
-                        className={`absolute bottom-full left-0 right-0 mb-1 rounded-lg border shadow-lg z-50 max-h-32 overflow-y-auto ${
-                          darkMode
-                            ? 'bg-neutral-800 border-neutral-700'
-                            : 'bg-white border-neutral-300'
-                        }`}
-                      >
-                        {(activeTab === 'chat' ? projectOptions : 
-                          activeTab === 'news' ? topicOptions : 
-                          activeTab === 'messenger' ? messengerOptions :
-                          ['General', 'Privacy', 'Billing', 'Advanced']).map((option) => (
-                          <button
-                            key={option}
-                            onClick={() => {
-                              if (activeTab === 'chat') {
-                                setSelectedProject(option);
-                              } else if (activeTab === 'news') {
-                                setSelectedTopic(option);
-                              } else if (activeTab === 'messenger') {
-                                setSelectedMessengerFilter(option);
-                              }
-                              setDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-opacity-10 transition-colors ${
-                              darkMode
-                                ? 'hover:bg-white text-neutral-100'
-                                : 'hover:bg-black text-neutral-900'
-                            } ${((activeTab === 'chat' && option === selectedProject) || 
-                                 (activeTab as string === 'news' && option === selectedTopic) ||
-                                 (activeTab as string === 'messenger' && option === selectedMessengerFilter))
-                                ? (darkMode ? 'bg-white/10' : 'bg-black/10') 
-                                : ''}`}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
