@@ -64,14 +64,29 @@ export async function POST(request: NextRequest) {
     const workerUrl = 'https://101world-ai-api.welcometo101world.workers.dev';
     const endpoint = imageData ? '/chat-vision' : '/chat';
     
+    // Prepare messages in OpenAI format
+    const messages = [
+      // Add conversation history
+      ...conversationHistory,
+      // Add current user message
+      { role: 'user' as const, content: message }
+    ];
+    
     const workerPayload = imageData ? {
-      message,
-      imageData,
-      conversationHistory,
+      messages: [
+        ...conversationHistory,
+        { 
+          role: 'user' as const, 
+          content: [
+            { type: 'text', text: message },
+            { type: 'image_url', image_url: { url: imageData } }
+          ]
+        }
+      ],
+      mode: 'vision',
       userId
     } : {
-      message,
-      conversationHistory,
+      messages,
       mode: actualMode,
       userId
     };
