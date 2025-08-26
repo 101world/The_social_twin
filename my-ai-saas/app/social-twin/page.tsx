@@ -280,7 +280,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'messenger' | 'dashboard'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'news' | 'news-one' | 'messenger' | 'dashboard'>('chat');
   
   // Centralized dropdown state
   const [selectedProject, setSelectedProject] = useState<string>('Default Project');
@@ -2065,6 +2065,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
           { id: 'news', label: 'News', icon: '📰' },
+          { id: 'news-one', label: 'News - One', icon: '🗞️' },
           { id: 'messenger', label: 'Messenger', icon: '💌' },
           { id: 'dashboard', label: 'Dashboard', icon: '📊' }
         ].map((tab) => (
@@ -3309,6 +3310,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {activeTab === 'news' && (
             <div className="flex-1 overflow-hidden bg-gray-50">
               <SimpleNewsTab />
+            </div>
+          )}
+
+          {activeTab === 'news-one' && (
+            <div className="flex-1 bg-gray-50" style={{backgroundColor: '#f9fafb'}}>
+              <NewsOneTab />
             </div>
           )}
 
@@ -6211,6 +6218,121 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
         onMouseDown={(e)=>{ e.stopPropagation(); onStartLink && onStartLink('male'); }}
         onMouseUp={(e)=>{ e.stopPropagation(); onFinishLink && onFinishLink('male', item.id); }}
         title="Male port" />
+    </div>
+  );
+}
+
+// News - One Tab Component - with forced gray background
+function NewsOneTab() {
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/news?limit=30&media=images', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+        const fetchedArticles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
+        setArticles(fetchedArticles.map((a, i) => ({
+          id: a.id || a.url || `n-${i}`,
+          title: a.title || a.headline || 'Untitled',
+          snippet: a.snippet || a.summary || a.description || '',
+          published_at: a.published_at || a.publishDate || new Date().toISOString(),
+          source_name: a.source_name || a.source || a.source?.name || '',
+          url: a.url || a.source_url,
+          image_url: a.image_url || a.imageUrl || a.image || undefined,
+        })));
+      } catch (e) {
+        console.error('News fetch error:', e);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+    const interval = setInterval(fetchNews, 20 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{backgroundColor: '#f9fafb', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+        <div style={{color: '#6b7280'}}>Loading News - One...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{backgroundColor: '#f9fafb', minHeight: '100vh', overflow: 'auto'}}>
+      <div style={{backgroundColor: '#f9fafb', padding: '24px'}}>
+        <div style={{maxWidth: '1200px', margin: '0 auto'}}>
+          <h1 style={{fontSize: '32px', fontWeight: 'bold', color: '#111827', marginBottom: '32px', fontFamily: 'Times New Roman, serif'}}>
+            News - One 🗞️
+          </h1>
+          <div style={{display: 'grid', gap: '24px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))'}}>
+            {articles.map((article) => (
+              <div 
+                key={article.id} 
+                style={{
+                  backgroundColor: '#e5e7eb',
+                  borderRadius: '12px',
+                  border: '2px solid #d1d5db',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}
+                onClick={() => article.url && window.open(article.url, '_blank')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d1d5db';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e5e7eb';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                }}
+              >
+                {article.image_url && (
+                  <div style={{aspectRatio: '16/9', backgroundColor: '#f3f4f6'}}>
+                    <img 
+                      src={article.image_url} 
+                      alt={article.title}
+                      style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                <div style={{padding: '16px', backgroundColor: '#e5e7eb'}}>
+                  <h3 style={{fontWeight: '600', color: '#111827', marginBottom: '8px', fontSize: '18px', lineHeight: '1.4'}}>
+                    {article.title}
+                  </h3>
+                  {article.snippet && (
+                    <p style={{fontSize: '14px', color: '#374151', marginBottom: '12px', lineHeight: '1.5'}}>
+                      {article.snippet.length > 120 ? article.snippet.substring(0, 120) + '...' : article.snippet}
+                    </p>
+                  )}
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280'}}>
+                    <span>{article.source_name}</span>
+                    <span>{new Date(article.published_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {articles.length === 0 && (
+            <div style={{textAlign: 'center', color: '#6b7280', padding: '48px', backgroundColor: '#f9fafb'}}>
+              No news articles available
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
