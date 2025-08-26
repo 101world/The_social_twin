@@ -18,6 +18,17 @@ interface NewsArticle {
   quality_score: number;
   image_url?: string;
 }
+// Wrap via our optimizer to serve AVIF/WebP with resize
+function opt(url: string, w?: number, h?: number, q = 75) {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;
+  try {
+    const u = new URL(url);
+    return `/api/optimize-image?url=${encodeURIComponent(u.toString())}${w ? `&w=${w}` : ''}${h ? `&h=${h}` : ''}&q=${q}`;
+  } catch {
+    return url;
+  }
+}
 
 // Perplexity-like subtle 3D tilt wrapper with mouse-position parallax
 const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: { children: React.ReactNode; className?: string; disabled?: boolean; maxTilt?: number }) => {
@@ -60,15 +71,20 @@ const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: {
 
 // Build a resilient image URL (placeholder if missing) like the standalone News page
 function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
-  if (article.image_url) return article.image_url;
+  if (article.image_url) {
+    if (size === 'large') return opt(article.image_url, 480, 270, 78);
+    if (size === 'small') return opt(article.image_url, 90, 60, 78);
+    return opt(article.image_url, 300, 169, 78);
+  }
   const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
   const colorIndex = article.title.length % fallbackColors.length;
   const color = fallbackColors[colorIndex];
   const maxLen = size === 'small' ? 30 : size === 'large' ? 60 : 40;
   const encodedTitle = encodeURIComponent(article.title.slice(0, maxLen) || 'News');
-  if (size === 'large') return `https://via.placeholder.com/640x360/${color}/ffffff?text=${encodedTitle}`;
-  if (size === 'small') return `https://via.placeholder.com/120x80/${color}/ffffff?text=${encodedTitle}`;
-  return `https://via.placeholder.com/400x225/${color}/ffffff?text=${encodedTitle}`;
+  // 25% smaller fallbacks
+  if (size === 'large') return `https://via.placeholder.com/480x270/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'small') return `https://via.placeholder.com/90x60/${color}/ffffff?text=${encodedTitle}`;
+  return `https://via.placeholder.com/300x169/${color}/ffffff?text=${encodedTitle}`;
 }
 
 // Modern news card with mobile-optimized smaller thumbnails and high quality images
@@ -96,7 +112,8 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
   if (layout === "large") {
     return (
   <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 relative">
-        <div className="aspect-[16/9] md:aspect-[16/9] h-48 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        {/* 25% smaller image height */}
+        <div className="aspect-[16/9] md:aspect-[16/9] h-36 md:h-48 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'large')} 
             alt={article.title}
@@ -104,7 +121,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/640/360?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/480/270?random=${article.id || Math.random()}`;
             }}
           />
           {/* Subtle gradient overlays like Perplexity Discover */}
@@ -150,7 +167,8 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
   return (
     <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
   <div className="flex gap-3 md:gap-4 p-3 md:p-4">
-        <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        {/* 25% smaller thumbnail */}
+        <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
@@ -158,7 +176,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/120/80?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/90/60?random=${article.id || Math.random()}`;
             }}
           />
         </div>
@@ -244,7 +262,8 @@ const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { ti
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
         <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
-            <div key={a.id} className={large ? 'min-w-[360px] max-w-[360px]' : 'min-w-[300px] max-w-[300px]'}>
+            // 25% narrower cards in horizontal scroller
+            <div key={a.id} className={large ? 'min-w-[270px] max-w-[270px]' : 'min-w-[225px] max-w-[225px]'}>
               <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
             </div>
           ))}

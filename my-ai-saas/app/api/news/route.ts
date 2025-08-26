@@ -117,11 +117,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: articles, error } = await query;
-
-    if (error) {
-      console.error('Supabase query error:', error);
-      throw error;
+    // Query DB but do not fail the whole endpoint if DB is missing/misconfigured.
+    let articles: any[] = [];
+    let dbOk = true;
+    try {
+      const { data, error } = await query;
+      if (error) {
+        dbOk = false;
+        console.warn('Supabase query error (will use RSS fallback):', error.message);
+      } else {
+        articles = data || [];
+      }
+    } catch (e) {
+      dbOk = false;
+      console.warn('Supabase query threw (will use RSS fallback):', (e as Error).message);
     }
 
     // If no fresh articles found, fall back to direct RSS so page is never empty
@@ -186,17 +195,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const { count } = await supabase
-      .from('news_articles')
-      .select('*', { count: 'exact', head: true });
+    let count: number | null = null;
+    if (dbOk) {
+      try {
+        const res = await supabase
+          .from('news_articles')
+          .select('*', { count: 'exact', head: true });
+        // @ts-ignore - supabase-js returns count on response object
+        count = res.count ?? null;
+      } catch (e) {
+        console.warn('Supabase count failed:', (e as Error).message);
+      }
+    }
 
     // Get category statistics
-    const { data: categories } = await supabase
-      .from('news_articles')
-      .select('category');
+    let categories: any[] | null = null;
+    if (dbOk) {
+      try {
+        const res = await supabase
+          .from('news_articles')
+          .select('category');
+        categories = res.data as any[] | null;
+      } catch (e) {
+        console.warn('Supabase categories failed:', (e as Error).message);
+      }
+    }
 
     // Process categories
-    const categoryStats = categories?.reduce((acc: any[], article: any) => {
+  const categoryStats = (categories || [])?.reduce((acc: any[], article: any) => {
       const existing = acc.find(c => c.category === article.category);
       if (existing) {
         existing.article_count++;
@@ -207,13 +233,13 @@ export async function GET(request: NextRequest) {
         });
       }
       return acc;
-    }, []) || [];
+  }, []) || [];
 
     return NextResponse.json({
       success: true,
       data: {
   articles: (articles && articles.length > 0) ? articles : fallbackArticles,
-  total: (articles && articles.length > 0) ? (count || articles.length) : fallbackArticles.length,
+  total: (articles && articles.length > 0) ? (count ?? articles.length) : fallbackArticles.length,
         categories: categoryStats,
         filters: {
           category,

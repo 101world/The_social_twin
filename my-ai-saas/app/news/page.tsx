@@ -28,8 +28,19 @@ const formatDate = (dateString: string) =>
     minute: '2-digit'
   });
 
+const toOptimized = (url: string, w?: number, h?: number, q = 75) => {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;
+  try {
+    const u = new URL(url);
+    return `/api/optimize-image?url=${encodeURIComponent(u.toString())}${w ? `&w=${w}` : ''}${h ? `&h=${h}` : ''}&q=${q}`;
+  } catch {
+    return url;
+  }
+};
+
 const getImageUrl = (article: NewsArticle, w: number, h: number) => {
-  if (article.image_url) return article.image_url;
+  if (article.image_url) return toOptimized(article.image_url, w, h, 78);
   const colors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
   const color = colors[article.title.length % colors.length];
   const text = encodeURIComponent(article.title.slice(0, 36));
@@ -40,13 +51,14 @@ const getImageUrl = (article: NewsArticle, w: number, h: number) => {
 
 // Big headline card (Breaking News style)
 const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
-  const src = getImageUrl(article, 1200, 675);
+  // 25% smaller
+  const src = getImageUrl(article, 900, 506);
   return (
     <article
       className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:border-orange-500 transition-all cursor-pointer"
       onClick={() => onOpen(article)}
     >
-      <div className="relative aspect-[16/9]">
+  <div className="relative aspect-[16/9]">
         <img
           src={src}
           alt={article.title}
@@ -54,7 +66,7 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
           loading="lazy"
           decoding="async"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = getImageUrl(article, 1200, 675);
+    (e.target as HTMLImageElement).src = getImageUrl(article, 900, 506);
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -75,13 +87,14 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
 
 // Compact grid card (image + title only)
 const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
-  const src = getImageUrl(article, 600, 400);
+  // 25% smaller thumbnail
+  const src = getImageUrl(article, 450, 300);
   return (
     <article
       className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-orange-500 transition-colors cursor-pointer"
       onClick={() => onOpen(article)}
     >
-      <div className="aspect-[4/3]">
+  <div className="aspect-[4/3]">
         <img
           src={src}
           alt={article.title}
@@ -89,7 +102,7 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
           loading="lazy"
           decoding="async"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = getImageUrl(article, 600, 400);
+    (e.target as HTMLImageElement).src = getImageUrl(article, 450, 300);
           }}
         />
       </div>
@@ -103,7 +116,8 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
 // In-app modal showing everything we scraped
 const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | null; onClose: () => void; related: NewsArticle[] }) => {
   if (!article) return null;
-  const img = getImageUrl(article, 1280, 720);
+  // 25% smaller modal hero image
+  const img = getImageUrl(article, 960, 540);
   const body = article.content || article.summary || article.snippet || '';
 
   return (
@@ -119,7 +133,7 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
         <img
           src={img}
           alt={article.title}
-          className="w-full h-72 object-cover rounded-t-xl"
+          className="w-full h-56 object-cover rounded-t-xl"
           loading="eager"
           decoding="async"
         />
@@ -157,9 +171,9 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
                 {related.slice(0, 6).map((r) => (
                   <div key={r.id} className="flex gap-3 items-start p-2 border border-gray-800 rounded-lg hover:border-orange-500 transition-colors">
                     <img
-                      src={getImageUrl(r, 320, 200)}
+                      src={getImageUrl(r, 240, 150)}
                       alt={r.title}
-                      className="w-28 h-20 object-cover rounded"
+                      className="w-24 h-16 object-cover rounded"
                       loading="lazy"
                       decoding="async"
                     />
