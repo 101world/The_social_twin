@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
   const country = countryParam ? countryParam.toUpperCase() : '';
   const continent = normalizeContinent(continentParam);
 
-    // Ensure table exists
+  // Ensure table exists
     await ensureTableExists();
 
   let query = supabase
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
       console.warn('Supabase query threw (will use RSS fallback):', (e as Error).message);
     }
 
-    // If no fresh articles found, fall back to direct RSS so page is never empty
+  // If no fresh articles found, fall back to direct RSS so page is never empty
     let fallbackArticles: any[] = [];
     if (!articles || articles.length === 0) {
       try {
@@ -194,8 +194,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get total count
-    let count: number | null = null;
+  // Get total count
+  let count: number | null = null;
     if (dbOk) {
       try {
         const res = await supabase
@@ -235,7 +235,29 @@ export async function GET(request: NextRequest) {
       return acc;
   }, []) || [];
 
-    return NextResponse.json({
+    // Determine staleness window (10 minutes) and auto-trigger scraper in background
+    if (dbOk) {
+      try {
+        const latestRes = await supabase
+          .from('news_articles')
+          .select('updated_at, published_at')
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        const latest = latestRes.data && latestRes.data[0];
+        const latestIso = latest?.updated_at || latest?.published_at;
+        const latestTs = latestIso ? new Date(latestIso).getTime() : 0;
+        const tenMinutes = 10 * 60 * 1000;
+        const isStale = !latestTs || (Date.now() - latestTs) > tenMinutes;
+        if (isStale) {
+          // Fire-and-forget: let the scraper refresh data for everyone; don't block response
+          fetch('/api/news/trigger', { cache: 'no-store' }).catch(() => {});
+        }
+      } catch (e) {
+        console.warn('Staleness check failed:', (e as Error).message);
+      }
+    }
+
+    const response = NextResponse.json({
       success: true,
       data: {
   articles: (articles && articles.length > 0) ? articles : fallbackArticles,
@@ -264,6 +286,10 @@ export async function GET(request: NextRequest) {
         }
       }
     });
+
+    // Shared cache semantics: allow CDN-level caching for 10 minutes
+    response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=600, stale-while-revalidate=300');
+    return response;
 
   } catch (error) {
     console.error('News API error:', error);

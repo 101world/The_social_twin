@@ -2176,19 +2176,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           style={{ paddingBottom: '8px' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
-                    {simpleMode ? (
-                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                        <div className="rounded-lg border p-2">
-                          <textarea
-                            value={input}
-                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                            placeholder=""
-                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
-                          />
-                        </div>
-                      </div>
-                    ) : 'Start by entering a prompt below.'}
+                    Start by entering a prompt below.
                   </div>
                 ) : (
                   messages.map((m, _index) => {
@@ -3277,17 +3265,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
 
-                {/* Prompt input area - unified desktop feel */}
+                {/* Prompt input area - no outer background/border; keep inner layout */}
                 <div 
-                  className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} rounded-lg transition-all duration-300`}
-                  style={{
-                    boxShadow: isTyping 
-                      ? '0 0 20px rgba(255, 165, 0, 0.4), 0 0 40px rgba(255, 165, 0, 0.2)' 
-                      : '0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2)',
-                    animation: isTyping 
-                      ? 'pulseOrange 1.5s ease-in-out infinite' 
-                      : 'pulseBlue 2s ease-in-out infinite'
-                  }}
+                  className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''}`}
+                  ref={composerRef}
                 >
                   <textarea
                     value={input}
