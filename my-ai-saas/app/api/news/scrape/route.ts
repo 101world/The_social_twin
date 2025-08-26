@@ -94,73 +94,124 @@ async function extractImageUrl(item: any) {
     imageUrl = item['media:thumbnail'].$.url;
   } else if (item.enclosure && item.enclosure.url && item.enclosure.type?.includes('image')) {
     imageUrl = item.enclosure.url;
-  } else if (item.content && item.content.includes('<img')) {
-    // Extract high-quality images from content, prioritizing larger ones
-    const imgMatches = [...item.content.matchAll(/<img[^>]+src="([^">]+)"[^>]*>/gi)];
-    for (const match of imgMatches) {
-      const src = match[1];
-      // Prefer images with size indicators or from known quality sources
-      if (src.includes('large') || src.includes('big') || src.includes('featured') || 
-          src.includes('hero') || src.match(/\d{3,4}x\d{3,4}/) || 
-          src.includes('wordpress.com') || src.includes('medium.com')) {
-        imageUrl = src;
-        break;
-      } else if (!imageUrl) {
-        imageUrl = src; // Fallback to first image
+  } else if (item.content && (item.content.includes('<img') || item.content.match(/srcset=|<picture|<source/))) {
+    // Extract images from content, handle srcset/picture and prefer largest candidate
+    const html = String(item.content || '');
+    const candidates: { url: string; w?: number; dimW?: number; dimH?: number }[] = [];
+
+    // Parse srcset attributes
+    for (const m of [...html.matchAll(/srcset=["']([^"']+)["']/gi)]) {
+      const srcset = m[1];
+      for (const part of srcset.split(',')) {
+        const p = part.trim();
+        const [u, size] = p.split(/\s+/);
+        if (!u) continue;
+        const wMatch = (size || '').match(/(\d+)w/);
+        candidates.push({ url: u, w: wMatch ? parseInt(wMatch[1], 10) : undefined });
       }
     }
-  } else if (item.description && item.description.includes('<img')) {
-    // Extract high-quality images from description
-    const imgMatches = [...item.description.matchAll(/<img[^>]+src="([^">]+)"[^>]*>/gi)];
-    for (const match of imgMatches) {
-      const src = match[1];
-      if (src.includes('large') || src.includes('big') || src.includes('featured') || 
-          src.includes('hero') || src.match(/\d{3,4}x\d{3,4}/)) {
-        imageUrl = src;
-        break;
-      } else if (!imageUrl) {
-        imageUrl = src;
+
+    // Parse <source srcset=>
+    for (const m of [...html.matchAll(/<source[^>]+srcset=["']([^"']+)["'][^>]*>/gi)]) {
+      const srcset = m[1];
+      for (const part of srcset.split(',')) {
+        const p = part.trim();
+        const [u, size] = p.split(/\s+/);
+        if (!u) continue;
+        const wMatch = (size || '').match(/(\d+)w/);
+        candidates.push({ url: u, w: wMatch ? parseInt(wMatch[1], 10) : undefined });
       }
+    }
+
+    // Parse <img src=>
+    for (const match of [...html.matchAll(/<img[^>]+src=["']([^"'>]+)["'][^>]*>/gi)]) {
+      candidates.push({ url: match[1] });
+    }
+
+    // Normalize and detect explicit dims
+    for (const c of candidates) {
+      if (!c.url) continue;
+      if (c.url.startsWith('//')) c.url = 'https:' + c.url;
+      const dim = (c.url.match(/(\d{2,4})x(\d{2,4})/) || []);
+      c.dimW = dim[1] ? parseInt(dim[1], 10) : undefined;
+      c.dimH = dim[2] ? parseInt(dim[2], 10) : undefined;
+    }
+
+    // Prefer largest declared width or explicit dimensions
+    candidates.sort((a, b) => (b.w || 0) - (a.w || 0) || (b.dimW || 0) - (a.dimW || 0));
+    for (const c of candidates) {
+      const src = c.url;
+      const qualifies = (c.w && c.w >= 600) || (c.dimW && c.dimW >= 600) || /large|hero|featured|main|banner|portrait/i.test(src);
+      if (qualifies) { imageUrl = src; break; }
+      if (!imageUrl) imageUrl = src;
+    }
+  } else if (item.description && item.description.includes('<img')) {
+    // Mirror same srcset/picture logic for description
+    const html = String(item.description || '');
+    const candidates: { url: string; w?: number; dimW?: number }[] = [];
+    for (const m of [...html.matchAll(/srcset=["']([^"']+)["']/gi)]) {
+      const srcset = m[1];
+      for (const part of srcset.split(',')) {
+        const p = part.trim();
+        const [u, size] = p.split(/\s+/);
+        if (!u) continue;
+        const wMatch = (size || '').match(/(\d+)w/);
+        candidates.push({ url: u, w: wMatch ? parseInt(wMatch[1], 10) : undefined });
+      }
+    }
+    for (const match of [...html.matchAll(/<img[^>]+src=["']([^"'>]+)["'][^>]*>/gi)]) candidates.push({ url: match[1] });
+    for (const c of candidates) if (c.url && c.url.startsWith('//')) c.url = 'https:' + c.url;
+    for (const c of candidates) {
+      const dim = (c.url.match(/(\d{2,4})x(\d{2,4})/) || []);
+      c.dimW = dim[1] ? parseInt(dim[1], 10) : undefined;
+    }
+    candidates.sort((a, b) => (b.w || 0) - (a.w || 0) || (b.dimW || 0) - (a.dimW || 0));
+    for (const c of candidates) {
+      const src = c.url;
+      const qualifies = (c.w && c.w >= 600) || (c.dimW && c.dimW >= 600) || /large|hero|featured|main|banner|portrait/i.test(src);
+      if (qualifies) { imageUrl = src; break; }
+      if (!imageUrl) imageUrl = src;
     }
   }
   
-  // Clean and validate image URL
+  // Clean, upgrade and validate image URL
   if (imageUrl) {
-    // Convert relative URLs to absolute if possible
-    if (imageUrl.startsWith('//')) {
-      imageUrl = 'https:' + imageUrl;
-    }
-    
-    // Remove tracking parameters but keep size/quality parameters
-    const url = new URL(imageUrl);
-    const keepParams = ['w', 'h', 'width', 'height', 'size', 'quality', 'q', 'crop', 'fit', 'format'];
-    const newParams = new URLSearchParams();
-    for (const [key, value] of url.searchParams) {
-      if (keepParams.some(param => key.toLowerCase().includes(param))) {
-        newParams.set(key, value);
+    if (imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
+    try {
+      const url = new URL(imageUrl);
+      // Keep only useful sizing params and attempt to upgrade where possible
+      const keepParams = ['w', 'h', 'width', 'height', 'size', 'quality', 'q', 'crop', 'fit', 'format'];
+      const newParams = new URLSearchParams();
+      for (const [key, value] of url.searchParams) {
+        if (keepParams.some(param => key.toLowerCase().includes(param))) newParams.set(key, value);
       }
-    }
-    url.search = newParams.toString();
-    imageUrl = url.toString();
-    
-    // Ensure it's a valid image extension or from known image sources
-    if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i) || 
-        imageUrl.includes('images.') || 
-        imageUrl.includes('img.') ||
-        imageUrl.includes('cdn.') ||
-        imageUrl.includes('static.') ||
-        imageUrl.includes('media.') ||
-        imageUrl.includes('wordpress.com') ||
-        imageUrl.includes('medium.com') ||
-        imageUrl.includes('unsplash.com') ||
-        imageUrl.includes('pexels.com')) {
-      
-      // Filter out obviously small or icon images
-      if (!imageUrl.includes('icon') && !imageUrl.includes('favicon') && 
-          !imageUrl.includes('avatar') && !imageUrl.match(/\d+x\d+/) || 
-          imageUrl.match(/[2-9]\d{2,}x[2-9]\d{2,}/)) { // At least 200x200
-        return imageUrl;
+      url.search = newParams.toString();
+      // Upgrade common host params
+      if (url.hostname.includes('wordpress.com') || url.hostname.includes('wp.com')) {
+        url.searchParams.set('w', '1600');
+        url.searchParams.set('h', '1200');
+        url.searchParams.set('crop', '1');
+      } else if (url.hostname.includes('imgix') || url.hostname.includes('cloudinary') || url.hostname.includes('cdn') || url.hostname.includes('cloudfront') || url.hostname.includes('akamai')) {
+        url.searchParams.set('w', '1600');
+        url.searchParams.set('q', '90');
       }
+      imageUrl = url.toString();
+
+      // Validate extension/hosts
+      const isImageExt = /\.(jpg|jpeg|png|gif|webp|avif)(?:\?|$)/i.test(imageUrl);
+      const knownHost = /images\.|img\.|cdn\.|static\.|media\.|wordpress.com|medium.com|unsplash.com|pexels.com|cloudinary.com/.test(imageUrl);
+
+      // Determine explicit dimensions if present
+      const dimMatch = imageUrl.match(/(\d{2,4})x(\d{2,4})/);
+      const hasLargeDim = dimMatch ? (parseInt(dimMatch[1], 10) >= 600 || parseInt(dimMatch[2], 10) >= 600) : false;
+
+      if (isImageExt || knownHost) {
+        if (!/icon|favicon|avatar/i.test(imageUrl) && (hasLargeDim || /large|hero|featured|main|banner|portrait/i.test(imageUrl) || knownHost)) {
+          return imageUrl;
+        }
+      }
+    } catch (e) {
+      // If URL parsing fails, continue and fall back to OG step
     }
   }
   
@@ -232,13 +283,13 @@ async function fetchOpenGraph(url: string): Promise<{ image?: string | null; tit
         // Try to upgrade image quality by modifying URL parameters
         const url = new URL(ogImage);
         if (url.hostname.includes('wordpress.com') || url.hostname.includes('wp.com')) {
-          url.searchParams.set('w', '800');
-          url.searchParams.set('h', '600');
+        url.searchParams.set('w', '1600');
+        url.searchParams.set('h', '1200');
           url.searchParams.set('crop', '1');
           ogImage = url.toString();
         } else if (url.hostname.includes('medium.com')) {
           // Medium image optimization
-          ogImage = ogImage.replace(/\*\d+$/, '*800');
+        ogImage = ogImage.replace(/\*\d+$/, '*1600');
         }
       }
     }
