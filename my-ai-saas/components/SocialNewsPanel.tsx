@@ -4,6 +4,16 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import { Clock, ExternalLink, Search, List, LayoutGrid, Maximize2, Bookmark, Share2 } from 'lucide-react';
 
+// Force gray background with CSS
+const forcedGrayStyle = `
+  .news-panel-force-gray * {
+    background-color: #f9fafb !important;
+  }
+  .news-panel-force-gray .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+  }
+`;
+
 interface NewsArticle {
   id: string;
   title: string;
@@ -360,8 +370,10 @@ export default function SocialNewsPanel() {
   }, [selected]);
 
   return (
-  <div ref={mainContentRef} className="h-full bg-gray-50 text-gray-900 flex flex-col" aria-live="polite">
-      <div className="flex-shrink-0 p-4 border-b border-gray-800">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: forcedGrayStyle }} />
+      <div ref={mainContentRef} className="h-full bg-gray-50 text-gray-900 flex flex-col news-panel-force-gray" style={{backgroundColor: '#f9fafb'}} aria-live="polite">
+      <div className="flex-shrink-0 p-4 border-b border-gray-800" style={{backgroundColor: '#f9fafb'}}>
         <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold" style={{ fontFamily: 'Times New Roman, serif' }}>ONE World News</h1>
@@ -397,8 +409,8 @@ export default function SocialNewsPanel() {
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
-            <main className="w-full bg-gray-50 flex-1">
-              <div ref={gridRef} className="">
+            <main className="w-full bg-gray-50 flex-1" style={{backgroundColor: '#f9fafb'}}>
+              <div ref={gridRef} className="" style={{backgroundColor: '#f9fafb'}}>
                 {/* Breaking headline full width (no borders) */}
                 {breaking && (
                   <article key={breaking.id} className="w-full mb-3 rounded-none overflow-hidden cursor-pointer bg-transparent">
@@ -546,6 +558,7 @@ export default function SocialNewsPanel() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
