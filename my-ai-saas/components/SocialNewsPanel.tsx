@@ -29,7 +29,8 @@ function thumbUrl(aOrTitle: NewsArticle | string | undefined, small = false) {
 
 function ProgressiveImage({ src, alt, className, small }: { src?: string; alt?: string; className?: string; small?: boolean }) {
   const [loaded, setLoaded] = useState(false);
-  const low = src ? `${src}?w=${small ? 160 : 300}&q=30` : thumbUrl(alt || 'News', small);
+  // Always use a guaranteed placeholder for the low layer (prevents blank when remote blocks query params)
+  const low = thumbUrl(alt || 'News', small);
   const high = src || low;
   return (
   <div className={`relative overflow-hidden w-full h-full ${className || ''}`}>
@@ -352,7 +353,7 @@ export default function SocialNewsPanel() {
   }, [selected]);
 
   return (
-  <div ref={mainContentRef} className="h-full bg-gray-100 text-gray-900 flex flex-col" aria-live="polite">
+  <div ref={mainContentRef} className="h-full bg-gray-50 text-gray-900 flex flex-col" aria-live="polite">
       <div className="flex-shrink-0 p-4 border-b border-gray-800">
         <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
           <div>
@@ -389,7 +390,7 @@ export default function SocialNewsPanel() {
           {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
-            <main className="w-full bg-gray-100 flex-1">
+            <main className="w-full bg-gray-50 flex-1">
               <div ref={gridRef} className="">
                 {/* Breaking headline full width (no borders) */}
                 {breaking && (
