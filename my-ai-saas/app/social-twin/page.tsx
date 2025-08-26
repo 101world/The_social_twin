@@ -6443,7 +6443,15 @@ function NewsOneTab() {
 
 // Simple News Tab Component - matches chat tab styling
 function SimpleNewsTab() {
-  const [articles, setArticles] = useState([]);
+  const [articles, setArticles] = useState<Array<{
+    id: string;
+    title: string;
+    snippet: string;
+    published_at: string;
+    source_name: string;
+    url?: string;
+    image_url?: string;
+  }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -6454,7 +6462,7 @@ function SimpleNewsTab() {
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         const fetchedArticles = Array.isArray(data?.data?.articles) ? data.data.articles : (data?.data || []).slice ? data.data : [];
-        setArticles(fetchedArticles.map((a, i) => ({
+        setArticles(fetchedArticles.map((a: any, i: number) => ({
           id: a.id || a.url || `n-${i}`,
           title: a.title || a.headline || 'Untitled',
           snippet: a.snippet || a.summary || a.description || '',
