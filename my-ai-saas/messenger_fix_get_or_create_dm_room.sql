@@ -207,8 +207,7 @@ RETURNS TABLE (
   display_name TEXT,
   avatar_url TEXT,
   clerk_id TEXT,
-  is_friend BOOLEAN,
-  share_code TEXT
+  is_friend BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -239,15 +238,12 @@ BEGIN
     u.display_name,
     u.avatar_url,
     u.clerk_id,
-    COALESCE((SELECT r.is_friend FROM rel r WHERE r.other_id = u.id LIMIT 1), 0) = 1 AS is_friend,
-    u.share_code
+    COALESCE((SELECT r.is_friend FROM rel r WHERE r.other_id = u.id LIMIT 1), 0) = 1 AS is_friend
   FROM messenger_users u
   WHERE u.clerk_id <> current_user_clerk_id
     AND (
       u.username ILIKE '%' || search_term || '%'
-      OR COALESCE(u.display_name, '') ILIKE '%' || search_term || '%'
       OR (position('@' in search_term) > 0 AND COALESCE(u.email, '') ILIKE '%' || search_term || '%')
-      OR COALESCE(u.share_code, '') ILIKE '%' || search_term || '%'
     )
   ORDER BY is_friend DESC, LOWER(u.username)
   LIMIT GREATEST(limit_count, 1);

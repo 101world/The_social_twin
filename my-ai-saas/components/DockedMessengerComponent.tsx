@@ -111,6 +111,7 @@ export default function DockedMessengerComponent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<MessengerUser[]>([]);
+  const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   
   // AI Integration State
   const [aiMode, setAiMode] = useState(false);
@@ -207,6 +208,7 @@ export default function DockedMessengerComponent() {
   useEffect(() => {
     const run = async () => {
       if (!supabase || !user) return;
+      if (!searchQuery.trim()) { setSearchResults([]); return; }
       setSearching(true);
       try {
         const { data, error } = await supabase.rpc('messenger_search_users', {
@@ -374,6 +376,32 @@ export default function DockedMessengerComponent() {
     }
   };
 
+  const sendFriendRequest = async (targetClerkId: string) => {
+    if (!user) return;
+    try {
+      setSendingRequest(targetClerkId);
+      const res = await fetch('/api/messenger/send-friend-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterClerkId: user.id,
+          addresseeClerkId: targetClerkId,
+        }),
+      });
+      if (res.ok) {
+        alert('Friend request sent');
+      } else {
+        const text = await res.text();
+        alert(text || 'Failed to send request');
+      }
+    } catch (e) {
+      console.error('Send friend request error:', e);
+      alert('Failed to send request');
+    } finally {
+      setSendingRequest(null);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -480,7 +508,7 @@ export default function DockedMessengerComponent() {
                   <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search people by name, email, or code..."
+                    placeholder="Search by username or email..."
                     className="w-full pl-8 pr-2 py-1.5 text-sm rounded bg-gray-700 border border-gray-600 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -543,12 +571,13 @@ export default function DockedMessengerComponent() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{p.display_name || p.username}</div>
-          <div className="text-xs text-gray-400 truncate">@{p.username}{p.share_code ? ` • ${p.share_code}` : ''}</div>
+          <div className="text-xs text-gray-400 truncate">@{p.username}</div>
                         </div>
                         <button
-                          onClick={() => startDirectMessage(p)}
-                          className="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-500"
-                        >Start DM</button>
+                          onClick={() => sendFriendRequest(p.clerk_id)}
+                          disabled={sendingRequest === p.clerk_id}
+                          className="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >{sendingRequest === p.clerk_id ? 'Sending…' : 'Add Friend'}</button>
                       </div>
                     ))}
                   </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Search, TrendingUp, ExternalLink, Clock, Filter, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Loader2, Play, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, X, Clock } from 'lucide-react';
 
 interface NewsArticle {
   id: string;
@@ -19,257 +19,162 @@ interface NewsArticle {
   image_url?: string;
 }
 
-// Compact news card for docked/mobile layout
-const CompactNewsCard = ({ article }: { article: NewsArticle }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+// Shared helpers
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 
-  const openSource = () => {
-    const url = article.source_url || article.url;
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
+const getImageUrl = (article: NewsArticle, w: number, h: number) => {
+  if (article.image_url) return article.image_url;
+  const colors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+  const color = colors[article.title.length % colors.length];
+  const text = encodeURIComponent(article.title.slice(0, 36));
+  return `https://picsum.photos/${w}/${h}?random=${encodeURIComponent(
+    article.id || article.title
+  )}&blur=0`;
+};
 
-  const getImageUrl = () => {
-    if (article.image_url) {
-      return article.image_url;
-    }
-    const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
-    const colorIndex = article.title.length % fallbackColors.length;
-    const color = fallbackColors[colorIndex];
-    const encodedTitle = encodeURIComponent(article.title.slice(0, 30));
-    return `https://via.placeholder.com/120x80/${color}/ffffff?text=${encodedTitle}`;
-  };
-
-  const sourceName = article.source_name || article.source || 'News';
-
+// Big headline card (Breaking News style)
+const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
+  const src = getImageUrl(article, 1200, 675);
   return (
-    <div 
-      onClick={openSource}
-      className="flex gap-3 p-3 border border-gray-800 rounded-lg hover:border-orange-500 transition-all cursor-pointer bg-gradient-to-br from-black to-gray-950 hover:from-gray-950 hover:to-black"
+    <article
+      className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:border-orange-500 transition-all cursor-pointer"
+      onClick={() => onOpen(article)}
     >
-      <div className="flex-shrink-0">
-        <img 
-          src={getImageUrl()} 
+      <div className="relative aspect-[16/9]">
+        <img
+          src={src}
           alt={article.title}
-          className="w-20 h-14 object-cover rounded-md"
+          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+          loading="lazy"
+          decoding="async"
           onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = `https://picsum.photos/120/80?random=${article.id || Math.random()}`;
+            (e.target as HTMLImageElement).src = getImageUrl(article, 1200, 675);
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      </div>
+      <div className="p-5">
+        <h2 className="text-2xl font-bold text-white leading-tight mb-2 line-clamp-3 group-hover:text-orange-400">
+          {article.title}
+        </h2>
+        <div className="flex items-center gap-3 text-sm text-gray-400">
+          <span className="font-medium text-gray-300">{article.source_name || article.source || 'Source'}</span>
+          <span>•</span>
+          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDate(article.published_at)}</span>
+        </div>
+      </div>
+    </article>
+  );
+};
+
+// Compact grid card (image + title only)
+const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
+  const src = getImageUrl(article, 600, 400);
+  return (
+    <article
+      className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-orange-500 transition-colors cursor-pointer"
+      onClick={() => onOpen(article)}
+    >
+      <div className="aspect-[4/3]">
+        <img
+          src={src}
+          alt={article.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = getImageUrl(article, 600, 400);
           }}
         />
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-white text-sm leading-tight mb-1 line-clamp-2">
-          {article.title}
-        </h3>
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="truncate">{sourceName}</span>
+      <h3 className="p-3 text-white font-semibold leading-snug line-clamp-2">
+        {article.title}
+      </h3>
+    </article>
+  );
+};
+
+// In-app modal showing everything we scraped
+const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | null; onClose: () => void; related: NewsArticle[] }) => {
+  if (!article) return null;
+  const img = getImageUrl(article, 1280, 720);
+  const body = article.content || article.summary || article.snippet || '';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative bg-[#0b0b0b] border border-gray-800 rounded-xl w-full max-w-4xl mx-4 max-h-[85vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-2 rounded bg-black/50 border border-gray-800 text-gray-300 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <img
+          src={img}
+          alt={article.title}
+          className="w-full h-72 object-cover rounded-t-xl"
+          loading="eager"
+          decoding="async"
+        />
+        <div className="p-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">{article.title}</h1>
+          <div className="text-sm text-gray-400 mb-4 flex items-center gap-2">
+            <span className="font-medium text-gray-300">{article.source_name || article.source || 'Source'}</span>
+            <span>•</span>
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDate(article.published_at)}</span>
             {article.category && (
-              <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-[10px]">
-                {article.category}
-              </span>
+              <>
+                <span>•</span>
+                <span className="px-2 py-0.5 rounded-full bg-orange-900/30 text-orange-300 border border-orange-800/40 text-[11px]">
+                  {article.category}
+                </span>
+              </>
             )}
           </div>
-          <span className="flex-shrink-0 ml-2">{formatDate(article.published_at)}</span>
+
+          {/* Everything we scraped: show all available text fields */}
+          {body && (
+            <div className="prose prose-invert max-w-none">
+              <p className="whitespace-pre-wrap text-gray-200 leading-relaxed">{body}</p>
+            </div>
+          )}
+          {!body && (
+            <p className="text-gray-400">No full text available. We only have the headline and metadata for this story.</p>
+          )}
+
+          {/* Related items (same topic heuristic) */}
+          {related.length > 0 && (
+            <div className="mt-8">
+              <h4 className="text-lg font-semibold text-white mb-3">More on this topic</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {related.slice(0, 6).map((r) => (
+                  <div key={r.id} className="flex gap-3 items-start p-2 border border-gray-800 rounded-lg hover:border-orange-500 transition-colors">
+                    <img
+                      src={getImageUrl(r, 320, 200)}
+                      alt={r.title}
+                      className="w-28 h-20 object-cover rounded"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div>
+                      <div className="text-sm font-semibold text-white line-clamp-2">{r.title}</div>
+                      <div className="text-xs text-gray-400 mt-1">{r.source_name || r.source || 'Source'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
-  );
-};
-
-// Full width news card for desktop layout
-const FullWidthNewsCard = ({ article, layout = "default" }: { article: NewsArticle; layout?: "default" | "large" | "compact" }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const handleTrend = () => {
-    console.log('Trending:', article.title);
-  };
-
-  const openSource = () => {
-    const url = article.source_url || article.url;
-    if (url) {
-      window.open(url, '_blank');
-    }
-  };
-
-  const getImageUrl = () => {
-    if (article.image_url) {
-      return article.image_url;
-    }
-    const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
-    const colorIndex = article.title.length % fallbackColors.length;
-    const color = fallbackColors[colorIndex];
-    const encodedTitle = encodeURIComponent(article.title.slice(0, 50));
-    return `https://via.placeholder.com/400x225/${color}/ffffff?text=${encodedTitle}`;
-  };
-
-  const sourceName = article.source_name || article.source || 'Unknown Source';
-
-  if (layout === "large") {
-    return (
-      <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-500 min-w-[400px] flex-shrink-0">
-        <div className="aspect-[16/9] h-48 overflow-hidden">
-          <img 
-            src={getImageUrl()} 
-            alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/400/225?random=${article.id || Math.random()}`;
-            }}
-          />
-        </div>
-        
-        <div className="p-4">
-          <h2 className="font-bold text-white text-lg leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
-            {article.title}
-          </h2>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-sm text-gray-400">
-              <span className="font-semibold text-gray-200">{sourceName}</span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {formatDate(article.published_at)}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={handleTrend}
-                className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-full text-xs font-semibold hover:bg-orange-200 transition-colors"
-              >
-                <TrendingUp className="w-3 h-3" />
-                Trend
-              </button>
-              <button 
-                onClick={openSource}
-                className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500 min-w-[320px] flex-shrink-0">
-      <div className="aspect-video h-40 overflow-hidden">
-        <img 
-          src={getImageUrl()} 
-          alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = `https://picsum.photos/320/180?random=${article.id || Math.random()}`;
-          }}
-        />
-      </div>
-      
-      <div className="p-4">
-        <h3 className="font-semibold text-white text-base leading-tight mb-3 group-hover:text-orange-400 transition-colors line-clamp-2">
-          {article.title}
-        </h3>
-        
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <span className="font-semibold text-gray-200 truncate">{sourceName}</span>
-            <span className="text-gray-500">•</span>
-            <span className="truncate">{formatDate(article.published_at)}</span>
-          </div>
-          
-          <button 
-            onClick={handleTrend}
-            className="flex items-center gap-1 px-2 py-1 bg-orange-900/50 text-orange-400 rounded-full text-xs font-semibold hover:bg-orange-800/50 transition-colors"
-          >
-            <TrendingUp className="w-3 h-3" />
-            <span className="hidden sm:inline">Trend</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Horizontal scrolling section for full width layout
-const HorizontalNewsSection = ({ title, articles, layout }: { title: string; articles: NewsArticle[]; layout: 'hero' | 'normal' }) => {
-  if (layout === 'hero') {
-    return (
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
-        </div>
-        
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-6">
-            {articles.slice(0, 3).map(article => (
-              <FullWidthNewsCard key={article.id} article={article} layout="large" />
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="mb-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        <button className="flex items-center gap-2 text-sm text-gray-400 hover:text-orange-400 transition-colors">
-          <Filter className="w-4 h-4" />
-          View All
-        </button>
-      </div>
-      
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4">
-          {articles.slice(0, 6).map(article => (
-            <FullWidthNewsCard key={article.id} article={article} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// Vertical scrolling section for docked layout
-const VerticalNewsSection = ({ title, articles }: { title: string; articles: NewsArticle[] }) => {
-  return (
-    <section className="mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-white">{title}</h2>
-        <button className="text-sm text-gray-400 hover:text-orange-400 transition-colors">
-          View All
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        {articles.slice(0, 8).map(article => (
-          <CompactNewsCard key={article.id} article={article} />
-        ))}
-      </div>
-    </section>
   );
 };
 
@@ -278,10 +183,7 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  // Force vertical/docked layout for consistency and simplicity
-  const [isSimpleMode] = useState(true);
-
-  // No layout detection; we keep vertical layout only
+  const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
 
   useEffect(() => {
     fetchNews();
@@ -290,8 +192,7 @@ export default function NewsPage() {
   const fetchNews = async () => {
     setLoading(true);
     try {
-      // Primary source: our news API (DB with RSS fallback)
-  const response = await fetch('/api/news?limit=50&media=images', { cache: 'no-store' });
+      const response = await fetch('/api/news?limit=60&media=images', { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
@@ -303,7 +204,6 @@ export default function NewsPage() {
           return;
         }
       }
-      // Fallback: daily brief endpoint (always returns something, even mock)
       await loadDailyBriefFallback();
     } catch (error) {
       console.error('Error fetching news:', error);
@@ -335,7 +235,6 @@ export default function NewsPage() {
       }));
       setArticles(mapped);
     } catch (e) {
-      // Final safety net: minimal local placeholders
       const now = new Date().toISOString();
       setArticles([
         { id: 'local-1', title: 'Stay tuned: Live news feed warming up', published_at: now, category: 'System', quality_score: 0 },
@@ -365,85 +264,98 @@ export default function NewsPage() {
     );
   }
 
-  // Always render Docked/Mobile Layout - Vertical Scrolling
+  // Slice for layout: 2 big, 1 big, 3 small, 1 big, 3 small
+  const big1 = articles.slice(0, 2);
+  const big2 = articles.slice(2, 3);
+  const small1 = articles.slice(3, 6);
+  const big3 = articles.slice(6, 7);
+  const small2 = articles.slice(7, 10);
 
-  // Docked/Mobile Layout - Vertical Scrolling
+  // Related for modal (simple heuristic: share a keyword with active title)
+  const related = activeArticle
+    ? articles.filter(a => a.id !== activeArticle.id && a.title.split(/\s+/).some(w => w.length > 4 && activeArticle.title.toLowerCase().includes(w.toLowerCase())))
+    : [];
+
   return (
     <div className="min-h-screen bg-black">
-  <div className="max-w-md mx-auto px-3 py-4">
-        
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Bar */}
-  <div className="mb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="mb-6">
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search news..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}
-              className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all duration-200 text-white placeholder-gray-400"
+              className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none text-white placeholder-gray-400"
             />
-          </div>
-          
-          {/* Search Dropdown */}
-          {isSearchOpen && searchQuery && (
-            <div className="relative mt-1">
-              <div className="absolute w-full bg-black border border-gray-800 rounded-lg shadow-lg z-40 max-h-64 overflow-y-auto">
-                {searchResults.slice(0, 3).map(article => (
-                  <div key={article.id} className="p-3 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
-                    <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
-                    <p className="text-xs text-gray-400">{article.source_name || article.source}</p>
-                  </div>
+            {isSearchOpen && searchQuery && (
+              <div className="absolute z-40 mt-2 w-full bg-black border border-gray-800 rounded-lg shadow max-h-72 overflow-y-auto">
+                {searchResults.slice(0, 6).map(article => (
+                  <button
+                    key={article.id}
+                    onClick={() => { setActiveArticle(article); setIsSearchOpen(false); }}
+                    className="w-full text-left p-3 hover:bg-gray-900 border-b border-gray-800 last:border-b-0"
+                  >
+                    <div className="text-sm text-white line-clamp-2">{article.title}</div>
+                    <div className="text-xs text-gray-400 mt-1">{article.source_name || article.source}</div>
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Vertical Scrolling News Sections */}
-  <div onClick={() => setIsSearchOpen(false)} className="space-y-4">
-          
-          {/* Breaking News - Vertical */}
-          <VerticalNewsSection
-            title="Breaking News" 
-            articles={articles.slice(0, 3)} 
-          />
-          
-          {/* World News - Vertical */}
-          <VerticalNewsSection
-            title="World News" 
-            articles={articles.slice(3, 8)} 
-          />
-          
-          {/* Technology - Vertical */}
-          <VerticalNewsSection
-            title="Technology" 
-            articles={articles.filter(a => 
-              a.title.toLowerCase().includes('tech') ||
-              a.title.toLowerCase().includes('ai') ||
-              a.category.toLowerCase().includes('tech')
-            )} 
-          />
-          
-          {/* Business - Vertical */}
-          <VerticalNewsSection
-            title="Business" 
-            articles={articles.filter(a => 
-              a.title.toLowerCase().includes('business') ||
-              a.title.toLowerCase().includes('market') ||
-              a.category.toLowerCase().includes('business')
-            )} 
-          />
-          
-          {/* Latest Updates - Vertical */}
-          <VerticalNewsSection
-            title="Latest Updates" 
-            articles={articles.slice(8)} 
-          />
-          
-        </div>
+        {/* Layout */}
+        <section className="space-y-8" onClick={() => setIsSearchOpen(false)}>
+          {/* Breaking News - 2 posts */}
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-4">Breaking News</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {big1.map((a) => (
+                <BigNewsCard key={a.id} article={a} onOpen={setActiveArticle} />
+              ))}
+            </div>
+          </div>
+
+          {/* Then one big post (same style) */}
+          {big2.length > 0 && (
+            <div>
+              <BigNewsCard article={big2[0]} onOpen={setActiveArticle} />
+            </div>
+          )}
+
+          {/* Then 3 posts images + title only */}
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {small1.map((a) => (
+                <SmallNewsCard key={a.id} article={a} onOpen={setActiveArticle} />
+              ))}
+            </div>
+          </div>
+
+          {/* Then one big post */}
+          {big3.length > 0 && (
+            <div>
+              <BigNewsCard article={big3[0]} onOpen={setActiveArticle} />
+            </div>
+          )}
+
+          {/* Then 3 posts */}
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {small2.map((a) => (
+                <SmallNewsCard key={a.id} article={a} onOpen={setActiveArticle} />
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
+
+      {/* Article Modal with full scraped content */}
+      <ArticleModal article={activeArticle} onClose={() => setActiveArticle(null)} related={related} />
     </div>
   );
 }
