@@ -50,8 +50,14 @@ export default function SocialNewsPanel() {
   const [bookmarks, setBookmarks] = useState<Record<string, { id: string; title: string; url?: string }>>({});
   const [toast, setToast] = useState<string | null>(null);
   const listRootRef = React.useRef<HTMLDivElement | null>(null);
-  const [layoutMode, setLayoutMode] = useState<'split'|'grid'|'reader'>(() => {
-    try { return (localStorage.getItem('news_layout') as any) || 'split'; } catch { return 'split'; }
+  const [layoutMode, setLayoutMode] = useState<'grid'|'reader'>(() => {
+    try {
+      const v = localStorage.getItem('news_layout') as any;
+      if (!v) return 'grid';
+      // map legacy 'split' preference to 'grid' to avoid sidebar layout
+      if (v === 'split') return 'grid';
+      return v === 'reader' ? 'reader' : 'grid';
+    } catch { return 'grid'; }
   });
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -330,8 +336,7 @@ export default function SocialNewsPanel() {
             <p className="text-sm text-gray-400" style={{ fontFamily: 'Times New Roman, serif' }}>Clean reader — choose layout that fits your workflow</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-black border border-gray-800 rounded-lg p-1">
-              <button aria-pressed={layoutMode==='split'} title="Split view (headlines + reader)" onClick={()=>setLayoutMode('split')} className={`p-2 rounded ${layoutMode==='split' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><List className="w-4 h-4" /></button>
+              <div className="flex items-center gap-1 bg-black border border-gray-800 rounded-lg p-1">
               <button aria-pressed={layoutMode==='grid'} title="Grid view" onClick={()=>setLayoutMode('grid')} className={`p-2 rounded ${layoutMode==='grid' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><LayoutGrid className="w-4 h-4" /></button>
               <button aria-pressed={layoutMode==='reader'} title="Immersive reader" onClick={()=>setLayoutMode('reader')} className={`p-2 rounded ${layoutMode==='reader' ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900'}`}><Maximize2 className="w-4 h-4" /></button>
             </div>
@@ -357,65 +362,7 @@ export default function SocialNewsPanel() {
 
       <div className="flex-1 overflow-hidden">
         <div className="h-full max-w-[1200px] mx-auto flex flex-col md:flex-row gap-4 p-4">
-          {/* Layout-specific rendering */}
-          {layoutMode === 'split' && (
-            <> 
-              {/* Left column: search + headlines */}
-              <aside className="w-full md:w-1/3 h-full flex flex-col gap-3" aria-label="News headlines">
-            <div>
-              <label className="relative block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search headlines" className="w-full pl-9 pr-3 py-2 text-sm bg-black border border-gray-800 rounded-lg outline-none text-white placeholder-gray-500" />
-              </label>
-            </div>
-            <div className="overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 220px)' }} ref={listRootRef} tabIndex={0}>
-              {loading ? (
-                // skeleton list
-                <div className="space-y-3 py-4">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2">
-                      <div className="w-20 h-14 bg-gray-800 animate-pulse rounded" />
-                      <div className="flex-1">
-                        <div className="h-4 bg-gray-800 rounded w-3/4 animate-pulse" />
-                        <div className="h-3 bg-gray-800 rounded w-1/2 mt-2 animate-pulse" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="text-gray-400 py-8">No articles found.</div>
-              ) : (
-                <ul className="space-y-2" role="list">
-                  {filtered.map((a, idx) => (
-                    <li
-                      key={a.id}
-                      role="button"
-                      aria-pressed={selected?.id === a.id}
-                      aria-selected={selectedIndex === idx}
-                      tabIndex={0}
-                      onClick={() => { setSelected(a); setSelectedIndex(idx); setShowModal(true); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') { setSelected(a); setSelectedIndex(idx); }
-                      }}
-                      className={`flex items-start gap-3 p-2 rounded transition-colors ${selected?.id === a.id ? 'bg-gray-900 ring-1 ring-gray-700' : 'hover:bg-gray-900 cursor-pointer'}`}
-                    >
-                      <div className="w-20 h-20 sm:h-14 rounded overflow-hidden flex-shrink-0">
-                        {/* Mobile: square thumb (1:1), Small screens and up: original rectangular */}
-                        <ProgressiveImage src={a.image_url} alt={a.title} small />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold truncate" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
-                        <div className="text-[12px] text-gray-500 mt-1 truncate">{a.source_name || a.source}  {new Date(a.published_at).toLocaleDateString()}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </aside>
-          {/* Intentionally no persistent right reader in split layout — items open in modal for a clean, distraction-free experience */}
-            </>
-          )}
+          {/* Grid is the primary layout now; legacy split/sidebar removed for a cleaner view */}
 
           {layoutMode === 'grid' && (
             <main className="w-full bg-black flex-1">
@@ -473,9 +420,8 @@ export default function SocialNewsPanel() {
       </div>
 
       {/* Mobile bottom toolbar */}
-      <div className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40">
+  <div className="sm:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40">
         <div className="bg-black border border-gray-800 rounded-full px-2 py-1 flex items-center gap-2">
-          <button onClick={()=>setLayoutMode('split')} className={`p-2 rounded ${layoutMode==='split' ? 'bg-gray-900' : ''}`} aria-label="Split"><List className="w-5 h-5"/></button>
           <button onClick={()=>setLayoutMode('grid')} className={`p-2 rounded ${layoutMode==='grid' ? 'bg-gray-900' : ''}`} aria-label="Grid"><LayoutGrid className="w-5 h-5"/></button>
           <button onClick={()=>setLayoutMode('reader')} className={`p-2 rounded ${layoutMode==='reader' ? 'bg-gray-900' : ''}`} aria-label="Reader"><Maximize2 className="w-5 h-5"/></button>
           <button onClick={()=>setShowBookmarks(true)} className="p-2 rounded" aria-label="Bookmarks"><Bookmark className="w-5 h-5"/></button>
