@@ -186,7 +186,7 @@ export default function MessengerPage() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex">
+    <div className="h-screen bg-gray-50 text-white flex">
       {/* Clean Vertical Sidebar - Friends & Groups */}
       <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
         {/* Minimalist Header */}

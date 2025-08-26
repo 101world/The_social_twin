@@ -150,7 +150,7 @@ def main():
     print("1. Review and customize config.json if needed")
     print("2. Run 'python news_scraper.py' to test manual scraping")
     print("3. Run 'python scheduler.py' to start the scheduled scraper")
-    print("4. Check the /news page in your web app")
+    print("4. Check the /social-twin page in your web app (news is now canonicalized there)")
 
 if __name__ == "__main__":
     main()

@@ -18,7 +18,7 @@ A comprehensive news aggregation system for 101World that scrapes daily news fro
 ```
 Frontend (Next.js)          Backend APIs              Python Scraper
     │                           │                          │
-    ├─ /news page              ├─ /api/news/daily-brief   ├─ news_scraper.py
+  ├─ /social-twin news page  ├─ /api/news/daily-brief   ├─ news_scraper.py
     ├─ Search interface        ├─ /api/news/search        ├─ scheduler.py  
     └─ Category filters        └─ Cached JSON responses   └─ RSS/HTML parsing
 ```
@@ -26,7 +26,7 @@ Frontend (Next.js)          Backend APIs              Python Scraper
 ## Quick Start
 
 ### 1. Frontend is Ready
-The news page is already available at `/news` with a newspaper icon in the top navbar.
+The news reader is canonicalized to the Social Twin at `/social-twin` (the legacy `/news` route now redirects to `/social-twin`).
 
 ### 2. Set Up Python Scraper (Optional but Recommended)
 
@@ -114,7 +114,7 @@ my-ai-saas/
 ├── data/
 │   └── daily-brief.json          # Cached news data
 └── scripts/
-    ├── news_scraper.py            # Main scraper
+  ├── news_scraper.py            # Main scraper
     ├── scheduler.py               # Automated scheduling
     ├── setup_scraper.py           # Setup script
     └── requirements.txt           # Python dependencies
@@ -144,7 +144,7 @@ schedule.every().day.at("08:00").do(run_scheduled_scrape)
 
 ### Styling the News Page
 
-The news page uses Tailwind CSS classes and supports dark mode. Customize the design in `app/news/page.tsx`.
+The news reader uses Tailwind CSS classes and supports dark mode. Customize the design in `components/SocialNewsPanel.tsx` (Social Twin) or `app/news/page.tsx` (legacy).
 
 ## Production Deployment
 
@@ -226,4 +226,4 @@ For issues or questions about the news system:
 
 ---
 
-The news system is now ready to use! Visit `/news` to see it in action.
+The news system is now ready to use! Visit `/social-twin` to see the canonical news reader in action.

@@ -23,8 +23,15 @@ function thumbUrl(aOrTitle: NewsArticle | string | undefined, small = false) {
   const title = typeof aOrTitle === 'string' ? aOrTitle : (aOrTitle ? aOrTitle.title : 'News');
   const image = typeof aOrTitle !== 'string' && aOrTitle ? aOrTitle.image_url : undefined;
   if (image) return image;
-  if (small) return `https://via.placeholder.com/160x120/222/fff?text=${encodeURIComponent((title||'News').slice(0,30))}`;
-  return `https://via.placeholder.com/300x200/222/fff?text=${encodeURIComponent((title||'News').slice(0,30))}`;
+  // Inline SVG placeholder for reliability (no network dependency)
+  const w = small ? 160 : 300; const h = small ? 120 : 200;
+  const text = encodeURIComponent((title || 'News').slice(0, 30));
+  return `data:image/svg+xml;utf8,` + encodeURIComponent(
+    `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
+       <rect width='100%' height='100%' fill='#111'/>
+       <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#fff' font-family='Times New Roman, serif' font-size='14'>${text}</text>
+     </svg>`
+  );
 }
 
 function ProgressiveImage({ src, alt, className, small }: { src?: string; alt?: string; className?: string; small?: boolean }) {
@@ -407,13 +414,13 @@ export default function SocialNewsPanel() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {gridItems.map((a, idx) => (
-                    <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 cursor-pointer">
+                    <article id={`news-card-${a.id}`} key={a.id} onClick={() => { setSelected(a); setSelectedIndex(idx); setLayoutMode('reader'); }} className="bg-white border border-neutral-200 rounded-lg overflow-hidden hover:border-neutral-300 cursor-pointer">
                       <div className="relative aspect-square sm:aspect-[4/3]">
                         <ProgressiveImage src={a.image_url} alt={a.title} />
                       </div>
                       <div className="p-3">
-                        <div className="text-lg font-semibold text-white mb-1" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
-                        <div className="text-xs text-gray-400 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
+                        <div className="text-lg font-semibold text-gray-900 mb-1" style={{ fontFamily: 'Times New Roman, serif' }}>{a.title}</div>
+                        <div className="text-xs text-gray-600 flex items-center justify-between"><span>{a.source_name || a.source}</span><span>{readingTime(a)}</span></div>
                       </div>
                     </article>
                   ))}

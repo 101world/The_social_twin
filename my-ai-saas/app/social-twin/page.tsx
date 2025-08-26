@@ -3315,7 +3315,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Projects tab removed - now accessible via Dashboard */}
 
           {activeTab === 'news' && (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-gray-50">
               {/* Social-tailored news reader: two-column headlines + article pane */}
               <SocialNewsPanel />
             </div>
