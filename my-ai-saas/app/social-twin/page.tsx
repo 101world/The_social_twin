@@ -719,39 +719,143 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }
   }
 
-  // Switch to a different project
+  // Switch to a different project - ROBUST IMPLEMENTATION
   async function switchToProject(projectId: string, projectTitle: string) {
     try {
-      // Load the project data
-      const r = await fetch(`/api/social-twin/projects/${projectId}`, { 
-        headers: { 'X-User-Id': userId || '' } 
-      });
-      if (!r.ok) return;
+      console.log('🔄 SWITCHING TO PROJECT:', projectId, projectTitle);
       
-      const project = await r.json();
+      // Try enhanced projects API first (handles both chat and grid)
+      let project = null;
+      try {
+        const r = await fetch(`/api/social-twin/enhanced-projects/${projectId}`, { 
+          headers: { 'X-User-Id': userId || '' } 
+        });
+        if (r.ok) {
+          project = await r.json();
+          console.log('✅ Enhanced project loaded:', project);
+        }
+      } catch (enhancedError) {
+        console.warn('Enhanced API failed, trying legacy:', enhancedError);
+      }
+      
+      // Fallback to legacy API if enhanced fails
+      if (!project) {
+        const r = await fetch(`/api/social-twin/projects/${projectId}`, { 
+          headers: { 'X-User-Id': userId || '' } 
+        });
+        if (!r.ok) {
+          console.error('Failed to load project from both APIs');
+          return;
+        }
+        project = await r.json();
+        console.log('📦 Legacy project loaded:', project);
+      }
       
       // Update current project info
       setCurrentProjectId(projectId);
       setCurrentProjectTitle(projectTitle);
       
-      // Load project's chat messages
-      if (project.data?.messages) {
+      // Load chat data (enhanced format first, then legacy)
+      if (project.chatData?.messages) {
+        console.log('💬 Loading enhanced chat data:', project.chatData.messages.length, 'messages');
+        setMessages(project.chatData.messages);
+        
+        // Restore topic if available
+        if (project.chatData.topic) {
+          setCurrentTopic(project.chatData.topic);
+        }
+      } else if (project.data?.messages) {
+        console.log('💬 Loading legacy chat data:', project.data.messages.length, 'messages');
         setMessages(project.data.messages);
       } else {
+        console.log('💬 No chat data found, starting fresh');
         setMessages([]);
       }
       
-      // Load project's canvas items
-      if (project.data?.canvasItems) {
+      // Load grid data (enhanced format first, then legacy)
+      if (project.gridData?.items) {
+        console.log('🎨 Loading enhanced grid data:', project.gridData.items.length, 'items');
+        setCanvasItems(project.gridData.items);
+        setEdges(project.gridData.edges || []);
+      } else if (project.data?.canvasItems) {
+        console.log('🎨 Loading legacy grid data:', project.data.canvasItems.length, 'items');
         setCanvasItems(project.data.canvasItems);
+        setEdges(project.data.edges || []);
+      } else if (project.data?.items) {
+        console.log('🎨 Loading legacy items data:', project.data.items.length, 'items');
+        setCanvasItems(project.data.items);
+        setEdges(project.data.edges || []);
       } else {
+        console.log('🎨 No grid data found, starting fresh');
         setCanvasItems([]);
+        setEdges([]);
       }
       
       // Close dropdown
       setProjectDropdownOpen(false);
+      
+      // Add confirmation message to chat
+      const chatMessagesCount = project.chatData?.messages?.length || project.data?.messages?.length || 0;
+      const gridItemsCount = project.gridData?.items?.length || project.data?.canvasItems?.length || project.data?.items?.length || 0;
+      
+      setMessages(prev => [...prev, {
+        id: generateId(),
+        role: 'assistant',
+        content: `✅ **Project Loaded: "${projectTitle}"**\n\n🔄 **Restoration Complete:**\n• 💬 **${chatMessagesCount} chat messages** restored\n• 🎨 **${gridItemsCount} canvas items** restored\n• 🔗 **All connections** maintained\n\n*You're now working in the "${projectTitle}" project. All your previous work has been restored.*`,
+        createdAt: new Date().toISOString()
+      }]);
+      
+      console.log('🎉 Project switch completed successfully!');
+      
     } catch (error) {
-      console.error('Error switching project:', error);
+      console.error('❌ Error switching project:', error);
+      
+      // Show error to user
+      setMessages(prev => [...prev, {
+        id: generateId(),
+        role: 'error',
+        content: `❌ **Failed to Load Project**\n\nError loading "${projectTitle}": ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the issue persists.`,
+        createdAt: new Date().toISOString()
+      }]);
+    }
+  }
+
+  // Auto-save current project when messages change (to prevent data loss)
+  async function autoSaveProject() {
+    // Only auto-save if we're in an existing project with content
+    if (!currentProjectId || !currentProjectTitle || messages.length === 0) return;
+    
+    try {
+      console.log('🔄 Auto-saving project:', currentProjectTitle);
+      
+      const gridData = { items: canvasItems || [], edges: edges || [] };
+      const filteredMessages = messages.filter(msg => 
+        !(msg.content.includes('Project Saved Successfully') || 
+          msg.content.includes('Auto-saved') ||
+          msg.content.includes('Project') && msg.content.includes('Loaded'))
+      );
+      
+      const chatData = { 
+        messages: filteredMessages,
+        topic: currentTopic ? { id: currentTopic.id, title: currentTopic.title } : null,
+        messageCount: filteredMessages.length
+      };
+      
+      // Update existing project silently
+      await fetch(`/api/social-twin/enhanced-projects/${currentProjectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+        body: JSON.stringify({ 
+          title: currentProjectTitle,
+          gridData,
+          chatData,
+          topicId: currentTopic?.id || null
+        })
+      });
+      
+      console.log('✅ Auto-save completed');
+    } catch (error) {
+      console.warn('Auto-save failed:', error);
     }
   }
 
@@ -813,6 +917,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [projectDropdownOpen]);
+
+  // Auto-save when messages change (debounced to avoid excessive API calls)
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      autoSaveProject();
+    }, 3000); // Auto-save 3 seconds after last message
+    
+    return () => clearTimeout(autoSaveTimer);
+  }, [messages, canvasItems, currentProjectId, currentProjectTitle]);
 
   // Load project from URL if projectId is provided
   useEffect(() => {
