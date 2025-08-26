@@ -56,6 +56,10 @@ export default function SocialNewsPanel() {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const touchStartX = React.useRef<number | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const modalRef = React.useRef<HTMLDivElement | null>(null);
+  const bookmarksRef = React.useRef<HTMLDivElement | null>(null);
+  const mainContentRef = React.useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = React.useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -242,8 +246,64 @@ export default function SocialNewsPanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [showModal, selectedIndex, filtered]);
 
+  // Focus trap & aria management for modals (article modal & bookmarks modal)
+  useEffect(() => {
+    const modalOpen = showModal || showBookmarks;
+    const mainEl = mainContentRef.current;
+
+    const lockBody = () => { try { document.body.style.overflow = 'hidden'; } catch {} };
+    const unlockBody = () => { try { document.body.style.overflow = ''; } catch {} };
+
+    if (modalOpen) {
+      // save last focused element
+      lastFocusedRef.current = document.activeElement as HTMLElement | null;
+      // set aria-hidden on main content
+      if (mainEl) mainEl.setAttribute('aria-hidden', 'true');
+      lockBody();
+
+      const container = showModal ? modalRef.current : bookmarksRef.current;
+      if (container) {
+        // focus first focusable
+        const focusable = Array.from(container.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+        if (focusable.length) focusable[0].focus();
+        else container.focus();
+      }
+
+      // trap Tab key
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab') return;
+        const container = showModal ? modalRef.current : bookmarksRef.current;
+        if (!container) return;
+        const focusable = Array.from(container.querySelectorAll<HTMLElement>('a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      };
+      window.addEventListener('keydown', onKey);
+
+      return () => {
+        window.removeEventListener('keydown', onKey);
+        if (mainEl) mainEl.removeAttribute('aria-hidden');
+        unlockBody();
+        // restore focus
+        try { lastFocusedRef.current?.focus(); } catch {}
+      };
+    }
+    return undefined;
+  }, [showModal, showBookmarks]);
+
   return (
-  <div className="h-full bg-black text-white flex flex-col" aria-live="polite">
+  <div ref={mainContentRef} className="h-full bg-black text-white flex flex-col" aria-live="polite">
       <div className="flex-shrink-0 p-4 border-b border-gray-800">
         <div className="max-w-[1100px] mx-auto flex items-center justify-between gap-4">
           <div>
@@ -407,7 +467,7 @@ export default function SocialNewsPanel() {
       {showBookmarks && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={()=>setShowBookmarks(false)} />
-          <div className="relative w-full sm:max-w-lg bg-black border border-gray-800 rounded-lg p-4">
+          <div ref={bookmarksRef} tabIndex={-1} className="relative w-full sm:max-w-lg bg-black border border-gray-800 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-lg font-semibold">Bookmarks</div>
               <div className="flex items-center gap-2">
@@ -441,7 +501,7 @@ export default function SocialNewsPanel() {
       {showModal && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80" onClick={()=>setShowModal(false)} />
-          <div role="dialog" aria-modal="true" className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-black border border-gray-800 rounded-lg p-6">
+          <div ref={modalRef} role="dialog" aria-modal="true" tabIndex={-1} className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-black border border-gray-800 rounded-lg p-6">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="text-xs text-gray-400">{selected.source_name || selected.source} • {new Date(selected.published_at).toLocaleString()}</div>
