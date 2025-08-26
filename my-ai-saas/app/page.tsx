@@ -61,7 +61,7 @@ export default function Home() {
           </Link>
           
           <Link 
-            href="/news" 
+            href="/social-twin" 
             className={`${inter.className} px-8 py-3 border border-white text-white font-semibold rounded-full hover:bg-white hover:text-black transition-colors duration-300 text-sm tracking-wide`}
           >
             News

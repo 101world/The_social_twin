@@ -7,7 +7,6 @@ import FolderModal from "@/components/FolderModal";
 import ProjectModal from "@/components/ProjectModal";
 import { Button } from "@/components/ui/button";
 import MessengerComponent from "@/components/SimpleMessengerComponent";
-import NewsComponent from "@/components/NewsComponent";
 import SocialNewsPanel from "@/components/SocialNewsPanel";
 
 // Utility function to safely get location origin

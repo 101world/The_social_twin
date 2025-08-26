@@ -1,4 +1,11 @@
 {
   "version": 2,
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/news",
+      "destination": "/social-twin",
+      "permanent": true
+    }
+  ]
 }
