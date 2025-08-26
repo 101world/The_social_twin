@@ -130,7 +130,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
         </div>
 
         <div className="p-3 md:p-5">
-          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-2 group-hover:text-orange-400 transition-colors">
+          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-2 group-hover:text-orange-400 transition-colors" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             {article.title}
           </h2>
 
@@ -184,7 +184,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
         
         {/* Content below thumbnail for docked layout */}
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold tracking-tight text-white text-sm md:text-base leading-snug mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors">
+          <h3 className="font-semibold tracking-tight text-white text-sm md:text-base leading-snug mb-2 line-clamp-2 group-hover:text-orange-400 transition-colors" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             {article.title}
           </h3>
           
@@ -235,7 +235,7 @@ const HeadlinesSection = ({ title, articles, layout = "default", onOpenArticle }
   return (
     <div className="mb-6 md:mb-8">
       <div className="flex items-center gap-2 mb-3 md:mb-4">
-        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{title}</h2>
         <div className="h-px bg-gray-800 flex-1"></div>
       </div>
       
@@ -259,7 +259,7 @@ const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { ti
   return (
     <section className="mb-6">
       <div className="flex items-center justify-between mb-3 md:mb-4">
-        <h2 className="text-xl md:text-2xl font-bold text-white">{title}</h2>
+        <h2 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{title}</h2>
       </div>
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
         <div className="flex gap-3 md:gap-4">
@@ -284,7 +284,7 @@ const ArticleModal = ({ article, onClose }: { article: NewsArticle | null; onClo
       <div className="relative w-full h-full md:h-[85vh] md:w-[min(100%,980px)] bg-black border border-gray-800 rounded-none md:rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-3 md:px-4 py-3 border-b border-gray-800 bg-black/80">
           <div className="min-w-0 pr-2">
-            <h3 className="text-white text-sm md:text-base font-semibold truncate">{article.title}</h3>
+            <h3 className="text-white text-sm md:text-base font-semibold truncate" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{article.title}</h3>
             <p className="text-xs text-gray-400 truncate">{article.source_name || article.source || 'Source'} • {new Date(article.published_at).toLocaleString()}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -439,6 +439,18 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
       <div className="h-full flex flex-col">
         {/* Toolbar: search + quick chips + region selects */}
         <div className="flex-shrink-0 p-3 md:p-4 border-b border-gray-800">
+              {/* ONE World News Header - only show in standalone mode */}
+          {!detectedSimple && (
+            <div className="mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                ONE World News
+              </h1>
+              <p className="text-gray-400 text-lg" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                Global News • Real Time • Trusted Sources
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 md:gap-3 flex-wrap">
             {/* Search */}
             <div className="relative flex-1 min-w-[220px]">
@@ -608,16 +620,19 @@ export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMod
             <div className="relative max-w-2xl mx-auto mt-1">
               <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
                 <div className="p-4 border-b border-gray-800">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-2">Search Results ({searchResults.length})</h3>
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>Search Results ({searchResults.length})</h3>
                 </div>
                 {searchResults.slice(0, 5).map(article => (
-                  <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0">
-                    <h4 className="font-medium text-white text-sm mb-1 line-clamp-2">{article.title}</h4>
+                  <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0" onClick={() => {
+                    setActiveArticle(article);
+                    setIsSearchOpen(false);
+                  }}>
+                    <h4 className="font-medium text-white text-sm mb-1 line-clamp-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{article.title}</h4>
                     <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
                   </div>
                 ))}
                 <div className="p-3 text-center border-t border-gray-800">
-                  <span className="text-xs text-gray-500">Powered by 101World</span>
+                  <span className="text-xs text-gray-500">Powered by ONE World News</span>
                 </div>
               </div>
             </div>
