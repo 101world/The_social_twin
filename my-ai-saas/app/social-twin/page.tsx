@@ -2480,6 +2480,41 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </button>
                 </div>
                 
+                {/* Save Project - Mobile Quick Access */}
+                <div className="space-y-2">
+                  <h3 className={`text-sm font-medium ${
+                    darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Quick Actions</h3>
+                  <button
+                    onClick={() => {
+                      setProjectModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">💾</span>
+                    <span>Save Project</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                    }`}
+                  >
+                    <span className="text-lg">⚙️</span>
+                    <span>Settings</span>
+                  </button>
+                </div>
+                
                 {/* Projects Quick Access */}
                 {projects.length > 0 && (
                   <div className="space-y-2">
@@ -2517,8 +2552,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - hidden completely on mobile, visible on desktop only */}
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile ? 'hidden' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+        {/* Top Navigation - COMPLETELY HIDDEN on mobile, visible on desktop only */}
+        {!isMobile && (
+          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
             <div className="flex gap-1">
         {[
           { id: 'chat', label: 'Chat', icon: '💬' },
@@ -2545,6 +2581,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             
             {/* Save Project moved to bottom next to More */}
           </div>
+        )}
 
         <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
           {/* Tab Content */}
