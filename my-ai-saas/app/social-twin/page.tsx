@@ -230,6 +230,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // AI thinking phrases for more engaging loading states
   const THINKING_PHRASES = [
     "Hmmm…",
+    "Ahh let's answer this…",
+    "Ok let me give a thought before I answer to you…",
     "Let me see…",
     "Okay… thinking…",
     "Well… that's interesting…",
@@ -419,6 +421,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   // Helper: format relative time like "3h ago"
   function formatRelativeTime(dateInput: string | number | Date | null | undefined): string {
     try {
@@ -641,6 +644,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           setShowSaveProject(false);
           setProjectModalOpen(false);
           
+          // Refresh projects list
+          loadProjects();
+          
           // Add success message to chat
           setMessages(prev => [...prev, {
             id: generateId(),
@@ -666,6 +672,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setCurrentProjectTitle(j.title || (title || currentProjectTitle || null));
       setShowSaveProject(false);
       setProjectModalOpen(false);
+      
+      // Refresh projects list
+      loadProjects();
     } catch (e:any) {
       console.error('Save project failed:', e);
       setMessages(prev => [...prev, {
@@ -706,6 +715,42 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setProjects([]);
     } finally {
       setProjectsLoading(false);
+    }
+  }
+
+  // Switch to a different project
+  async function switchToProject(projectId: string, projectTitle: string) {
+    try {
+      // Load the project data
+      const r = await fetch(`/api/social-twin/projects/${projectId}`, { 
+        headers: { 'X-User-Id': userId || '' } 
+      });
+      if (!r.ok) return;
+      
+      const project = await r.json();
+      
+      // Update current project info
+      setCurrentProjectId(projectId);
+      setCurrentProjectTitle(projectTitle);
+      
+      // Load project's chat messages
+      if (project.data?.messages) {
+        setMessages(project.data.messages);
+      } else {
+        setMessages([]);
+      }
+      
+      // Load project's canvas items
+      if (project.data?.canvasItems) {
+        setCanvasItems(project.data.canvasItems);
+      } else {
+        setCanvasItems([]);
+      }
+      
+      // Close dropdown
+      setProjectDropdownOpen(false);
+    } catch (error) {
+      console.error('Error switching project:', error);
     }
   }
 
@@ -751,6 +796,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         .catch(() => {});
     }
   }, [activeTab, userId]);
+
+  // Close project dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (projectDropdownOpen) {
+        const target = event.target as Element;
+        const dropdown = target.closest('[data-project-dropdown]');
+        if (!dropdown) {
+          setProjectDropdownOpen(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [projectDropdownOpen]);
 
   // Load project from URL if projectId is provided
   useEffect(() => {
@@ -4407,22 +4468,94 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           });
         }}
       />
-      {/* Save Project floating button (always visible when chat has content or grid has items) */}
+      {/* Project Management - Save Icon + Project Dropdown */}
       {!simpleMode && (messages.length > 0 || canvasItems.length > 0) ? (
-        <button
-          className={`fixed bottom-20 left-6 z-[10001] rounded-full px-4 py-2 text-sm shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'}`}
-          onClick={()=> setProjectModalOpen(true)}
-          title="Save both chat conversation and grid layout"
-        >
-          <span className="inline-flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="shrink-0">
+        <div className="fixed bottom-20 left-6 z-[10001] flex items-center gap-2">
+          {/* Save Project Icon */}
+          <button
+            className={`rounded-full p-3 shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'}`}
+            onClick={()=> setProjectModalOpen(true)}
+            title="Save Project"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className="shrink-0">
               <path d="M4 7a2 2 0 012-2h8l4 4v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.6" fill="none"/>
               <path d="M8 7h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
               <rect x="8" y="12" width="8" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6"/>
             </svg>
-            <span className="truncate max-w-[24ch]" title={currentProjectTitle || 'Save Project'}>{currentProjectTitle || 'Save Project'}</span>
-          </span>
-        </button>
+          </button>
+
+          {/* Project Dropdown */}
+          <div className="relative" data-project-dropdown>
+            <button
+              className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm shadow-lg transition-all duration-200 hover:scale-105 min-w-[140px] ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white' : 'bg-white hover:bg-neutral-50 text-neutral-800 shadow-neutral-200 border border-neutral-200'}`}
+              onClick={() => {
+                setProjectDropdownOpen(!projectDropdownOpen);
+                if (!projectDropdownOpen) loadProjects();
+              }}
+              title="Switch Project"
+            >
+              <span className="truncate flex-1 text-left">
+                {currentProjectTitle || 'New Project'}
+              </span>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                width="16" 
+                height="16" 
+                fill="none"
+                className={`shrink-0 transition-transform duration-200 ${projectDropdownOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Dropdown Menu */}
+            {projectDropdownOpen && (
+              <div className={`absolute bottom-full left-0 mb-2 w-72 rounded-xl border shadow-xl z-[10002] max-h-80 overflow-y-auto ${darkMode ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-neutral-200'}`}>
+                {/* New Project Option */}
+                <button
+                  className={`w-full px-4 py-3 text-left text-sm transition-colors border-b ${darkMode ? 'hover:bg-neutral-700 border-neutral-600' : 'hover:bg-neutral-50 border-neutral-200'}`}
+                  onClick={() => {
+                    setCurrentProjectId(null);
+                    setCurrentProjectTitle(null);
+                    setMessages([]);
+                    setCanvasItems([]);
+                    setProjectDropdownOpen(false);
+                  }}
+                >
+                  <div className="font-medium">✨ New Project</div>
+                  <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    Start fresh with empty chat and canvas
+                  </div>
+                </button>
+
+                {/* Existing Projects */}
+                {projectsLoading ? (
+                  <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    Loading projects...
+                  </div>
+                ) : projects.length > 0 ? (
+                  projects.map((project) => (
+                    <button
+                      key={project.id}
+                      className={`w-full px-4 py-3 text-left text-sm transition-colors ${currentProjectId === project.id ? (darkMode ? 'bg-blue-900/50' : 'bg-blue-50') : (darkMode ? 'hover:bg-neutral-700' : 'hover:bg-neutral-50')}`}
+                      onClick={() => switchToProject(project.id, project.title)}
+                    >
+                      <div className="font-medium truncate">{project.title}</div>
+                      <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                        {new Date(project.updated_at).toLocaleDateString()}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                    No saved projects yet
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       ) : null}
       <ProjectModal
         isOpen={projectModalOpen}
