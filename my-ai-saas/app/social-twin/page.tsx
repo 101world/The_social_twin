@@ -2555,17 +2555,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
-                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                        <div className="rounded-lg border p-2">
-                          <textarea
-                            value={input}
-                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                            placeholder=""
-                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
-                          />
+                      // Remove middle prompt box on mobile
+                      isMobile ? null : (
+                        <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
+                          <div className="rounded-lg border p-2">
+                            <textarea
+                              value={input}
+                              onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
+                              placeholder=""
+                              className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
+                              onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )
                     ) : 'Start by entering a prompt below.'}
                   </div>
                 ) : (
@@ -3773,19 +3776,35 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     disabled={isGeneratingBatch}
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
                     {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${canAffordGeneration && input.trim() ? 'bg-gradient-to-r from-cyan-400 to-teal-500 hover:from-cyan-500 hover:to-teal-600 shadow-lg shadow-cyan-500/25' : 'cursor-not-allowed opacity-50 bg-gray-400'}`}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
                       title={canAffordGeneration ? `Send to Atom AI` : `Need ${generationCost} credits`}
                       aria-label="Send to Atom AI"
                     >
                       {/* Clean Send Arrow SVG Icon */}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
-                        <path d="M22 2L11 13" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path 
+                          d="M22 2L11 13" 
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
+                        <path 
+                          d="M22 2L15 22L11 13L2 9L22 2Z" 
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
                       </svg>
                     </button>
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
@@ -3865,7 +3884,32 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Bottom row: Generated Bin Button - single button now */}
+                    {/* Bottom row: Atom AI Toggle + Generated Bin Button */}
+                    <button 
+                      title="Toggle AI Controls" 
+                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      }`}
+                    >
+                      {/* Atom SVG Icon - Original Size */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        {/* Atom nucleus */}
+                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        
+                        {/* Electron orbits */}
+                        <ellipse cx="12" cy="12" rx="6" ry="2" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
+                        <ellipse cx="12" cy="12" rx="2" ry="6" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" className="transition-colors"/>
+                        <ellipse cx="12" cy="12" rx="4.5" ry="4.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1" fill="none" transform="rotate(45 12 12)" className="transition-colors"/>
+                        
+                        {/* Electrons */}
+                        <circle cx="18" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="6" cy="12" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="6" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="18" r="1" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                      </svg>
+                    </button>
+                    {/* Generated Bin button */}
                     <button
                       onClick={() => setShowBin(true)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
@@ -3878,157 +3922,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
                       </svg>
                     </button>
-                    
-                    {/* Empty space to maintain grid layout */}
-                    <div></div>
                   </div>
-                  
-                  {/* Beautiful Atom AI Toggle - Full Width Descriptive Button */}
-                  <button 
-                    onClick={() => setModeRowExpanded(!modeRowExpanded)}
-                    className={`${isMobile ? 'mx-3 mb-3' : 'mt-3'} group relative overflow-hidden rounded-xl transition-all duration-300 ${
-                      modeRowExpanded
-                        ? 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/20'
-                        : `border-2 transition-all duration-300 ${
-                            darkMode 
-                              ? 'border-neutral-700 hover:border-cyan-500/30 bg-neutral-800/50 hover:bg-neutral-800/80' 
-                              : 'border-gray-200 hover:border-cyan-400/40 bg-gray-50 hover:bg-gray-100'
-                          }`
-                    }`}
-                  >
-                    {/* Background glow effect when active */}
-                    {modeRowExpanded && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 animate-pulse" />
-                    )}
-                    
-                    <div className="relative flex items-center gap-4 p-4">
-                      {/* Enhanced Atom Icon */}
-                      <div className={`relative ${modeRowExpanded ? 'animate-pulse' : ''}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" className="transition-all duration-300">
-                          {/* Atom nucleus with glow */}
-                          <circle 
-                            cx="12" 
-                            cy="12" 
-                            r="2" 
-                            fill={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#94a3b8' : '#64748b')} 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 8px rgba(6,182,212,0.8))' } : {}}
-                          />
-                          
-                          {/* Electron orbits with enhanced styling */}
-                          <ellipse 
-                            cx="12" 
-                            cy="12" 
-                            rx="8" 
-                            ry="3" 
-                            stroke={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#64748b' : '#94a3b8')} 
-                            strokeWidth="1.5" 
-                            fill="none" 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 4px rgba(6,182,212,0.5))' } : {}}
-                          />
-                          <ellipse 
-                            cx="12" 
-                            cy="12" 
-                            rx="3" 
-                            ry="8" 
-                            stroke={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#64748b' : '#94a3b8')} 
-                            strokeWidth="1.5" 
-                            fill="none" 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 4px rgba(6,182,212,0.5))' } : {}}
-                          />
-                          <ellipse 
-                            cx="12" 
-                            cy="12" 
-                            rx="6" 
-                            ry="6" 
-                            stroke={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#64748b' : '#94a3b8')} 
-                            strokeWidth="1.5" 
-                            fill="none" 
-                            transform="rotate(45 12 12)" 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 4px rgba(6,182,212,0.5))' } : {}}
-                          />
-                          
-                          {/* Animated electrons */}
-                          <circle 
-                            cx="20" 
-                            cy="12" 
-                            r="1.5" 
-                            fill={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#94a3b8' : '#64748b')} 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 6px rgba(6,182,212,0.8))' } : {}}
-                          />
-                          <circle 
-                            cx="4" 
-                            cy="12" 
-                            r="1.5" 
-                            fill={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#94a3b8' : '#64748b')} 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 6px rgba(6,182,212,0.8))' } : {}}
-                          />
-                          <circle 
-                            cx="12" 
-                            cy="4" 
-                            r="1.5" 
-                            fill={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#94a3b8' : '#64748b')} 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 6px rgba(6,182,212,0.8))' } : {}}
-                          />
-                          <circle 
-                            cx="12" 
-                            cy="20" 
-                            r="1.5" 
-                            fill={modeRowExpanded ? 'rgb(6,182,212)' : (darkMode ? '#94a3b8' : '#64748b')} 
-                            className="transition-all duration-300"
-                            style={modeRowExpanded ? { filter: 'drop-shadow(0 0 6px rgba(6,182,212,0.8))' } : {}}
-                          />
-                        </svg>
-                      </div>
-                      
-                      {/* Descriptive Text */}
-                      <div className="flex-1 text-left">
-                        <div className={`font-semibold text-sm ${
-                          modeRowExpanded 
-                            ? 'text-cyan-400' 
-                            : (darkMode ? 'text-neutral-200' : 'text-gray-800')
-                        } transition-colors duration-300`}>
-                          Atom AI Controls
-                        </div>
-                        <div className={`text-xs mt-0.5 ${
-                          modeRowExpanded 
-                            ? 'text-cyan-300/80' 
-                            : (darkMode ? 'text-neutral-400' : 'text-gray-600')
-                        } transition-colors duration-300`}>
-                          {modeRowExpanded ? 'Advanced settings expanded' : 'Tap to access AI settings & modes'}
-                        </div>
-                      </div>
-                      
-                      {/* Expand/Collapse Icon */}
-                      <div className={`transition-transform duration-300 ${modeRowExpanded ? 'rotate-180' : ''}`}>
-                        <svg 
-                          width="16" 
-                          height="16" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          className={`transition-colors duration-300 ${
-                            modeRowExpanded 
-                              ? 'text-cyan-400' 
-                              : (darkMode ? 'text-neutral-400' : 'text-gray-500')
-                          }`}
-                        >
-                          <path 
-                            d="M6 9L12 15L18 9" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                  </button>
                 </div>
                 {attached ? (
                   <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
