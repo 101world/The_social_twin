@@ -72,9 +72,10 @@ const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: {
 // Build a resilient image URL (placeholder if missing) like the standalone News page
 function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
   if (article.image_url) {
-    if (size === 'large') return opt(article.image_url, 480, 270, 78);
-    if (size === 'small') return opt(article.image_url, 90, 60, 78);
-    return opt(article.image_url, 300, 169, 78);
+  // Request larger images with higher quality for full-width display
+  if (size === 'large') return opt(article.image_url, 900, 900, 92);
+  if (size === 'small') return opt(article.image_url, 180, 120, 90);
+  return opt(article.image_url, 600, 360, 90);
   }
   const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
   const colorIndex = article.title.length % fallbackColors.length;
@@ -82,9 +83,9 @@ function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large
   const maxLen = size === 'small' ? 30 : size === 'large' ? 60 : 40;
   const encodedTitle = encodeURIComponent(article.title.slice(0, maxLen) || 'News');
   // 25% smaller fallbacks
-  if (size === 'large') return `https://via.placeholder.com/480x270/${color}/ffffff?text=${encodedTitle}`;
-  if (size === 'small') return `https://via.placeholder.com/90x60/${color}/ffffff?text=${encodedTitle}`;
-  return `https://via.placeholder.com/300x169/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'large') return `https://via.placeholder.com/900x900/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'small') return `https://via.placeholder.com/180x120/${color}/ffffff?text=${encodedTitle}`;
+  return `https://via.placeholder.com/600x360/${color}/ffffff?text=${encodedTitle}`;
 }
 
 // Modern news card with mobile-optimized smaller thumbnails and high quality images
@@ -113,7 +114,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
     // Breaking/large card — remove border and make image more square (1:1-ish) for stronger visuals
     return (
       <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 relative">
-        <div className="aspect-square md:aspect-[4/3] h-44 md:h-64 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+        <div className="aspect-square md:aspect-[4/3] h-56 md:h-80 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'large')} 
             alt={article.title}
@@ -121,7 +122,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/480/480?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/900/900?random=${article.id || Math.random()}`;
             }}
           />
           <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -167,7 +168,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
     <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
       <div className="flex flex-col gap-3 p-3 md:p-4">
         {/* Thumbnail moved to top for docked layout */}
-  <div className="w-full h-20 md:h-20 lg:h-28 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+  <div className="w-full h-28 md:h-32 lg:h-44 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
           <img 
             src={getCardImageUrl(article, 'small')} 
             alt={article.title}
@@ -175,7 +176,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = `https://picsum.photos/90/60?random=${article.id || Math.random()}`;
+              target.src = `https://picsum.photos/180/120?random=${article.id || Math.random()}`;
             }}
           />
         </div>
@@ -262,8 +263,8 @@ const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { ti
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
         <div className="flex gap-3 md:gap-4">
           {articles.map(a => (
-            // Reduced card width for better density on desktop
-            <div key={a.id} className={large ? 'min-w-[140px] max-w-[140px]' : 'min-w-[120px] max-w-[120px]'}>
+            // Narrower card width for denser, less-stretched thumbnails
+            <div key={a.id} className={large ? 'min-w-[140px] max-w-[140px]' : 'min-w-[110px] max-w-[110px]'}>
               <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
             </div>
           ))}
