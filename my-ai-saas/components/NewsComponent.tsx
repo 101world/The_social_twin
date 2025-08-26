@@ -164,7 +164,7 @@ const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { articl
   }
 
   return (
-    <TiltCard className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-orange-500">
+    <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
       <div className="flex flex-col gap-3 p-3 md:p-4">
         {/* Thumbnail moved to top for docked layout */}
   <div className="w-full h-20 md:h-20 lg:h-28 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
