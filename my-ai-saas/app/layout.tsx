@@ -2,8 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, Geist_Mono } from "next/font/google";
 
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import ConditionalNavigation from "@/components/ConditionalNavigation";
 import { CreditProvider } from "@/lib/credits-context";
 import "./globals.css";
 
@@ -40,17 +39,8 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
           <CreditProvider>
-            {/* Desktop: Sidebar for all pages except home */}
-            <div className="hidden md:block">
-              <Sidebar />
-            </div>
-            {/* Mobile: Navbar */}
-            <div className="md:hidden">
-              <Navbar />
-            </div>
-            <main className="md:ml-16 min-h-screen">
-              {children}
-            </main>
+            <ConditionalNavigation />
+            {children}
           </CreditProvider>
         </body>
       </html>
