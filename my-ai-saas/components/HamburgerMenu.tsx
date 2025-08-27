@@ -19,6 +19,11 @@ const HamburgerMenu = () => {
   const isTwin = pathname?.startsWith('/social-twin');
   const isDashboard = pathname?.startsWith('/dashboard');
 
+  // Don't render hamburger menu on home page
+  if (pathname === '/') {
+    return null;
+  }
+
   // Load credits
   useEffect(() => {
     let ignore = false;
