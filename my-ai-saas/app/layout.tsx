@@ -40,10 +40,11 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
           <CreditProvider>
-            {/* Desktop: Sidebar, Mobile: Navbar */}
+            {/* Desktop: Sidebar for all pages except home */}
             <div className="hidden md:block">
               <Sidebar />
             </div>
+            {/* Mobile: Navbar */}
             <div className="md:hidden">
               <Navbar />
             </div>

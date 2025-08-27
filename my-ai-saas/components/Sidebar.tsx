@@ -26,7 +26,12 @@ interface Project {
   created_at?: string;
 }
 
-const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onToggle?: () => void;
+}
+
+const Sidebar = ({ isOpen = true, onToggle }: SidebarProps = {}) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
@@ -35,6 +40,11 @@ const Sidebar = () => {
   const [simple, setSimple] = useState<boolean>(true);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Don't render sidebar on home page
+  if (pathname === '/') {
+    return null;
+  }
 
   // Load credits
   useEffect(() => {
@@ -150,7 +160,9 @@ const Sidebar = () => {
   return (
     <>
       {/* Permanent Thin Left Sidebar - Desktop Only */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full w-16 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] flex-col items-center py-4">
+      <div className={`fixed left-0 top-0 h-full w-16 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] flex-col items-center py-4 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      } transition-transform duration-300 ease-in-out ${isOpen ? 'flex' : 'hidden md:flex'}`}>
         {/* Navigation Icons */}
         <nav className="flex-1 flex flex-col items-center space-y-2">
           {menuItems.map((item) => {
