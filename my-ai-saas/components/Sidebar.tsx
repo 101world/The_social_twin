@@ -6,8 +6,6 @@ import { useRouter, usePathname } from 'next/navigation';
 import { SignedOut, SignInButton, SignedIn, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import {
-  Menu,
-  X,
   Home,
   MessageCircle,
   LayoutDashboard,
@@ -15,7 +13,10 @@ import {
   FolderOpen,
   Plus,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Zap,
+  CreditCard,
+  Settings
 } from 'lucide-react';
 
 interface Project {
@@ -26,12 +27,12 @@ interface Project {
 }
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
+  const [simple, setSimple] = useState<boolean>(true);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -72,46 +73,68 @@ const Sidebar = () => {
     loadProjects();
   }, []);
 
-  // Close menu on Escape key
+  // Sync Simple/Pro with Social Twin page
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
-        setShowProjectsMenu(false);
-      }
+    if (!pathname?.startsWith('/social-twin')) return;
+    const update = () => {
+      try {
+        const g: any = (window as any).__getSimpleMode;
+        if (typeof g === 'function') setSimple(!!g());
+        else setSimple(localStorage.getItem('social_twin_simple') === '0' ? false : true);
+      } catch {}
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen]);
+    update();
+    const onFocus = () => update();
+    window.addEventListener('focus', onFocus);
+    return () => { window.removeEventListener('focus', onFocus); };
+  }, [pathname]);
+
+  const toggleSimple = () => {
+    const next = !simple;
+    setSimple(next);
+    try {
+      localStorage.setItem('social_twin_simple', next ? '1' : '0');
+      const f: any = (window as any).__setSimpleMode;
+      if (typeof f === 'function') f(next);
+    } catch {}
+  };
 
   const menuItems = [
+    {
+      href: '/',
+      label: 'Home',
+      icon: Home,
+      action: () => router.push('/')
+    },
     {
       href: '/social-twin',
       label: 'Chat',
       icon: MessageCircle,
-      action: () => {
-        setIsOpen(false);
-        // Navigate to social-twin with chat tab
-        router.push('/social-twin?tab=chat');
-      }
+      action: () => router.push('/social-twin?tab=chat')
     },
     {
       href: '/user',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      action: () => {
-        setIsOpen(false);
-        router.push('/user?tab=overview');
-      }
+      action: () => router.push('/user?tab=overview')
     },
     {
       href: '/news',
       label: 'News',
       icon: Newspaper,
-      action: () => {
-        setIsOpen(false);
-        router.push('/news');
-      }
+      action: () => router.push('/news')
+    },
+    {
+      href: '/one',
+      label: 'Code of ONE',
+      icon: Zap,
+      action: () => router.push('/one')
+    },
+    {
+      href: '/subscription',
+      label: 'Subscription',
+      icon: CreditCard,
+      action: () => router.push('/subscription')
     },
   ];
 
@@ -120,25 +143,142 @@ const Sidebar = () => {
   };
 
   const handleNewProject = () => {
-    setIsOpen(false);
     setShowProjectsMenu(false);
     router.push('/social-twin?new=true');
   };
 
   return (
     <>
-      {/* Thin Left Border - Desktop Only */}
-      <div className="hidden md:block fixed left-0 top-0 h-full w-1 bg-gradient-to-b from-cyan-400/50 via-teal-400/50 to-cyan-400/50 z-[10000]" />
+      {/* Permanent Thin Left Sidebar - Desktop Only */}
+      <div className="hidden md:flex fixed left-0 top-0 h-full w-16 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] flex-col items-center py-4">
+        {/* Navigation Icons */}
+        <nav className="flex-1 flex flex-col items-center space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href ||
+              (item.href === '/user' && pathname === '/user') ||
+              (item.href === '/social-twin' && pathname?.startsWith('/social-twin'));
+            return (
+              <button
+                key={item.href}
+                onClick={item.action}
+                className={`group relative p-3 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+                    : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
+                }`}
+                title={item.label}
+              >
+                <Icon className="w-5 h-5" />
+                {/* Tooltip */}
+                <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  <div className="bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/20">
+                    {item.label}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
 
-      {/* Sidebar Toggle Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="hidden md:flex fixed left-2 top-4 z-[10001] p-2 rounded-lg transition-all duration-200 backdrop-blur-sm bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30 hover:text-blue-400"
-        aria-label={isOpen ? "Close menu" : "Open menu"}
-        aria-expanded={isOpen}
-      >
-        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+          {/* Projects Section */}
+          <div className="relative">
+            <button
+              onClick={handleProjectsClick}
+              className={`group relative p-3 rounded-lg transition-all duration-200 ${
+                pathname?.startsWith('/social-twin') && pathname?.includes('projectId')
+                  ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+                  : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
+              }`}
+              title="Projects"
+            >
+              <FolderOpen className="w-5 h-5" />
+              {/* Tooltip */}
+              <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                <div className="bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/20">
+                  Projects
+                </div>
+              </div>
+            </button>
+
+            {/* Projects Drop-up Menu */}
+            {showProjectsMenu && (
+              <div className="absolute left-full ml-2 top-0 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[10002] min-w-48">
+                <div className="p-3">
+                  {/* New Project Button */}
+                  <button
+                    onClick={handleNewProject}
+                    className="flex items-center space-x-2 w-full px-3 py-2 rounded-lg transition-all duration-200 hover:bg-green-500/20 hover:text-green-400 text-white text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Project</span>
+                  </button>
+
+                  {/* Projects List */}
+                  {projects.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {projects.slice(0, 5).map((project) => (
+                        <Link
+                          key={project.id}
+                          href={`/social-twin?projectId=${encodeURIComponent(project.id)}`}
+                          onClick={() => setShowProjectsMenu(false)}
+                          className="block px-3 py-2 rounded-lg transition-all duration-200 hover:bg-blue-500/20 hover:text-blue-400 text-white text-sm truncate"
+                        >
+                          {project.title || 'Untitled Project'}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </nav>
+
+        {/* Bottom Section */}
+        <div className="flex flex-col items-center space-y-2">
+          {/* Turbo Mode Toggle - Only show on Social Twin pages */}
+          {pathname?.startsWith('/social-twin') && (
+            <button
+              onClick={toggleSimple}
+              className={`group relative p-2 rounded-lg transition-all duration-200 ${
+                simple
+                  ? 'bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30'
+                  : 'bg-blue-500/20 border border-blue-400/30 text-blue-400 hover:bg-blue-500/30'
+              }`}
+              title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              {/* Tooltip */}
+              <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                <div className="bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap border border-white/20">
+                  {simple ? 'Turbo Mode' : 'Pro Mode'}
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* User Account */}
+          <div className="group relative">
+            <SignedIn>
+              <div className="scale-90">
+                <UserButton />
+              </div>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton>
+                <Button size="sm" className="text-xs px-2 py-1 h-8">Sign In</Button>
+              </SignInButton>
+            </SignedOut>
+          </div>
+        </div>
+      </div>
 
       {/* Top Right Corner - Credits Display */}
       <div className="fixed top-4 right-4 z-[99999] flex items-center space-x-3">
@@ -158,151 +298,12 @@ const Sidebar = () => {
         </SignedIn>
       </div>
 
-      {/* Sidebar Panel */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="hidden md:block fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000]"
-            onClick={() => {
-              setIsOpen(false);
-              setShowProjectsMenu(false);
-            }}
-          />
-
-          {/* Sidebar */}
-          <div className="hidden md:block fixed left-0 top-0 h-full w-64 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] transform transition-transform duration-300 ease-in-out">
-            <div className="p-6 pt-16">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-white">Navigation</h2>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setShowProjectsMenu(false);
-                  }}
-                  className="p-1 rounded-md hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Navigation Items */}
-              <nav className="space-y-2 mb-6">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href ||
-                    (item.href === '/user' && pathname === '/user') ||
-                    (item.href === '/social-twin' && pathname?.startsWith('/social-twin'));
-                  return (
-                    <button
-                      key={item.href}
-                      onClick={item.action}
-                      className={`flex items-center space-x-3 w-full px-3 py-3 rounded-lg transition-all duration-200 group text-left ${
-                        isActive
-                          ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-                          : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
-                      }`}
-                    >
-                      <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'
-                      }`} />
-                      <span className={`text-sm font-medium transition-colors duration-200 ${
-                        isActive ? 'text-blue-400' : 'text-white group-hover:text-blue-400'
-                      }`}>
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {/* Projects Section */}
-                <div className="relative">
-                  <button
-                    onClick={handleProjectsClick}
-                    className={`flex items-center justify-between w-full px-3 py-3 rounded-lg transition-all duration-200 group text-left ${
-                      pathname?.startsWith('/social-twin') && pathname?.includes('projectId')
-                        ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-                        : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <FolderOpen className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        pathname?.startsWith('/social-twin') && pathname?.includes('projectId')
-                          ? 'text-blue-400'
-                          : 'text-gray-400 group-hover:text-blue-400'
-                      }`} />
-                      <span className={`text-sm font-medium transition-colors duration-200 ${
-                        pathname?.startsWith('/social-twin') && pathname?.includes('projectId')
-                          ? 'text-blue-400'
-                          : 'text-white group-hover:text-blue-400'
-                      }`}>
-                        Projects
-                      </span>
-                    </div>
-                    {showProjectsMenu ? (
-                      <ChevronUp className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                    )}
-                  </button>
-
-                  {/* Projects Drop-up Menu */}
-                  {showProjectsMenu && (
-                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[10002]">
-                      <div className="p-3">
-                        {/* New Project Button */}
-                        <button
-                          onClick={handleNewProject}
-                          className="flex items-center space-x-2 w-full px-3 py-2 rounded-lg transition-all duration-200 hover:bg-green-500/20 hover:text-green-400 text-white text-sm"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>New Project</span>
-                        </button>
-
-                        {/* Projects List */}
-                        {projects.length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {projects.slice(0, 5).map((project) => (
-                              <Link
-                                key={project.id}
-                                href={`/social-twin?projectId=${encodeURIComponent(project.id)}`}
-                                onClick={() => {
-                                  setIsOpen(false);
-                                  setShowProjectsMenu(false);
-                                }}
-                                className="block px-3 py-2 rounded-lg transition-all duration-200 hover:bg-blue-500/20 hover:text-blue-400 text-white text-sm truncate"
-                              >
-                                {project.title || 'Untitled Project'}
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </nav>
-
-              {/* Auth Section */}
-              <div className="border-t border-white/20 pt-4">
-                <SignedIn>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Account</span>
-                    <UserButton />
-                  </div>
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton>
-                    <Button className="w-full bg-white text-black hover:bg-gray-200">
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                </SignedOut>
-              </div>
-            </div>
-          </div>
-        </>
+      {/* Click outside to close projects menu */}
+      {showProjectsMenu && (
+        <div
+          className="fixed inset-0 z-[10000]"
+          onClick={() => setShowProjectsMenu(false)}
+        />
       )}
     </>
   );

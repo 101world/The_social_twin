@@ -47,7 +47,9 @@ export default function RootLayout({
             <div className="md:hidden">
               <Navbar />
             </div>
-            {children}
+            <main className="md:ml-16">
+              {children}
+            </main>
           </CreditProvider>
         </body>
       </html>
