@@ -2414,6 +2414,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         // Set keyboard offset for mobile positioning
         docEl.style.setProperty('--kb-offset', `${isKeyboardOpen ? keyboardHeight : 0}px`);
         
+        // Force canvas background update for immediate responsiveness
+        if (gridSectionRef.current) {
+          const canvasHeight = isKeyboardOpen 
+            ? `calc(var(--vh, 1vh) * 100 - ${keyboardHeight}px)` 
+            : 'calc(var(--vh, 1vh) * 100)';
+          gridSectionRef.current.style.height = canvasHeight;
+          gridSectionRef.current.style.transition = 'height 0.2s ease-out';
+        }
+        
         // Adjust composer positioning for mobile with smoother transitions
         if (composerRef.current) {
           if (isKeyboardOpen) {
@@ -2428,6 +2437,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         // Desktop behavior
         const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
         docEl.style.setProperty('--kb-offset', `${kb}px`);
+        
+        // Reset canvas background for desktop
+        if (gridSectionRef.current) {
+          gridSectionRef.current.style.height = '100%';
+          gridSectionRef.current.style.transition = '';
+        }
       }
     };
     const updateComposerH = () => {
@@ -5121,7 +5136,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   <section
     ref={gridSectionRef as any}
   className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-white'}`}
-        style={{ cursor: gridEnabled ? 'grab' : undefined, overflow: 'hidden' }}
+        style={{
+          cursor: gridEnabled ? 'grab' : undefined,
+          overflow: 'hidden',
+          // Dynamic height for mobile keyboard responsiveness
+          height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100%',
+          // Ensure background stays responsive during keyboard transitions
+          transition: isMobile ? 'height 0.3s ease-in-out' : undefined
+        }}
         onDragOver={(e)=>{ e.preventDefault(); }}
         onDrop={(e)=>{
           e.preventDefault();
