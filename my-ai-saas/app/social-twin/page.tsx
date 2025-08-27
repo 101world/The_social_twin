@@ -141,6 +141,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [input, setInput] = useState<string>("");
   const [mode, setMode] = useState<Mode>('text');
   const [chatMode, setChatMode] = useState<'normal' | 'prompt' | 'creative' | 'think'>('normal');
+  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher'>('creative');
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
   const [feedCursor, setFeedCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -1980,9 +1981,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 content: msg.content
               }));
 
+            // Add personality-based system prompt for vision mode
+            const personalityPrompts = {
+              creative: "You are a creative AI assistant focused on artistic expression, innovation, and imaginative solutions. Analyze images/documents with a creative perspective, offering artistic insights and imaginative interpretations.",
+              news: "You are a professional news analyst and journalist. Analyze images/documents with journalistic integrity, focusing on factual observations and news-worthy elements.",
+              police: "You are a professional law enforcement expert. Analyze images/documents from a security and legal perspective, noting any relevant details for public safety or legal procedures.",
+              lawyer: "You are a professional legal expert. Analyze images/documents for legal relevance, potential evidence, or legal implications. Always emphasize consulting qualified legal professionals.",
+              accountant: "You are a professional financial and accounting expert. Analyze images/documents for financial data, accounting records, or business-related information.",
+              teacher: "You are an experienced educator. Analyze images/documents from an educational perspective, explaining what you see and providing learning opportunities."
+            };
+
+            // Create enhanced message with personality context
+            const enhancedMessage = `${personalityPrompts[aiPersonality]}\n\nUser's message: ${trimmed}`;
+
             const response = await handleCreditDeductingAPI(() => 
               cloudflareAI.sendMessageWithImage(
-                trimmed,
+                enhancedMessage,
                 attached.dataUrl, // Base64 image data
                 conversationHistory,
                 userId || 'anonymous'
@@ -2002,7 +2016,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             setAttached(null);
             return;
           } else {
-            // Text-only conversation
+            // Text-only conversation with AI personality
             const conversationHistory = messages
               .filter(msg => msg.role === 'user' || msg.role === 'assistant')
               .filter(msg => !msg.loading) // Exclude loading messages
@@ -2011,10 +2025,26 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 content: msg.content
               }));
 
+            // Add personality-based system prompt
+            const personalityPrompts = {
+              creative: "You are a creative AI assistant focused on artistic expression, innovation, and imaginative solutions. Respond with creativity, inspiration, and out-of-the-box thinking.",
+              news: "You are a professional news analyst and journalist. Provide factual, well-researched responses with journalistic integrity. Focus on current events, analysis, and objective reporting.",
+              police: "You are a professional law enforcement expert. Provide responses related to legal procedures, public safety, criminal justice, and law enforcement best practices. Always emphasize legal and ethical conduct.",
+              lawyer: "You are a professional legal expert. Provide responses about legal matters, procedures, and advice. Always emphasize the importance of consulting with qualified legal professionals for specific legal issues.",
+              accountant: "You are a professional financial and accounting expert. Focus on financial planning, accounting principles, tax matters, and business finance. Always recommend consulting certified professionals for specific financial advice.",
+              teacher: "You are an experienced educator. Provide clear, educational responses that help users learn and understand concepts. Break down complex topics into digestible parts and encourage learning."
+            };
+
+            // Prepend personality system message to conversation history
+            const enhancedHistory = [
+              { role: 'system' as const, content: personalityPrompts[aiPersonality] },
+              ...conversationHistory
+            ];
+
             const response = await handleCreditDeductingAPI(() => 
               cloudflareAI.sendMessage(
                 trimmed,
-                conversationHistory,
+                enhancedHistory as any,
                 chatMode,
                 userId || 'anonymous'
               )
@@ -2473,10 +2503,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Desktop: Empty div for spacing, Mobile: Hidden */}
           {!isMobile && <div></div>}
           
-          {/* Center: Atom title */}
-          <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
-            Atom
-          </h1>
+          {/* Center: AI Personality Dropdown (Chat tab) or Atom title (other tabs) */}
+          {activeTab === 'chat' ? (
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <select
+                value={aiPersonality}
+                onChange={(e) => setAiPersonality(e.target.value as any)}
+                className={`text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-md px-3 py-1 transition-colors ${
+                  darkMode 
+                    ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
+                    : 'bg-gray-100 text-black hover:bg-gray-200'
+                } focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+              >
+                <option value="creative">🎨 Creative</option>
+                <option value="news">📰 News</option>
+                <option value="police">👮 Police</option>
+                <option value="lawyer">⚖️ Lawyer</option>
+                <option value="accountant">📊 Accountant</option>
+                <option value="teacher">🎓 Teacher</option>
+              </select>
+            </div>
+          ) : (
+            <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
+              Atom
+            </h1>
+          )}
           
           {/* Right side: Credits */}
           <div className="flex items-center gap-2">
@@ -2761,7 +2812,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           >
                             {!isAssistantPlain && (
                               <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                                <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
+                                <span className="font-semibold">
+                                  {isUser ? (user?.fullName || 'You') : 
+                                    `${aiPersonality.charAt(0).toUpperCase() + aiPersonality.slice(1)} AI`
+                                  }
+                                </span>
+                                {!isUser && (
+                                  <span className="text-[10px] opacity-75">
+                                    {aiPersonality === 'creative' && '🎨'} 
+                                    {aiPersonality === 'news' && '📰'}
+                                    {aiPersonality === 'police' && '👮'}
+                                    {aiPersonality === 'lawyer' && '⚖️'}
+                                    {aiPersonality === 'accountant' && '📊'}
+                                    {aiPersonality === 'teacher' && '🎓'}
+                                  </span>
+                                )}
                               </div>
                             )}
                             <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>
