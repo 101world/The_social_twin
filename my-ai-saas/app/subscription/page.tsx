@@ -15,7 +15,7 @@ interface Plan {
 interface SubscriptionPlans {
   one_t: Plan;
   one_z: Plan;
-  one_pro: Plan;
+  one_p: Plan;
   one_max?: Plan;
 }
 
@@ -68,15 +68,20 @@ export default function SubscriptionPage() {
     async function loadUserInfo() {
       if (!userId) return;
       try {
-        const response = await fetch('/api/user/credits');
+        const response = await fetch('/api/users/credits');
         const data = await response.json();
         setUserInfo(data);
 
         // Load user balance for ONE MAX plan
-        const balanceResponse = await fetch('/api/user/balance');
-        if (balanceResponse.ok) {
-          const balanceData = await balanceResponse.json();
-          setUserBalance(balanceData);
+        if (data.isOneMaxUser) {
+          setUserBalance({
+            balance_usd: data.oneMaxBalance / 100, // Convert cents to dollars
+            balance_inr: (data.oneMaxBalance / 100) * 83, // Approximate INR conversion
+            minimum_balance_usd: 0,
+            needs_topup: data.oneMaxBalance < 500, // Low balance warning
+            total_spent_this_month_usd: 0,
+            generations_this_month: 0
+          });
         }
       } catch (error) {
         console.error('Failed to load user info:', error);
@@ -317,14 +322,26 @@ export default function SubscriptionPage() {
                   <p className="text-3xl font-bold text-cyan-400">
                     {userInfo.credits?.toLocaleString() || 0}
                   </p>
-                  <div className="mt-2 text-xs text-cyan-300/70">Available to use</div>
+                  <div className="mt-2 text-xs text-cyan-300/70">
+                    {userInfo.subscription_active ? 
+                      `Plan includes ${userInfo.plan_credits?.toLocaleString() || 0} credits/month` : 
+                      'Available to use'
+                    }
+                  </div>
                 </div>
                 <div className="bg-gradient-to-r from-teal-500/10 to-blue-500/10 rounded-2xl p-6 border border-teal-500/20">
                   <p className="text-sm text-teal-300 font-medium mb-2">Current Plan</p>
                   <p className="text-xl font-bold text-teal-400">
                     {userInfo.subscription_plan || 'No active subscription'}
                   </p>
-                  <div className="mt-2 text-xs text-teal-300/70">Subscription type</div>
+                  <div className="mt-2 text-xs text-teal-300/70">
+                    {userInfo.subscription_active ? 'Active subscription' : 'Inactive'}
+                    {userInfo.next_billing_at && (
+                      <div className="mt-1">
+                        Next billing: {new Date(userInfo.next_billing_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20">
                   <p className="text-sm text-blue-300 font-medium mb-2">Status</p>

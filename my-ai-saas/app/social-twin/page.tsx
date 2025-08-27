@@ -6513,20 +6513,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </aside>
       ) : null}
       {/* Quick access to Generated tab - only show if not already on generated tab */}
-      {activeTab !== 'generated' && binItems.length > 0 && (
-        <button
-          className={`fixed bottom-4 left-4 rounded-full p-3 shadow-lg transition-all hover:scale-105 ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white border border-neutral-200'}`}
-          onClick={() => setActiveTab('generated')}
-          title="View your generated content"
-        >
-          <span className="text-lg">🎨</span>
-          {binItems.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {binItems.length > 9 ? '9+' : binItems.length}
-            </span>
-          )}
-        </button>
-      )}
 
       {/* Legacy panel removed - now using tab interface */}
       {/* Legacy pinned grid removed */}

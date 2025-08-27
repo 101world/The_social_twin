@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { SignedOut, SignInButton, SignedIn, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Menu, X, Home, Users, CreditCard, Zap } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -15,6 +15,7 @@ const HamburgerMenu = () => {
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const [simple, setSimple] = useState<boolean>(true);
   const pathname = usePathname();
+  const router = useRouter();
   const isTwin = pathname?.startsWith('/social-twin');
   const isDashboard = pathname?.startsWith('/dashboard');
 
@@ -54,9 +55,16 @@ const HamburgerMenu = () => {
     return () => { window.removeEventListener('focus', onFocus); };
   }, [isTwin]);
 
-  const handleLinkClick = () => {
-    setIsOpen(false);
-  };
+  // Close menu on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
 
   const toggleSimple = () => {
     const next = !simple;
@@ -71,6 +79,7 @@ const HamburgerMenu = () => {
   const menuItems = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/social-twin', label: 'Social Twin', icon: Users },
+    { href: '/news', label: 'News', icon: () => <span className="text-lg">📰</span> },
     { href: '/subscription', label: 'Subscriptions', icon: CreditCard },
     { href: '/one', label: 'Code of ONE', icon: Zap },
     { href: '/explore', label: 'Explore', icon: () => <span className="text-lg">🔍</span> },
@@ -79,7 +88,7 @@ const HamburgerMenu = () => {
   return (
     <>
       {/* Top Right Corner - Credits and Turbo Mode */}
-      <div className="fixed top-4 right-4 z-[20000] flex items-center space-x-3">
+      <div className="fixed top-4 right-4 z-[99999] flex items-center space-x-3">
         {/* Turbo Mode Toggle - Only show on Social Twin pages */}
         {isTwin && (
           <button
@@ -87,7 +96,7 @@ const HamburgerMenu = () => {
             className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
               simple
                 ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
-                : 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-400 hover:bg-yellow-500/30'
+                : 'bg-blue-500/20 border border-blue-400/30 text-blue-400 hover:bg-blue-500/30'
             }`}
             title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
           >
@@ -120,67 +129,94 @@ const HamburgerMenu = () => {
       </div>
 
       {/* Hamburger Menu */}
-      <header className="fixed top-4 left-4 z-[20000]">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <button
-              className="p-2 rounded-lg bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40 transition-all duration-200 backdrop-blur-sm"
-              aria-label="Open menu"
+      <header className="fixed top-4 left-4 z-[99999]">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
+            isOpen
+              ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+              : 'bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30 hover:text-blue-400'
+          }`}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[20000]"
+              onClick={() => setIsOpen(false)}
+            />
+
+            {/* Menu Panel */}
+            <div
+              className="absolute top-12 left-0 w-64 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <Menu className="w-5 h-5" />
-            </button>
-          </DialogTrigger>
+              <div className="p-4">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white">Menu</h2>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1 rounded-md hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-          <DialogContent className="sm:max-w-md bg-black/95 border border-white/20 text-white backdrop-blur-xl">
-            <div className="flex flex-col space-y-4">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Menu</h2>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-md hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                {/* Navigation Items */}
+                <nav className="space-y-2 mb-4">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group w-full text-left ${
+                          isActive
+                            ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+                            : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
+                        }`}
+                      >
+                        <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
+                          isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'
+                        }`} />
+                        <span className={`text-sm font-medium transition-colors duration-200 ${
+                          isActive ? 'text-blue-400' : 'text-white group-hover:text-blue-400'
+                        }`}>
+                          {item.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </nav>
 
-              {/* Navigation Items */}
-              <nav className="space-y-2">
-                {menuItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={handleLinkClick}
-                      className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors group"
-                    >
-                      <Icon className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              {/* Auth Section */}
-              <div className="border-t border-white/20 pt-4">
-                <SignedIn>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Account</span>
-                    <UserButton />
-                  </div>
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton>
-                    <Button className="w-full bg-white text-black hover:bg-gray-200">
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                </SignedOut>
+                {/* Auth Section */}
+                <div className="border-t border-white/20 pt-4">
+                  <SignedIn>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-400">Account</span>
+                      <UserButton />
+                    </div>
+                  </SignedIn>
+                  <SignedOut>
+                    <SignInButton>
+                      <Button className="w-full bg-white text-black hover:bg-gray-200">
+                        Sign In
+                      </Button>
+                    </SignInButton>
+                  </SignedOut>
+                </div>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </>
+        )}
       </header>
     </>
   );
