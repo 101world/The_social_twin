@@ -2576,9 +2576,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className={`flex items-center justify-between p-4 border-b ${
                 darkMode ? 'border-neutral-800' : 'border-gray-200'
               }`}>
-                <h2 className={`text-lg font-semibold ${
-                  darkMode ? 'text-white' : 'text-black'
-                }`}>Menu</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className={`text-lg font-semibold ${
+                    darkMode ? 'text-white' : 'text-black'
+                  }`}>Menu</h2>
+                  {/* Credits in hamburger menu */}
+                  <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                    <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
+                    {creditInfo?.credits ?? '—'}
+                  </div>
+                </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
                   className={`p-2 rounded-md transition-colors ${
@@ -2600,15 +2607,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
               
               {/* Menu Items */}
-              <div className="p-4 space-y-6">
+              <div className="p-4 space-y-3">
                 {/* Main Navigation */}
-                <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Main Navigation</h3>
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Main Navigation</h3>
                   {[
-                    { id: 'chat', label: 'Chat', icon: '💬' },
-                    { id: 'generated', label: 'Generated', icon: '🎨' },
-                    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-                    { id: 'news', label: 'News', icon: '📰' }
+                    { id: 'chat', label: 'Chat' },
+                    { id: 'generated', label: 'Generated' },
+                    { id: 'dashboard', label: 'Dashboard' },
+                    { id: 'news', label: 'News' }
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -2616,113 +2623,106 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         setActiveTab(tab.id as any);
                         setMobileMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                         activeTab === tab.id
                           ? (darkMode
-                              ? 'bg-neutral-800 text-white'
-                              : 'bg-gray-100 text-black')
+                              ? 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-cyan-300 border border-cyan-500/30'
+                              : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-cyan-700 border border-cyan-500/30')
                           : (darkMode
-                              ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                              : 'text-gray-700 hover:bg-gray-50 hover:text-black')
+                              ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                              : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600')
                       }`}
                     >
-                      <span className="text-lg">{tab.icon}</span>
-                      <span>{tab.label}</span>
+                      {tab.label}
                     </button>
                   ))}
                 </div>
 
                 {/* Account & Billing */}
-                <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Account & Billing</h3>
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Account & Billing</h3>
                   <Link
                     href="/"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">🏠</span>
-                    <span>Home</span>
+                    Home
                   </Link>
                   <Link
                     href="/subscription"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">💳</span>
-                    <span>Subscription</span>
+                    Subscription
                   </Link>
                   <Link
                     href="/user"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">👤</span>
-                    <span>Profile</span>
+                    Profile
                   </Link>
                 </div>
 
                 {/* Quick Actions */}
-                <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Quick Actions</h3>
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Quick Actions</h3>
                   <button
                     onClick={() => {
                       setProjectModalOpen(true);
                       setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">💾</span>
-                    <span>Save Project</span>
+                    Save Project
                   </button>
                   <button
                     onClick={() => {
                       setSettingsOpen(true);
                       setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">⚙️</span>
-                    <span>Settings</span>
+                    Settings
                   </button>
                 </div>
 
                 {/* Appearance */}
-                <div className="space-y-2">
-                  <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Appearance</h3>
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Appearance</h3>
                   <button
                     onClick={() => {
                       setDarkMode(!darkMode);
                       localStorage.setItem('social_twin_dark', !darkMode ? '1' : '0');
                       setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       darkMode
-                        ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
                     }`}
                   >
-                    <span className="text-lg">{darkMode ? '🌙' : '☀️'}</span>
-                    <span>{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                    {darkMode ? 'Light Mode' : 'Dark Mode'}
                   </button>
                 </div>
 
@@ -2800,20 +2800,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
-                      // Remove middle prompt box on mobile
-                      isMobile ? null : (
-                        <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                          <div className="rounded-lg border p-2">
-                            <textarea
-                              value={input}
-                              onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                              placeholder=""
-                              className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                              onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
-                            />
-                          </div>
-                        </div>
-                      )
+                      // Remove middle prompt box completely
+                      null
                     ) : 'Start by entering a prompt below.'}
                   </div>
                 ) : (
