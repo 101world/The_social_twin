@@ -183,5 +183,4 @@ const HamburgerMenu = () => {
   );
 };
 
-export default HamburgerMenu;</content>
-<parameter name="filePath">c:\Users\welco\OneDrive\Desktop\101World\my-ai-saas\components\HamburgerMenu.tsx
+export default HamburgerMenu;
