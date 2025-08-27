@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import {
   Home,
   MessageCircle,
-  LayoutDashboard,
   Newspaper,
   FolderOpen,
   Plus,
@@ -121,12 +120,6 @@ const Sidebar = ({ isOpen = true, onToggle }: SidebarProps = {}) => {
       label: 'Chat',
       icon: MessageCircle,
       action: () => router.push('/social-twin?tab=chat')
-    },
-    {
-      href: '/user',
-      label: 'Dashboard',
-      icon: LayoutDashboard,
-      action: () => router.push('/user?tab=overview')
     },
     {
       href: '/news',
