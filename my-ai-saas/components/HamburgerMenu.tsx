@@ -98,18 +98,17 @@ const HamburgerMenu = () => {
   };
 
   const toggleSidebar = () => {
+    // Always show dropdown menu for navigation
+    setIsOpen(!isOpen);
+    
+    // Additionally, for social-twin page, also control the internal sidebar
     if (isTwin) {
-      // For social-twin page, control the sidebar
       try {
         const f: any = (window as any).__setSidebarOpen;
         if (typeof f === 'function') {
           f(!isOpen);
         }
-        setIsOpen(!isOpen);
       } catch {}
-    } else {
-      // For other pages, show dropdown menu
-      setIsOpen(!isOpen);
     }
   };
 
@@ -179,8 +178,8 @@ const HamburgerMenu = () => {
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
 
-      {/* Dropdown Menu - Only show for non-social-twin pages */}
-      {!isTwin && isOpen && (
+      {/* Dropdown Menu - Show on all pages when hamburger menu is clicked */}
+      {isOpen && (
         <>
           {/* Backdrop */}
           <div
