@@ -139,16 +139,67 @@ const Navbar = () => {
   }, []);
 
   // Hide navbar on mobile devices
+  // if (isMobile) {
+  //   return null;
+  // }
+
+  // Mobile Credit Bar
   if (isMobile) {
-    return null;
+    // Add mobile credit bar class to body
+    useEffect(() => {
+      document.body.classList.add('has-mobile-credit-bar');
+      return () => {
+        document.body.classList.remove('has-mobile-credit-bar');
+      };
+    }, []);
+
+    return (
+      <div className="fixed top-0 left-0 right-0 z-[20000] bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg">
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 14s1.5 2 4 2 4-2 4 2"/>
+                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                <line x1="15" y1="9" x2="15.01" y2="9"/>
+              </svg>
+            </div>
+            <span className="text-sm font-medium">Credits</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-lg font-bold">
+                {oneMaxBalance !== null ? oneMaxBalance : '...'}
+              </div>
+              {isOneMaxUser && (
+                <div className="text-xs opacity-90">OneMax</div>
+              )}
+            </div>
+            <SignedIn>
+              <div className="scale-75">
+                <UserButton />
+              </div>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton>
+                <Button size="sm" className="text-xs px-2 py-1 bg-white/20 hover:bg-white/30 text-white border-white/30">
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
   <header data-landing-hidden={hidden ? '1' : '0'} className="pointer-events-none absolute inset-x-0 z-[20000] flex items-center justify-center transition-opacity duration-500" style={{ 
     opacity: hidden ? 0 : 1,
-    top: '12px', // Mobile: lower positioning instead of top-0
-    height: '28px', // Mobile: more compact than h-8 sm:h-10
-    padding: '4px 8px' // More compact padding
+    top: isMobile ? '48px' : '12px', // Mobile: account for credit bar
+    height: isMobile ? '32px' : '28px', // Mobile: more compact
+    padding: isMobile ? '2px 4px' : '4px 8px' // Mobile: compact padding
   }}>
       {(() => {
         // Always use white icons for consistency

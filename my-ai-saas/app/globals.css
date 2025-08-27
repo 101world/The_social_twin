@@ -532,19 +532,14 @@ html[data-landing-active="1"] body {
   display: none;
 }
 
-/* Line clamp utilities for text truncation */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Mobile Credit Bar Spacing */
+body.has-mobile-credit-bar main {
+  padding-top: 48px !important;
 }
 
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+/* Ensure mobile credit bar is always visible */
+@media (max-width: 768px) {
+  body.has-mobile-credit-bar {
+    padding-top: 0 !important;
+  }
 }
