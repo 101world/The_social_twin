@@ -326,7 +326,7 @@ export default function SubscriptionPage() {
                   </p>
                   <div className="mt-2 text-xs text-teal-300/70">Subscription type</div>
                 </div>
-                <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl p-6 border border-blue-500/20">
+                <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20">
                   <p className="text-sm text-blue-300 font-medium mb-2">Status</p>
                   <p className={`text-xl font-bold ${userInfo.subscription_active ? 'text-green-400' : 'text-red-400'}`}>
                     {userInfo.subscription_active ? 'Active' : 'Inactive'}
@@ -334,12 +334,12 @@ export default function SubscriptionPage() {
                   <div className="mt-2 text-xs text-blue-300/70">Account status</div>
                 </div>
                 {userBalance && (
-                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/20">
-                    <p className="text-sm text-purple-300 font-medium mb-2">ONE MAX Balance</p>
-                    <p className="text-xl font-bold text-purple-400">
+                  <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-2xl p-6 border border-cyan-500/20">
+                    <p className="text-sm text-cyan-300 font-medium mb-2">ONE MAX Balance</p>
+                    <p className="text-xl font-bold text-cyan-400">
                       ${userBalance.balance_usd?.toFixed(2) || '0.00'}
                     </p>
-                    <p className="text-xs text-purple-300/70">
+                    <p className="text-xs text-cyan-300/70">
                       ₹{userBalance.balance_inr?.toFixed(2) || '0.00'}
                     </p>
                   </div>
@@ -489,9 +489,9 @@ export default function SubscriptionPage() {
               <div className="grid md:grid-cols-2 gap-8 items-center">
                 {/* 1:1 visual tile */}
                 <div className="flex md:justify-start justify-center">
-                  <div className="aspect-square w-48 md:w-64 bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-2xl border border-emerald-500/30 backdrop-blur-md flex items-center justify-center shadow-inner shadow-black/40 hover:scale-[1.02] transition-all">
+                  <div className="aspect-square w-48 md:w-64 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-2xl border border-cyan-500/30 backdrop-blur-md flex items-center justify-center shadow-inner shadow-black/40 hover:scale-[1.02] transition-all">
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-green-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
                         </svg>
@@ -504,20 +504,20 @@ export default function SubscriptionPage() {
                 {/* Copy + Balance + CTA */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">ONE MAX</h2>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">ONE MAX</h2>
                     {userBalance && (
-                      <span className="text-xs px-3 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold">
-                        Balance: <span className="text-emerald-300">${userBalance.balance_usd?.toFixed(2) || '0.00'}</span>
+                      <span className="text-xs px-3 py-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-semibold">
+                        Balance: <span className="text-cyan-300">${userBalance.balance_usd?.toFixed(2) || '0.00'}</span>
                       </span>
                     )}
                   </div>
                   <p className="text-gray-300 mb-6 leading-relaxed">Top up anytime. No monthly fees. Designed for flexible, on-demand creativity.</p>
 
                   <div className="mb-6 flex flex-wrap gap-3 text-xs">
-                    <span className="px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">No lock‑in</span>
-                    <span className="px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">Instant top‑ups</span>
-                    <span className="px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">Usage analytics</span>
-                    <span className="px-3 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">Priority routing</span>
+                    <span className="px-3 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">No lock‑in</span>
+                    <span className="px-3 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">Instant top‑ups</span>
+                    <span className="px-3 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">Usage analytics</span>
+                    <span className="px-3 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">Priority routing</span>
                   </div>
 
                   {/* Amount presets */}
@@ -530,7 +530,7 @@ export default function SubscriptionPage() {
                           onClick={() => setTopupAmount(v)}
                           className={`px-4 py-2 text-sm rounded-xl border transition-all hover:scale-105 ${
                             topupAmount === v
-                              ? 'border-emerald-400 text-emerald-300 bg-emerald-500/20 shadow-lg shadow-emerald-500/20'
+                              ? 'border-cyan-400 text-cyan-300 bg-cyan-500/20 shadow-lg shadow-cyan-500/20'
                               : 'border-neutral-600 text-gray-300 hover:border-neutral-500 bg-neutral-800/50'
                           }`}
                           type="button"
@@ -545,7 +545,7 @@ export default function SubscriptionPage() {
                           min={5}
                           value={topupAmount}
                           onChange={(e) => setTopupAmount(Number(e.target.value))}
-                          className="w-24 rounded-xl bg-neutral-800/50 border border-neutral-600 px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30 text-white"
+                          className="w-24 rounded-xl bg-neutral-800/50 border border-neutral-600 px-3 py-2 text-sm outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 text-white"
                         />
                       </div>
                     </div>
@@ -560,7 +560,7 @@ export default function SubscriptionPage() {
                   <button
                     onClick={() => handleSubscribe('one_max')}
                     disabled={loading}
-                    className="group inline-flex items-center gap-3 rounded-xl px-6 py-4 font-bold text-lg text-white bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300/30 transition-all transform hover:scale-105 disabled:opacity-50"
+                    className="group inline-flex items-center gap-3 rounded-xl px-6 py-4 font-bold text-lg text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 shadow-lg shadow-cyan-500/30 ring-1 ring-cyan-300/30 transition-all transform hover:scale-105 disabled:opacity-50"
                   >
                     {loading && selectedPlan === 'one_max' ? 'Processing…' : `Add $${Math.max(5, Number(topupAmount) || 0)}`}
                     <svg className="w-5 h-5 opacity-80 transition-transform group-hover:translate-x-0.5" fill="currentColor" viewBox="0 0 20 20">

@@ -4940,7 +4940,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
       {/* Article Preview Modal */}
       {articleModalOpen && selectedArticle && (
-        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setArticleModalOpen(false)}>
+        <div className="fixed inset-0 z-[10001] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setArticleModalOpen(false)}>
           <div className={`w-full max-w-4xl max-h-[90vh] rounded-2xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className={`flex items-center justify-between p-6 border-b ${darkMode ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'}`}>
