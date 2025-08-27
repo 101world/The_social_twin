@@ -41,8 +41,8 @@ const Sidebar = ({ isOpen = true, onToggle }: SidebarProps = {}) => {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Don't render sidebar on home page
-  if (pathname === '/') {
+  // Don't render sidebar if not open
+  if (!isOpen) {
     return null;
   }
 
@@ -160,9 +160,7 @@ const Sidebar = ({ isOpen = true, onToggle }: SidebarProps = {}) => {
   return (
     <>
       {/* Permanent Thin Left Sidebar - Desktop Only */}
-      <div className={`fixed left-0 top-0 h-full w-16 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] flex-col items-center py-4 ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      } transition-transform duration-300 ease-in-out ${isOpen ? 'flex' : 'hidden md:flex'}`}>
+      <div className="fixed left-0 top-0 h-full w-16 bg-black/95 border-r border-white/20 backdrop-blur-xl z-[10001] flex flex-col items-center py-4">
         {/* Navigation Icons */}
         <nav className="flex-1 flex flex-col items-center space-y-2">
           {menuItems.map((item) => {
