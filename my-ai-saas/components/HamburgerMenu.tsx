@@ -77,109 +77,112 @@ const HamburgerMenu = () => {
   ];
 
   return (
-    <header className="fixed top-4 left-4 z-[20000]">
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
+    <>
+      {/* Top Right Corner - Credits and Turbo Mode */}
+      <div className="fixed top-4 right-4 z-[20000] flex items-center space-x-3">
+        {/* Turbo Mode Toggle - Only show on Social Twin pages */}
+        {isTwin && (
           <button
-            className="p-2 rounded-lg bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40 transition-all duration-200 backdrop-blur-sm"
-            aria-label="Open menu"
+            onClick={toggleSimple}
+            className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
+              simple
+                ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
+                : 'bg-yellow-500/20 border border-yellow-400/30 text-yellow-400 hover:bg-yellow-500/30'
+            }`}
+            title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
           >
-            <Menu className="w-5 h-5" />
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
           </button>
-        </DialogTrigger>
+        )}
 
-        <DialogContent className="sm:max-w-md bg-black/95 border border-white/20 text-white backdrop-blur-xl">
-          <div className="flex flex-col space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Menu</h2>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1 rounded-md hover:bg-white/10 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        {/* Real Credits Display */}
+        <SignedIn>
+          {(credits !== null || oneMaxBalance !== null) && (
+            <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
+              isOneMaxUser
+                ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
+                : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
+            }`}>
+              {isOneMaxUser
+                ? `$${(oneMaxBalance || 0).toFixed(2)}`
+                : `${credits || 0} credits`
+              }
             </div>
+          )}
+        </SignedIn>
+      </div>
 
-            {/* Credits/Balance Display */}
-            <SignedIn>
-              {(credits !== null || oneMaxBalance !== null) && (
-                <div className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  isOneMaxUser
-                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30'
-                    : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30'
-                }`}>
-                  {isOneMaxUser
-                    ? `$${(oneMaxBalance || 0).toFixed(2)}`
-                    : `${credits || 0} credits`
-                  }
-                </div>
-              )}
-            </SignedIn>
+      {/* Hamburger Menu */}
+      <header className="fixed top-4 left-4 z-[20000]">
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <button
+              className="p-2 rounded-lg bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40 transition-all duration-200 backdrop-blur-sm"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </DialogTrigger>
 
-            {/* Navigation Items */}
-            <nav className="space-y-2">
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={handleLinkClick}
-                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors group"
-                  >
-                    <Icon className="w-5 h-5 text-gray-400 group-hover:text-white" />
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Simple/Pro Toggle for Social Twin */}
-            {isTwin && (
-              <div className="border-t border-white/20 pt-4">
+          <DialogContent className="sm:max-w-md bg-black/95 border border-white/20 text-white backdrop-blur-xl">
+            <div className="flex flex-col space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Menu</h2>
                 <button
-                  onClick={toggleSimple}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors w-full group"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 rounded-md hover:bg-white/10 transition-colors"
                 >
-                  <div className={`p-1 rounded ${simple ? 'bg-white/20' : 'bg-yellow-500/20'}`}>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill={simple ? '#ffffff' : '#facc15'}
-                      className="w-4 h-4"
-                    >
-                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-medium">
-                    {simple ? 'Normal Mode' : 'Pro Mode'}
-                  </span>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            )}
 
-            {/* Auth Section */}
-            <div className="border-t border-white/20 pt-4">
-              <SignedIn>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-400">Account</span>
-                  <UserButton />
-                </div>
-              </SignedIn>
-              <SignedOut>
-                <SignInButton>
-                  <Button className="w-full bg-white text-black hover:bg-gray-200">
-                    Sign In
-                  </Button>
-                </SignInButton>
-              </SignedOut>
+              {/* Navigation Items */}
+              <nav className="space-y-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={handleLinkClick}
+                      className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors group"
+                    >
+                      <Icon className="w-5 h-5 text-gray-400 group-hover:text-white" />
+                      <span className="text-sm font-medium">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Auth Section */}
+              <div className="border-t border-white/20 pt-4">
+                <SignedIn>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Account</span>
+                    <UserButton />
+                  </div>
+                </SignedIn>
+                <SignedOut>
+                  <SignInButton>
+                    <Button className="w-full bg-white text-black hover:bg-gray-200">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </SignedOut>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </header>
+          </DialogContent>
+        </Dialog>
+      </header>
+    </>
   );
 };
 

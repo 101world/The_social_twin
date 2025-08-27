@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, X, Clock } from 'lucide-react';
+import HamburgerMenu from '@/components/HamburgerMenu';
 
 interface NewsArticle {
   id: string;
@@ -449,6 +450,9 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen bg-black">
+      {/* Hamburger Menu */}
+      <HamburgerMenu />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-8">

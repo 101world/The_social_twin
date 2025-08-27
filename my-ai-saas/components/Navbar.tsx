@@ -11,7 +11,6 @@ const Navbar = () => {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   
   // Minimal credits pill (compact)
-  const [credits, setCredits] = useState<number | null>(null);
   const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const pathname = usePathname();
@@ -82,7 +81,6 @@ const Navbar = () => {
         if (!r.ok) return;
         const j = await r.json();
         if (!ignore) {
-          if (typeof j?.credits === "number") setCredits(j.credits);
           if (typeof j?.oneMaxBalance === "number") setOneMaxBalance(j.oneMaxBalance);
           if (typeof j?.isOneMaxUser === "boolean") setIsOneMaxUser(j.isOneMaxUser);
         }
@@ -158,24 +156,6 @@ const Navbar = () => {
         const linkClass = `${iconClass} hover:opacity-90 cursor-pointer pointer-events-auto`;
         return (
           <nav className="pointer-events-auto relative flex w-full items-center">
-            {/* Balance display in top right corner - HIGHER Z-INDEX FOR MOBILE */}
-            <div className="absolute right-2 top-0 pointer-events-auto z-[50000]">
-              <SignedIn>
-                {(credits !== null || oneMaxBalance !== null) && (
-                  <div className={`px-2 py-1 rounded-b-md text-xs font-medium transition-all duration-300 ${
-                    isOneMaxUser 
-                      ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
-                      : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
-                  } backdrop-blur-sm`}>
-                    {isOneMaxUser 
-                      ? `$${(oneMaxBalance || 0).toFixed(2)}`
-                      : `${credits || 0} credits`
-                    }
-                  </div>
-                )}
-              </SignedIn>
-            </div>
-            
             {/* Centered icon group with compact blending border */}
             <div className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center">
               <div className="pointer-events-auto relative">
