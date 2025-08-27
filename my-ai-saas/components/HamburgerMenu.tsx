@@ -14,15 +14,11 @@ const HamburgerMenu = () => {
   const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const [simple, setSimple] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const pathname = usePathname();
   const router = useRouter();
   const isTwin = pathname?.startsWith('/social-twin');
   const isDashboard = pathname?.startsWith('/dashboard');
-
-  // Don't render hamburger menu on home page
-  if (pathname === '/') {
-    return null;
-  }
 
   // Load credits
   useEffect(() => {
@@ -42,6 +38,26 @@ const HamburgerMenu = () => {
     load();
     const id = setInterval(load, 60_000);
     return () => { ignore = true; clearInterval(id); };
+  }, []);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      const isSmallScreen = window.innerWidth < 640;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isMobileDevice = isSmallScreen || (isTouchDevice && isIOS) || isIOS;
+      setIsMobile(isMobileDevice);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
   }, []);
 
   // Sync Simple/Pro with Social Twin page
@@ -79,6 +95,22 @@ const HamburgerMenu = () => {
       const f: any = (window as any).__setSimpleMode;
       if (typeof f === 'function') f(next);
     } catch {}
+  };
+
+  const toggleSidebar = () => {
+    if (isTwin) {
+      // For social-twin page, control the sidebar
+      try {
+        const f: any = (window as any).__setSidebarOpen;
+        if (typeof f === 'function') {
+          f(!isOpen);
+        }
+        setIsOpen(!isOpen);
+      } catch {}
+    } else {
+      // For other pages, show dropdown menu
+      setIsOpen(!isOpen);
+    }
   };
 
   const menuItems = [
@@ -133,96 +165,98 @@ const HamburgerMenu = () => {
         </SignedIn>
       </div>
 
-      {/* Hamburger Menu */}
-      <header className="fixed top-4 left-4 z-[99999]">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
-            isOpen
-              ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-              : 'bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30 hover:text-blue-400'
-          }`}
-          aria-label={isOpen ? "Close menu" : "Open menu"}
-          aria-expanded={isOpen}
-        >
-          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+      {/* Hamburger Menu Button */}
+      <button
+        onClick={toggleSidebar}
+        className={`fixed top-4 left-4 z-[99999] p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
+          isOpen
+            ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+            : 'bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30 hover:text-blue-400'
+        }`}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isOpen}
+      >
+        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
 
-        {/* Dropdown Menu */}
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[20000]"
-              onClick={() => setIsOpen(false)}
-            />
+      {/* Dropdown Menu - Only show for non-social-twin pages */}
+      {!isTwin && isOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[20000]"
+            onClick={() => setIsOpen(false)}
+          />
 
-            {/* Menu Panel */}
-            <div
-              className="absolute top-12 left-0 w-64 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-4">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-white">Menu</h2>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-1 rounded-md hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+          {/* Menu Panel */}
+          <div
+            className={`absolute top-12 left-4 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
+              isMobile 
+                ? 'w-[calc(100vw-2rem)] max-w-sm max-h-[calc(100vh-5rem)] overflow-y-auto' 
+                : 'w-64'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Menu</h2>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 rounded-md hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-                {/* Navigation Items */}
-                <nav className="space-y-2 mb-4">
-                  {menuItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group w-full text-left ${
-                          isActive
-                            ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-                            : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
-                        }`}
-                      >
-                        <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                          isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'
-                        }`} />
-                        <span className={`text-sm font-medium transition-colors duration-200 ${
-                          isActive ? 'text-blue-400' : 'text-white group-hover:text-blue-400'
-                        }`}>
-                          {item.label}
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </nav>
+              {/* Navigation Items */}
+              <nav className="space-y-2 mb-4">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group w-full text-left ${
+                        isActive
+                          ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
+                          : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
+                        isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'
+                      }`} />
+                      <span className={`text-sm font-medium transition-colors duration-200 ${
+                        isActive ? 'text-blue-400' : 'text-white group-hover:text-blue-400'
+                      }`}>
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
 
-                {/* Auth Section */}
-                <div className="border-t border-white/20 pt-4">
-                  <SignedIn>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Account</span>
-                      <UserButton />
-                    </div>
-                  </SignedIn>
-                  <SignedOut>
-                    <SignInButton>
-                      <Button className="w-full bg-white text-black hover:bg-gray-200">
-                        Sign In
-                      </Button>
-                    </SignInButton>
-                  </SignedOut>
-                </div>
+              {/* Auth Section */}
+              <div className="border-t border-white/20 pt-4">
+                <SignedIn>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Account</span>
+                    <UserButton />
+                  </div>
+                </SignedIn>
+                <SignedOut>
+                  <SignInButton>
+                    <Button className="w-full bg-white text-black hover:bg-gray-200">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </SignedOut>
               </div>
             </div>
-          </>
-        )}
-      </header>
+          </div>
+        </>
+      )}
     </>
   );
 };

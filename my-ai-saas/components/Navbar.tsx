@@ -13,6 +13,7 @@ const Navbar = () => {
   // Minimal credits pill (compact)
   const [oneMaxBalance, setOneMaxBalance] = useState<number | null>(null);
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
+  const [credits, setCredits] = useState<number | null>(null);
   const pathname = usePathname();
   const isTwin = pathname?.startsWith("/social-twin");
   const isDashboard = pathname?.startsWith("/dashboard");
@@ -83,6 +84,7 @@ const Navbar = () => {
         if (!ignore) {
           if (typeof j?.oneMaxBalance === "number") setOneMaxBalance(j.oneMaxBalance);
           if (typeof j?.isOneMaxUser === "boolean") setIsOneMaxUser(j.isOneMaxUser);
+          if (typeof j?.credits === "number") setCredits(j.credits);
         }
       } catch {}
     };
@@ -143,7 +145,7 @@ const Navbar = () => {
     return (
       <div className="fixed top-4 right-4 z-[99999]">
         <SignedIn>
-          {(oneMaxBalance !== null) && (
+          {((credits !== null && !isOneMaxUser) || (oneMaxBalance !== null && isOneMaxUser)) && (
             <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
               isOneMaxUser
                 ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
@@ -151,7 +153,7 @@ const Navbar = () => {
             }`}>
               {isOneMaxUser
                 ? `$${(oneMaxBalance || 0).toFixed(2)}`
-                : `${oneMaxBalance || 0} credits`
+                : `${credits || 0} credits`
               }
             </div>
           )}
