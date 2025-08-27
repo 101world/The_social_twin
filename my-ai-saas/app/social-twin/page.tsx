@@ -747,28 +747,22 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
   }, []);
 
-  // Mobile detection effect
+  // Mobile viewport height handling
   useEffect(() => {
-    const checkMobile = () => {
-      const newIsMobile = window.innerWidth < 640;
-      setIsMobile(newIsMobile);
-      
-      // Force simple mode on mobile (Pro mode not available on mobile)
-      if (newIsMobile && !simpleMode) {
-        setSimpleMode(true);
-        localStorage.setItem('social_twin_simple', '1');
-      }
-      
-      // Close mobile menu when switching to desktop
-      if (!newIsMobile && mobileMenuOpen) {
-        setMobileMenuOpen(false);
-      }
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
-    
-    checkMobile(); // Initial check
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [mobileMenuOpen, simpleMode]);
+
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+
+    return () => {
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
+  }, []);
 
   // Handle mobile menu interactions (escape key and outside clicks)
   useEffect(() => {
@@ -2396,109 +2390,31 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return buildSmoothPath(pts, 1);
   }
 
-  // iOS viewport + keyboard-safe: set --vh and --kb-offset using visualViewport
+  // Simplified mobile handling
   useEffect(() => {
-    const docEl = document.documentElement;
-    const updateVh = () => {
-      const vh = (window.visualViewport?.height ?? window.innerHeight) * 0.01;
-      docEl.style.setProperty('--vh', `${vh}px`);
+    // Simple mobile detection
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-    const updateKb = () => {
-      const vv = window.visualViewport;
-      
-      if (isMobile && vv) {
-        // Enhanced mobile keyboard handling
-        const keyboardHeight = window.innerHeight - vv.height;
-        const isKeyboardOpen = keyboardHeight > 150; // Threshold for keyboard detection
-        
-        // Set keyboard offset for mobile positioning
-        docEl.style.setProperty('--kb-offset', `${isKeyboardOpen ? keyboardHeight : 0}px`);
-        
-        // Force canvas background update for immediate responsiveness
-        if (gridSectionRef.current) {
-          const canvasHeight = isKeyboardOpen 
-            ? `calc(var(--vh, 1vh) * 100 - ${keyboardHeight}px)` 
-            : 'calc(var(--vh, 1vh) * 100)';
-          gridSectionRef.current.style.height = canvasHeight;
-          gridSectionRef.current.style.transition = 'height 0.2s ease-out';
-        }
-        
-        // Adjust composer positioning for mobile with smoother transitions
-        if (composerRef.current) {
-          if (isKeyboardOpen) {
-            composerRef.current.style.transform = `translateY(-${Math.min(keyboardHeight, 320)}px)`;
-            composerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-          } else {
-            composerRef.current.style.transform = 'translateY(0)';
-            composerRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-          }
-        }
-      } else {
-        // Desktop behavior
-        const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
-        docEl.style.setProperty('--kb-offset', `${kb}px`);
-        
-        // Reset canvas background for desktop
-        if (gridSectionRef.current) {
-          gridSectionRef.current.style.height = '100%';
-          gridSectionRef.current.style.transition = '';
-        }
-      }
-    };
-    const updateComposerH = () => {
-      const h = composerRef.current?.offsetHeight || 64;
-      docEl.style.setProperty('--composer-h', `${h}px`);
-    };
-    const onVvResize = () => { updateVh(); updateKb(); };
-    const onVvScroll = () => { 
-      updateKb(); 
-      // Handle viewport scroll for mobile
-      if (isMobile && window.visualViewport) {
-        const vv = window.visualViewport;
-        const keyboardHeight = window.innerHeight - vv.height;
-        const isKeyboardOpen = keyboardHeight > 150;
-        
-        if (isKeyboardOpen && composerRef.current) {
-          // Keep composer in view when keyboard is open and user scrolls
-          const scrollOffset = vv.offsetTop || 0;
-          const totalOffset = Math.min(keyboardHeight + scrollOffset, 320);
-          composerRef.current.style.transform = `translateY(-${totalOffset}px)`;
-        }
-      }
-    };
-    let ro: ResizeObserver | null = null;
-    if (typeof (window as any).ResizeObserver === 'function') {
-      ro = new (window as any).ResizeObserver(() => updateComposerH());
-      if (composerRef.current && ro) ro.observe(composerRef.current);
-    }
-    updateVh();
-    updateKb();
-    updateComposerH();
-    window.addEventListener('resize', updateVh);
-    window.addEventListener('orientationchange', updateVh);
-    window.visualViewport?.addEventListener('resize', onVvResize);
-    window.visualViewport?.addEventListener('scroll', onVvScroll);
-    window.addEventListener('resize', updateComposerH);
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
     return () => {
-      window.removeEventListener('resize', updateVh);
-      window.removeEventListener('orientationchange', updateVh);
-      window.visualViewport?.removeEventListener('resize', onVvResize);
-      window.visualViewport?.removeEventListener('scroll', onVvScroll);
-      window.removeEventListener('resize', updateComposerH);
-  try { ro?.disconnect?.(); } catch {}
+      window.removeEventListener('resize', checkMobile);
     };
-  }, [isMobile]); // Add isMobile as dependency
+  }, []);
 
   return (
-  <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}
-         style={{ height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh' }}> 
+  <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-white'} max-w-full`}
+         style={{ height: isMobile ? '100vh' : '100vh' }}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-neutral-900' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
          style={{
-           height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+           height: '100vh',
            ...(simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' })
          }}
       >
@@ -2810,11 +2726,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Save Project moved to bottom next to More */}
           </div>
-        )}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+        )}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : '80px' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-        <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
+        <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
           style={{ paddingBottom: '8px' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
@@ -3042,9 +2958,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               />
 
   {/* Composer container - removed dark grey background/border, transparent */}
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute left-0 right-0 p-2'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${isMobile ? 'pb-[env(safe-area-inset-bottom,0px)]' : ''} ${activeTab !== 'chat' ? 'hidden' : ''}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute bottom-0 left-0 right-0 p-2'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
           style={{ 
-            bottom: isMobile ? 'env(safe-area-inset-bottom, 0px)' : 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))'
+            bottom: '0px'
           }}>
                 
                 {/* Character input row (only when needed) - same for mobile and desktop */}
@@ -5144,9 +5060,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           cursor: gridEnabled ? 'grab' : undefined,
           overflow: 'hidden',
           // Dynamic height for mobile keyboard responsiveness
-          height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100%',
+          height: '100vh',
           // Ensure background stays responsive during keyboard transitions
-          transition: isMobile ? 'height 0.3s ease-in-out' : undefined
+          transition: undefined
         }}
         onDragOver={(e)=>{ e.preventDefault(); }}
         onDrop={(e)=>{
