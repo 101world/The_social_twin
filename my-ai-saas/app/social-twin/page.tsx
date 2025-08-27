@@ -1,8 +1,5 @@
 "use client";
 
-// Small change to trigger deployment - added timestamp comment
-// Updated: August 27, 2025
-
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -3947,7 +3944,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                           {/* Dropdown Menu */}
                           {projectDropdownOpen && (
-                            <div className={`absolute bottom-full right-0 mb-1 w-72 rounded-xl border shadow-xl z-[10002] max-h-80 overflow-y-auto ${darkMode ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-neutral-200'}`}>
+                            <div className={`absolute top-full right-0 mt-1 w-72 rounded-xl border shadow-xl z-[10002] max-h-80 overflow-y-auto ${darkMode ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-neutral-200'}`}>
                               {/* New Project Option */}
                               <button
                                 className={`w-full px-4 py-3 text-left text-sm transition-colors border-b ${darkMode ? 'hover:bg-neutral-700 border-neutral-600' : 'hover:bg-neutral-50 border-neutral-200'}`}
