@@ -1,5 +1,8 @@
 "use client";
 
+// Small change to trigger deployment - added timestamp comment
+// Updated: August 27, 2025
+
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
