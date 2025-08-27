@@ -7,7 +7,7 @@ import HamburgerMenu from "@/components/HamburgerMenu";
 export default function ConditionalNavigation() {
   const pathname = usePathname();
   
-  // Hide navigation on home page only
+  // Hide navigation on home page only - updated with blue-cyan theme
   if (pathname === '/') {
     return null;
   }
