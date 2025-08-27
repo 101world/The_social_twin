@@ -22,7 +22,7 @@ import Link from "next/link";
 
 type ActivityItem = {
   id: string;
-  type: 'generation' | 'project' | 'character' | 'subscription';
+  type: 'generation' | 'project' | 'subscription';
   title: string;
   description: string;
   timestamp: string;
@@ -32,7 +32,6 @@ type ActivityItem = {
 type AnalyticsData = {
   totalGenerations: number;
   totalProjects: number;
-  totalCharacters: number;
   creditsUsed: number;
   creditsRemaining: number;
   memberSince: string;
@@ -72,15 +71,12 @@ export default function DashboardPage() {
       setError(null);
 
       // Load all dashboard data in parallel
-      const [projectsRes, mediaRes, charactersRes, creditsRes] = await Promise.allSettled([
+      const [projectsRes, mediaRes, creditsRes] = await Promise.allSettled([
         fetch('/api/social-twin/projects', {
           headers: { 'X-User-Id': user.id }
         }),
         fetch("/api/social-twin/history?limit=20", {
           headers: { "X-User-Id": user.id }
-        }),
-        fetch('/api/social-twin/characters', {
-          headers: { 'X-User-Id': user.id }
         }),
         fetch('/api/users/credits')
       ]);
@@ -97,13 +93,6 @@ export default function DashboardPage() {
       if (mediaRes.status === 'fulfilled' && mediaRes.value.ok) {
         const mediaData = await mediaRes.value.json();
         media = Array.isArray(mediaData.items) ? mediaData.items : [];
-      }
-
-      // Process characters
-      let characters = [];
-      if (charactersRes.status === 'fulfilled' && charactersRes.value.ok) {
-        const charactersData = await charactersRes.value.json();
-        characters = Array.isArray(charactersData.characters) ? charactersData.characters : [];
       }
 
       // Process credits
@@ -149,15 +138,13 @@ export default function DashboardPage() {
 
       // Top categories (mock data based on available data)
       const topCategories = [
-        { name: 'AI Generations', count: media.length, percentage: 60 },
-        { name: 'Projects', count: projects.length, percentage: 25 },
-        { name: 'Characters', count: characters.length, percentage: 15 }
+        { name: 'AI Generations', count: media.length, percentage: 65 },
+        { name: 'Projects', count: projects.length, percentage: 35 }
       ];
 
       const analyticsData: AnalyticsData = {
         totalGenerations: media.length,
         totalProjects: projects.length,
-        totalCharacters: characters.length,
         creditsUsed: creditsData.credits || 0,
         creditsRemaining: creditsData.oneMaxBalance ? 0 : Math.max(0, 1000 - (creditsData.credits || 0)), // Mock remaining
         memberSince: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recently',
@@ -191,8 +178,6 @@ export default function DashboardPage() {
         return 'Generated new AI content';
       case 'project':
         return 'Updated project';
-      case 'character':
-        return 'Created character';
       case 'subscription':
         return 'Subscription updated';
       default:
@@ -206,8 +191,6 @@ export default function DashboardPage() {
         return PhotoIcon;
       case 'project':
         return FolderIcon;
-      case 'character':
-        return UserIcon;
       case 'subscription':
         return CreditCardIcon;
       default:
@@ -338,7 +321,7 @@ export default function DashboardPage() {
 
         {/* Key Metrics Cards */}
         <section className="mb-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-2xl p-6 border border-cyan-500/20 hover:border-cyan-400/40 transition-all">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
@@ -384,22 +367,6 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <p className="text-xs text-green-300/70">{analytics.creditsRemaining} remaining</p>
                 <HeartIcon className="w-4 h-4 text-green-400" />
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-2xl p-6 border border-orange-500/20 hover:border-orange-400/40 transition-all">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
-                  <UserIcon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm text-orange-300 font-medium">Characters</p>
-                  <p className="text-2xl font-bold text-orange-400">{analytics.totalCharacters}</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-orange-300/70">AI personalities</p>
-                <UserGroupIcon className="w-4 h-4 text-orange-400" />
               </div>
             </div>
           </div>
@@ -491,13 +458,11 @@ export default function DashboardPage() {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                         activity.type === 'generation' ? 'bg-cyan-500/20' :
                         activity.type === 'project' ? 'bg-purple-500/20' :
-                        activity.type === 'character' ? 'bg-orange-500/20' :
                         'bg-green-500/20'
                       }`}>
                         <Icon className={`w-5 h-5 ${
                           activity.type === 'generation' ? 'text-cyan-400' :
                           activity.type === 'project' ? 'text-purple-400' :
-                          activity.type === 'character' ? 'text-orange-400' :
                           'text-green-400'
                         }`} />
                       </div>
