@@ -3,7 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, Geist_Mono } from "next/font/google";
 
 import Navbar from "@/components/Navbar";
-import HamburgerMenu from "@/components/HamburgerMenu";
+import Sidebar from "@/components/Sidebar";
 import { CreditProvider } from "@/lib/credits-context";
 import "./globals.css";
 
@@ -40,9 +40,9 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${inter.variable} ${geistMono.variable} antialiased`}>
           <CreditProvider>
-            {/* Desktop: Hamburger Menu, Mobile: Navbar */}
+            {/* Desktop: Sidebar, Mobile: Navbar */}
             <div className="hidden md:block">
-              <HamburgerMenu />
+              <Sidebar />
             </div>
             <div className="md:hidden">
               <Navbar />
