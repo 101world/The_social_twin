@@ -133,7 +133,7 @@ const HamburgerMenu = () => {
             className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
               simple
                 ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
-                : 'bg-blue-500/20 border border-blue-400/30 text-blue-400 hover:bg-blue-500/30'
+                : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
             }`}
             title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
           >
@@ -170,8 +170,8 @@ const HamburgerMenu = () => {
         onClick={toggleSidebar}
         className={`fixed top-4 left-4 z-[99999] p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
           isOpen
-            ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-            : 'bg-black/50 border border-white/20 text-white hover:bg-blue-500/20 hover:border-blue-400/30 hover:text-blue-400'
+            ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
+            : 'bg-black/50 border border-white/20 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
         }`}
         aria-label={isOpen ? "Close menu" : "Open menu"}
         aria-expanded={isOpen}
@@ -220,15 +220,15 @@ const HamburgerMenu = () => {
                       href={item.href}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group w-full text-left ${
                         isActive
-                          ? 'bg-blue-500/20 border border-blue-400/30 text-blue-400'
-                          : 'hover:bg-blue-500/20 hover:border hover:border-blue-400/30 hover:text-blue-400 text-white'
+                          ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300'
+                          : 'hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-cyan-500/20 hover:border hover:border-blue-400/30 hover:text-blue-300 text-white'
                       }`}
                     >
                       <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-blue-400'
+                        isActive ? 'text-blue-300' : 'text-gray-400 group-hover:text-blue-300'
                       }`} />
                       <span className={`text-sm font-medium transition-colors duration-200 ${
-                        isActive ? 'text-blue-400' : 'text-white group-hover:text-blue-400'
+                        isActive ? 'text-blue-300' : 'text-white group-hover:text-blue-300'
                       }`}>
                         {item.label}
                       </span>
