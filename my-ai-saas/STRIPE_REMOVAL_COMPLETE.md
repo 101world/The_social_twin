@@ -36,7 +36,7 @@
 - ✅ **Clean Codebase** - Zero Stripe dependencies
 
 ### 🚀 Ready for Testing:
-1. Visit: `http://localhost:3000/test-razorpay-subscriptions`
+1. Visit: `http://localhost:3000/subscription`
 2. Use test card: `4111 1111 1111 1111`
 3. Complete subscription flow
 4. Verify credit allocation

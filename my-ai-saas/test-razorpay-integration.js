@@ -31,7 +31,7 @@ const testRazorpayIntegration = async () => {
     }
 
     console.log('\n3. Ready for Testing:');
-    console.log('   🌐 Visit: http://localhost:3000/test-razorpay-subscriptions');
+    console.log('   🌐 Visit: http://localhost:3000/subscription');
     console.log('   💳 Test card: 4111 1111 1111 1111');
     console.log('   📅 Any future date, CVV: 123');
     console.log('   💰 Complete subscription to test credit allocation\n');

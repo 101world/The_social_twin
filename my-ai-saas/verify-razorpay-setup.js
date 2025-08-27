@@ -50,7 +50,7 @@ const verifyRazorpaySetup = async () => {
   // 3. Database connectivity (requires Supabase setup)
   console.log('\n3. Database Setup:');
   console.log('   📝 Please run the SQL from supabase_monthly_subscriptions.sql in your Supabase SQL Editor');
-  console.log('   📝 Then visit /test-razorpay-subscriptions to test the complete flow');
+  console.log('   📝 Then visit /subscription to test the complete flow');
 
   // 4. Webhook setup
   console.log('\n4. Webhook Configuration:');
@@ -63,7 +63,7 @@ const verifyRazorpaySetup = async () => {
   console.log('📋 Next steps:');
   console.log('   1. Run database setup SQL in Supabase');
   console.log('   2. Configure webhook in Razorpay Dashboard');
-  console.log('   3. Test at /test-razorpay-subscriptions');
+  console.log('   3. Test at /subscription');
 };
 
 // Run verification if this script is executed directly

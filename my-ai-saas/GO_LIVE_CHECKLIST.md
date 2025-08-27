@@ -18,7 +18,7 @@ After running the SQL, you should see:
 
 ### 3. Test Complete User Journey
 1. **Start your app:** `npm run dev` (from `my-ai-saas` directory)
-2. **Visit:** http://localhost:3000/test-razorpay-subscriptions
+2. **Visit:** http://localhost:3000/subscription
 3. **Sign in** with any account
 4. **Test subscription:**
    - Click "Test Subscribe" on any plan

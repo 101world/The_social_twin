@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Inter } from 'next/font/google';
 import Link from 'next/link';
+import MatrixBackground from '@/components/MatrixBackground';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -15,9 +16,12 @@ export default function Home() {
 
   return (
     <main className="relative h-screen w-screen bg-black text-white flex items-center justify-center overflow-hidden">
+      {/* Matrix Background */}
+      <MatrixBackground />
+
       {/* Subtle gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900" />
-      
+
       <div className="relative z-10 text-center px-6">
         {/* Main ONE text with fade animation */}
         <div 

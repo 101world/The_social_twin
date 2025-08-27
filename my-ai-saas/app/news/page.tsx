@@ -40,17 +40,31 @@ const toOptimized = (url: string, w?: number, h?: number, q = 75) => {
 };
 
 const getImageUrl = (article: NewsArticle, w: number, h: number) => {
-  if (article.image_url) return toOptimized(article.image_url, w, h, 78);
-  const colors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+  // First try the article's image_url
+  if (article.image_url && article.image_url.trim()) {
+    // Check if it's a valid URL
+    try {
+      new URL(article.image_url);
+      return toOptimized(article.image_url, w, h, 78);
+    } catch {
+      // Invalid URL, continue to fallback
+    }
+  }
+  
+  // Fallback to a more reliable placeholder service
+  const colors = ['6366f1', '8b5cf6', 'ec4899', 'f43f5e', 'f97316', 'eab308', '22c55e', '06b6d4'];
   const color = colors[article.title.length % colors.length];
-  const text = encodeURIComponent(article.title.slice(0, 36));
-  return `https://picsum.photos/${w}/${h}?random=${encodeURIComponent(
-    article.id || article.title
-  )}&blur=0`;
+  const text = encodeURIComponent(article.title.slice(0, 20));
+  
+  // Use a more reliable placeholder service
+  return `https://via.placeholder.com/${w}x${h}/${color}/ffffff?text=${text}`;
 };
 
 // Big headline card (Breaking News style)
 const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
   // 25% smaller
   const src = getImageUrl(article, 900, 506);
   return (
@@ -58,17 +72,39 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
       className="group bg-black border border-gray-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all cursor-pointer"
       onClick={() => onOpen(article)}
     >
-  <div className="relative aspect-[16/9]">
-        <img
-          src={src}
-          alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-    (e.target as HTMLImageElement).src = getImageUrl(article, 900, 506);
-          }}
-        />
+  <div className="relative aspect-[16/9] bg-gray-900">
+        {!imageError ? (
+          <>
+            <img
+              src={src}
+              alt={article.title}
+              className={`w-full h-full object-cover group-hover:scale-[1.02] transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => {
+                setImageError(true);
+                setImageLoaded(true);
+              }}
+            />
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-gray-600 border-t-gray-300 rounded-full animate-spin"></div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+            <div className="text-center p-4">
+              <div className="w-16 h-16 mx-auto mb-2 bg-gray-700 rounded-lg flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-xs text-gray-400">Image unavailable</p>
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
       </div>
       <div className="p-5">
@@ -100,6 +136,9 @@ const BigNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: Ne
 
 // Compact grid card (image + title only)
 const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: NewsArticle) => void }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
   // 25% smaller thumbnail
   const src = getImageUrl(article, 450, 300);
   return (
@@ -107,17 +146,39 @@ const SmallNewsCard = ({ article, onOpen }: { article: NewsArticle; onOpen: (a: 
       className="bg-black border border-gray-800 rounded-lg overflow-hidden hover:border-gray-600 transition-colors cursor-pointer"
       onClick={() => onOpen(article)}
     >
-  <div className="aspect-[4/3]">
-        <img
-          src={src}
-          alt={article.title}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          decoding="async"
-          onError={(e) => {
-    (e.target as HTMLImageElement).src = getImageUrl(article, 450, 300);
-          }}
-        />
+  <div className="aspect-[4/3] bg-gray-900">
+        {!imageError ? (
+          <>
+            <img
+              src={src}
+              alt={article.title}
+              className={`w-full h-full object-cover ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setImageLoaded(true)}
+              onError={() => {
+                setImageError(true);
+                setImageLoaded(true);
+              }}
+            />
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-gray-600 border-t-gray-300 rounded-full animate-spin"></div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+            <div className="text-center p-2">
+              <div className="w-8 h-8 mx-auto mb-1 bg-gray-700 rounded flex items-center justify-center">
+                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <p className="text-[10px] text-gray-400">No image</p>
+            </div>
+          </div>
+        )}
       </div>
       <div className="p-3">
         <h3 className="text-white font-semibold leading-snug line-clamp-2 mb-2" style={{ fontFamily: 'Times New Roman, serif' }}>
@@ -190,13 +251,18 @@ const ArticleModal = ({ article, onClose, related }: { article: NewsArticle | nu
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {related.slice(0, 6).map((r) => (
                   <div key={r.id} className="flex gap-3 items-start p-2 border border-gray-800 rounded-lg hover:border-gray-600 transition-colors">
-                    <img
-                      src={getImageUrl(r, 240, 150)}
-                      alt={r.title}
-                      className="w-24 h-16 object-cover rounded"
-                      loading="lazy"
-                      decoding="async"
-                    />
+                    <div className="w-24 h-16 bg-gray-900 rounded flex-shrink-0 overflow-hidden">
+                      <img
+                        src={getImageUrl(r, 240, 150)}
+                        alt={r.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getImageUrl(r, 240, 150);
+                        }}
+                      />
+                    </div>
                     <div>
                       <div className="text-sm font-semibold text-white line-clamp-2">{r.title}</div>
                       <div className="text-xs text-gray-400 mt-1">{r.source_name || r.source || 'Source'}</div>
@@ -220,18 +286,77 @@ export default function NewsPage() {
   const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchNews();
+    
+    // Start auto-refresh
+    if (autoRefreshEnabled) {
+      startAutoRefresh();
+    }
+    
+    return () => {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+    };
   }, []);
 
-  const fetchNews = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (autoRefreshEnabled) {
+      startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
+    
+    return () => stopAutoRefresh();
+  }, [autoRefreshEnabled]);
+
+  const startAutoRefresh = () => {
+    stopAutoRefresh(); // Clear any existing interval
+    const interval = setInterval(() => {
+      fetchNews(true); // Silent refresh
+    }, 30000); // Refresh every 30 seconds
+    setAutoRefreshInterval(interval);
+  };
+
+  const stopAutoRefresh = () => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      setAutoRefreshInterval(null);
+    }
+  };
+
+  const fetchNews = async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
-      const response = await fetch('/api/news?limit=60&media=images', { cache: 'no-store' });
+      // Try to get articles with images first
+      const response = await fetch('/api/news?limit=60&media=images&category=all', { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
-        const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+        let list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+        
+        // If we don't have enough articles with images, get more without the filter
+        if (list.length < 20) {
+          const fallbackResponse = await fetch('/api/news?limit=40', { cache: 'no-store' });
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            const fallbackList = Array.isArray(fallbackData?.data?.articles) ? fallbackData.data.articles : [];
+            // Combine and deduplicate by ID
+            const combined = [...list, ...fallbackList];
+            const seen = new Set();
+            list = combined.filter(article => {
+              if (seen.has(article.id || article.url)) return false;
+              seen.add(article.id || article.url);
+              return true;
+            });
+          }
+        }
+        
         if (list.length > 0) {
           const sorted = list.sort((a: NewsArticle, b: NewsArticle) =>
             new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
@@ -246,7 +371,9 @@ export default function NewsPage() {
       console.error('Error fetching news:', error);
       await loadDailyBriefFallback();
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -346,8 +473,8 @@ export default function NewsPage() {
               onFocus={() => setIsSearchOpen(true)}
               className="w-full pl-10 pr-4 py-3 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none text-white placeholder-gray-400"
             />
-            {/* Controls: Refresh + Last updated */}
-            <div className="mt-3 flex items-center gap-3">
+            {/* Controls: Refresh + Last updated + Auto-refresh toggle */}
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
               <button
                 onClick={async () => {
                   try {
@@ -367,8 +494,25 @@ export default function NewsPage() {
               >
                 {refreshing ? 'Refreshing…' : 'Refresh'}
               </button>
+              
+              {/* Auto-refresh toggle */}
+              <button
+                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                  autoRefreshEnabled 
+                    ? 'border-green-600 text-green-400 hover:bg-green-600/10' 
+                    : 'border-gray-600 text-gray-400 hover:bg-gray-600/10'
+                }`}
+                title={autoRefreshEnabled ? 'Disable auto-refresh' : 'Enable auto-refresh'}
+              >
+                {autoRefreshEnabled ? '🔄 Auto' : '⏸️ Manual'}
+              </button>
+              
               {lastUpdated && (
-                <span className="text-xs text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full ${autoRefreshEnabled ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></span>
+                  Updated {new Date(lastUpdated).toLocaleTimeString()}
+                </span>
               )}
             </div>
             {isSearchOpen && searchQuery && (
