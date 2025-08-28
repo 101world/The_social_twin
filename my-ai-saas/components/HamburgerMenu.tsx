@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SignedOut, SignInButton, SignedIn, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Users, CreditCard, Zap, BarChart3, Newspaper, MessageCircle } from 'lucide-react';
+import { Menu, X, Home, Users, CreditCard, Zap, BarChart3, Newspaper, MessageCircle, Coins } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const HamburgerMenu = () => {
@@ -144,6 +144,18 @@ const HamburgerMenu = () => {
             </button>
           </div>
 
+          {/* Center - AI Profile */}
+          <div className="flex-1 flex justify-center">
+            <SignedIn>
+              <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 backdrop-blur-sm">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">AI</span>
+                </div>
+                <UserButton />
+              </div>
+            </SignedIn>
+          </div>
+
           {/* Right Side - Turbo Mode and Credits */}
           <div className="flex items-center space-x-3">
             {/* Turbo Mode Toggle - Only show on Social Twin pages */}
@@ -168,18 +180,21 @@ const HamburgerMenu = () => {
               </button>
             )}
 
-            {/* Real Credits Display */}
+            {/* Aesthetic Credits Display */}
             <SignedIn>
               {(credits !== null || oneMaxBalance !== null) && (
-                <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
+                <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg backdrop-blur-sm border transition-all duration-200 ${
                   isOneMaxUser
-                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
-                    : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
+                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border-purple-400/30 text-white'
+                    : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 border-cyan-400/30 text-white hover:from-cyan-500/30 hover:to-teal-500/30'
                 }`}>
-                  {isOneMaxUser
-                    ? `$${(oneMaxBalance || 0).toFixed(2)}`
-                    : `${credits || 0} credits`
-                  }
+                  <Coins className={`w-4 h-4 ${isOneMaxUser ? 'text-purple-300' : 'text-cyan-300'}`} />
+                  <span className="text-sm font-bold">
+                    {isOneMaxUser
+                      ? `$${(oneMaxBalance || 0).toFixed(2)}`
+                      : `${credits || 0}`
+                    }
+                  </span>
                 </div>
               )}
             </SignedIn>
