@@ -148,8 +148,8 @@ const Navbar = () => {
           {((credits !== null && !isOneMaxUser) || (oneMaxBalance !== null && isOneMaxUser)) && (
             <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
               isOneMaxUser
-                ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
-                : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
+                ? 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border border-gray-500/30 text-white'
+                : 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border border-gray-500/30 text-white'
             }`}>
               {isOneMaxUser
                 ? `$${(oneMaxBalance || 0).toFixed(2)}`
@@ -182,19 +182,19 @@ const Navbar = () => {
                 <div className={`absolute -inset-1 sm:-inset-2 -top-2 sm:-top-3 transition-all duration-800 ${isAnimating ? 'scale-105' : 'scale-100'}`}>
                   <div className="relative h-full w-full">
                     {/* Main container with compact organic border */}
-                    <div className={`absolute inset-0 rounded-b-xl sm:rounded-b-2xl bg-gradient-to-b from-black/15 via-black/8 to-transparent backdrop-blur-sm border-x border-b border-white/8 transition-all duration-800 ${isAnimating ? 'border-white/20 bg-gradient-to-b from-blue-500/15 via-purple-500/8 to-transparent' : ''}`}></div>
+                    <div className={`absolute inset-0 rounded-b-xl sm:rounded-b-2xl bg-gradient-to-b from-black/15 via-black/8 to-transparent backdrop-blur-sm border-x border-b border-white/8 transition-all duration-800 ${isAnimating ? 'border-white/20 bg-gradient-to-b from-gray-500/15 via-gray-400/8 to-transparent' : ''}`}></div>
                     {/* Minimal top blend effect */}
-                    <div className={`absolute -top-1 sm:-top-2 inset-x-0 h-2 sm:h-4 bg-gradient-to-b from-black/10 to-transparent rounded-t-lg sm:rounded-t-xl transition-all duration-800 ${isAnimating ? 'from-blue-400/15' : ''}`}></div>
+                    <div className={`absolute -top-1 sm:-top-2 inset-x-0 h-2 sm:h-4 bg-gradient-to-b from-black/10 to-transparent rounded-t-lg sm:rounded-t-xl transition-all duration-800 ${isAnimating ? 'from-gray-400/15' : ''}`}></div>
                     {/* Subtle side glow effects */}
-                    <div className={`absolute -inset-0.5 sm:-inset-1 rounded-xl sm:rounded-2xl bg-gradient-to-r from-transparent via-white/3 to-transparent opacity-40 transition-all duration-800 ${isAnimating ? 'via-blue-300/15 opacity-80' : ''}`}></div>
+                    <div className={`absolute -inset-0.5 sm:-inset-1 rounded-xl sm:rounded-2xl bg-gradient-to-r from-transparent via-white/3 to-transparent opacity-40 transition-all duration-800 ${isAnimating ? 'via-gray-300/15 opacity-80' : ''}`}></div>
                     {/* Minimal inner highlight */}
                     <div className={`absolute inset-0.5 rounded-b-lg sm:rounded-b-xl border border-white/3 transition-all duration-800 ${isAnimating ? 'border-white/15' : ''}`}></div>
                     {/* Wave animation overlay */}
                     {isAnimating && (
                       <div className="absolute inset-0 rounded-b-xl sm:rounded-b-2xl overflow-hidden">
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent" style={{ animation: 'navbar-wave 0.8s ease-out' }}></div>
-                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400" style={{ animation: 'navbar-wave 0.6s ease-out 0.1s' }}></div>
-                        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent" style={{ animation: 'navbar-wave 0.7s ease-out 0.2s' }}></div>
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-gray-400 via-gray-300 to-gray-400" style={{ animation: 'navbar-wave 0.6s ease-out 0.1s' }}></div>
+                        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" style={{ animation: 'navbar-wave 0.7s ease-out 0.2s' }}></div>
                       </div>
                     )}
                   </div>
