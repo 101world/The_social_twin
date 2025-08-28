@@ -2460,7 +2460,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Collapse handle - Hidden on mobile in simple mode to avoid interfering with mobile UX */}
         {!(simpleMode && isMobile) && (
         <button
-          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
           onClick={()=> setChatCollapsed(v=>!v)}
           title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
           aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
@@ -2513,7 +2513,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   darkMode 
                     ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
                     : 'bg-gray-100 text-black hover:bg-gray-200'
-                } focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+                } focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50`}
               >
                 <option value="creative">🎨 Creative</option>
                 <option value="news">📰 News</option>
@@ -2766,7 +2766,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 ? 'max-w-[75%] text-sm'
                                 : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
                                     isUser
-                                      ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600')
+                                      ? (darkMode ? 'bg-gray-600 text-white border-gray-500' : 'bg-gray-600 text-white border-gray-600')
                                       : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
                                   }`
                             }
@@ -2935,7 +2935,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     <a
                                       href={m.pdfUrl}
                                       download="exported-layout.pdf"
-                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-blue-400' : 'border-gray-400 hover:bg-gray-100 text-blue-600'} transition-colors`}
+                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-gray-400' : 'border-gray-400 hover:bg-gray-100 text-gray-600'} transition-colors`}
                                     >
                                       📄 Download PDF
                                     </a>
@@ -3034,7 +3034,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               onClick={() => setTextProvider(provider.id as any)}
                               className={`rounded-lg p-3 text-xs transition-all relative ${
                                 textProvider === provider.id
-                                  ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                                  ? (darkMode ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white')
                                   : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
                               }`}
                             >
@@ -3585,7 +3585,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               : 'opacity-60 hover:opacity-90 hover:scale-105'
                           }`}
                         > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3644,11 +3644,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           onClick={() => setMode('text')}
                           className={`p-2 rounded-lg transition-all ${
                             mode === 'text'
-                              ? 'bg-blue-500/20 scale-110'
+                              ? 'bg-gray-500/20 scale-110'
                               : 'hover:bg-neutral-800/50 hover:scale-105'
                           }`}
                         > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-blue-500' : 'stroke-current'}`}>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -3723,7 +3723,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         {/* Advanced Controls Toggle */}
                         <button
                           onClick={() => setShowAdvancedControls(!showAdvancedControls)}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-blue-600 border-blue-500 text-white' : 'bg-blue-500 border-blue-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-500 border-gray-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
                           title="Advanced Controls"
                         >
                           <div className="flex items-center gap-1">
@@ -3867,7 +3867,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <div className="relative flex items-center gap-2" data-project-dropdown>
                       {/* Save Project Icon */}
                       <button
-                        className={`rounded-lg p-1.5 shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'}`}
+                        className={`rounded-lg p-1.5 shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-gray-600 hover:bg-gray-700 border border-gray-500 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white shadow-gray-200'}`}
                         onClick={()=> setProjectModalOpen(true)}
                         title="Save Project"
                       >
@@ -3933,7 +3933,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 projects.map((project) => (
                                   <button
                                     key={project.id}
-                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${currentProjectId === project.id ? (darkMode ? 'bg-blue-900/50' : 'bg-blue-50') : (darkMode ? 'hover:bg-neutral-700' : 'hover:bg-neutral-50')}`}
+                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${currentProjectId === project.id ? (darkMode ? 'bg-gray-900/50' : 'bg-gray-50') : (darkMode ? 'hover:bg-neutral-700' : 'hover:bg-neutral-50')}`}
                                     onClick={() => switchToProject(project.id, project.title)}
                                   >
                                     <div className="font-medium truncate">{project.title}</div>
@@ -4483,7 +4483,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {/* News Header */}
               <div className="mb-8 flex items-center justify-between">
                 <div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-400 bg-clip-text text-transparent flex items-center gap-3">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-400 via-gray-400 to-gray-400 bg-clip-text text-transparent flex items-center gap-3">
                     <span className="text-3xl">📰</span>
                     <span>Live News Feed</span>
                   </h2>
@@ -4558,7 +4558,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Breaking News - Large Featured Article */}
                       {newsArticles[0] && (
                         <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
-                          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-gray-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                           <div className="relative p-8">
                             <div className="flex flex-col lg:flex-row gap-8 items-center">
                               {/* Breaking News Badge */}
@@ -4711,12 +4711,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {/* Featured Article - Large Card */}
                       {newsArticles[3] && (
                         <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-teal-500/10 transition-all duration-500">
-                          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-gray-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                           <div className="relative p-8">
                             <div className="flex flex-col lg:flex-row gap-8 items-start">
                               {/* Featured Badge */}
                               <div className="flex-shrink-0">
-                                <div className="bg-gradient-to-r from-teal-500 to-blue-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                <div className="bg-gradient-to-r from-gray-500 to-gray-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
                                   FEATURED
                                 </div>
                               </div>
@@ -5440,7 +5440,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               )}
             </div>
             <div className="mt-4 flex justify-between gap-2">
-              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700 hover:bg-neutral-800 text-blue-400':'border-gray-400 hover:bg-gray-100 text-blue-600'}`} onClick={()=> {
+              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700 hover:bg-neutral-800 text-gray-400':'border-gray-400 hover:bg-gray-100 text-gray-600'}`} onClick={()=> {
                 // Switch to layout editor mode
                 const allMedia = getIncomingMedia(composeOriginId || '');
                 const imageInputs = allMedia.filter(i=> i.type==='image');
@@ -5995,7 +5995,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       'cool minimal poster, bold geometry',
                       'cool editorial portrait, high key',
                       'cool abstract gradients, soft glow',
-                      'cool tech product hero, blue accents',
+                      'cool tech product hero, gray accents',
                       'cool street fashion, crisp tones',
                     ] : []).map((txt, idx) => (
                       <button
@@ -6029,9 +6029,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Attachment Preview */}
             {attached && (
-              <div className="mb-3 rounded border p-2 bg-blue-50">
+              <div className="mb-3 rounded border p-2 bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-blue-700">{attached.name}</span>
+                  <span className="text-xs text-gray-700">{attached.name}</span>
                   <button onClick={() => setAttached(null)} className="text-xs text-red-600 hover:underline">Remove</button>
                 </div>
               </div>
@@ -6398,7 +6398,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           onClick={() => setTextProvider(provider.id as any)}
                           className={`rounded-lg px-3 py-2 text-xs transition-all ${
                             textProvider === provider.id
-                              ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                              ? (darkMode ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white')
                               : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
                           }`}
                         >
@@ -7043,7 +7043,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     onClick={() => setDirectorMode('gallery')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                       directorMode === 'gallery'
-                        ? 'bg-blue-500 text-white shadow-md'
+                        ? 'bg-gray-500 text-white shadow-md'
                         : 'text-neutral-400 hover:text-white'
                     }`}
                   >
@@ -7094,7 +7094,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         value={batchPrompt}
                         onChange={(e) => setBatchPrompt(e.target.value)}
                         placeholder="Describe the shots you want to generate..."
-                        className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                        className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-4 py-3 text-sm focus:border-gray-500 focus:outline-none"
                       />
                     </div>
                     <select
@@ -7138,7 +7138,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }
                       }}
                       disabled={!batchPrompt.trim() || isGeneratingBatch}
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-3 rounded-lg font-medium transition-all"
+                      className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-3 rounded-lg font-medium transition-all"
                     >
                       {isGeneratingBatch ? (
                         <div className="flex items-center gap-2">
@@ -7164,7 +7164,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {imageGallery.map((image) => (
                         <div
                           key={image.id}
-                          className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+                          className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-500 transition-all"
                         >
                           <div className="aspect-video bg-neutral-700 flex items-center justify-center">
                             <img 
@@ -7305,7 +7305,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             className="max-w-full max-h-full object-contain rounded-lg"
                           />
                           {/* Motion Preview Overlay */}
-                          <div className="absolute inset-0 border-2 border-blue-500/50 rounded-lg flex items-center justify-center pointer-events-none">
+                          <div className="absolute inset-0 border-2 border-gray-500/50 rounded-lg flex items-center justify-center pointer-events-none">
                             <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                               🎥 {storyboardFrames[selectedFrameIndex].motionPreset}
                             </div>
@@ -7391,7 +7391,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <p className="text-neutral-400 mb-4">Add frames from the Gallery to start building your story</p>
                       <button
                         onClick={() => setDirectorMode('gallery')}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
                       >
                         Go to Gallery
                       </button>

@@ -45,8 +45,7 @@ export default function SubscriptionPage() {
   const [userBalance, setUserBalance] = useState<UserBalance | null>(null);
   const [lastAction, setLastAction] = useState<string>('');
   const [lastError, setLastError] = useState<string>('');
-  const [topupAmount, setTopupAmount] = useState<number>(100);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [topupAmount, setTopupAmount] = useState<number>(25);
 
   useEffect(() => setMounted(true), []);
 
@@ -111,8 +110,8 @@ export default function SubscriptionPage() {
     setLastError('');
     setLastAction('topup:start');
     const amountValue = typeof amountParam === 'number' ? amountParam : topupAmount;
-    if (!amountValue || isNaN(Number(amountValue)) || Number(amountValue) < 100) {
-      alert('Please enter a valid amount (minimum $100)');
+    if (!amountValue || isNaN(Number(amountValue)) || Number(amountValue) < 5) {
+      alert('Please enter a valid amount (minimum $5)');
       return;
     }
 
@@ -274,7 +273,7 @@ export default function SubscriptionPage() {
       <section className="mx-auto max-w-6xl p-6">
         <header className="mb-12 text-center">
           <div className="mb-6">
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-teal-400 to-blue-400 bg-clip-text text-transparent mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-teal-400 to-gray-400 bg-clip-text text-transparent mb-4">
               Choose Your AI Plan
             </h1>
             <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
@@ -330,7 +329,7 @@ export default function SubscriptionPage() {
                     }
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-teal-500/10 to-blue-500/10 rounded-2xl p-6 border border-teal-500/20">
+                <div className="bg-gradient-to-r from-teal-500/10 to-gray-500/10 rounded-2xl p-6 border border-teal-500/20">
                   <p className="text-sm text-teal-300 font-medium mb-2">Current Plan</p>
                   <p className="text-xl font-bold text-teal-400">
                     {userInfo.subscription_plan || 'No active subscription'}
@@ -344,12 +343,12 @@ export default function SubscriptionPage() {
                     )}
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl p-6 border border-blue-500/20">
-                  <p className="text-sm text-blue-300 font-medium mb-2">Status</p>
+                <div className="bg-gradient-to-r from-gray-500/10 to-cyan-500/10 rounded-2xl p-6 border border-gray-500/20">
+                  <p className="text-sm text-gray-300 font-medium mb-2">Status</p>
                   <p className={`text-xl font-bold ${userInfo.subscription_active ? 'text-green-400' : 'text-red-400'}`}>
                     {userInfo.subscription_active ? 'Active' : 'Inactive'}
                   </p>
-                  <div className="mt-2 text-xs text-blue-300/70">Account status</div>
+                  <div className="mt-2 text-xs text-gray-300/70">Account status</div>
                 </div>
                 {userBalance && (
                   <div className="bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-2xl p-6 border border-cyan-500/20">
@@ -387,17 +386,15 @@ export default function SubscriptionPage() {
               {Object.entries(plans).filter(([planId]) => planId !== 'one_max').map(([planId, plan]) => {
                 const isPopular = planId === 'one_z';
                 const isLoading = loading && selectedPlan === planId;
-                const isExpanded = expandedCard === planId;
 
                 return (
                   <div
                     key={planId}
-                    className={`relative rounded-2xl border-2 transition-all cursor-pointer ${
+                    className={`relative rounded-2xl p-8 border-2 transition-all hover:scale-[1.02] hover:shadow-2xl ${
                       isPopular
                         ? 'border-cyan-500/50 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 shadow-lg shadow-cyan-500/20'
                         : 'border-neutral-700/50 bg-neutral-800/50 hover:border-neutral-600/50'
-                    } ${isExpanded ? 'ring-2 ring-cyan-400/50' : 'hover:scale-[1.02] hover:shadow-2xl'}`}
-                    onClick={() => setExpandedCard(isExpanded ? null : planId)}
+                    }`}
                   >
                     {/* Popular Badge */}
                     {isPopular && (
@@ -408,8 +405,8 @@ export default function SubscriptionPage() {
                       </div>
                     )}
 
-                    {/* Minimal Header */}
-                    <div className="p-8 text-center">
+                    {/* Plan Details */}
+                    <div className="text-center mb-8">
                       <h3 className="text-2xl font-bold mb-4 text-white">{plan.name}</h3>
                       <div className="mb-6">
                         <div className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
@@ -419,109 +416,85 @@ export default function SubscriptionPage() {
                           ${plan.usd_price}/month
                         </div>
                       </div>
-
-                      {/* Expand/Collapse Indicator */}
-                      <div className="flex items-center justify-center gap-2 text-cyan-400 mb-4">
-                        <span className="text-sm font-medium">
-                          {isExpanded ? 'Hide Details' : 'View Details'}
-                        </span>
-                        <svg
-                          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-
-                      {/* Subscribe Button - Always Visible */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSubscribe(planId);
-                        }}
-                        disabled={loading}
-                        className={`w-full py-3 px-6 rounded-xl font-bold text-base transition-all transform hover:scale-105 ${
-                          isPopular
-                            ? 'bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-lg shadow-cyan-500/30'
-                            : 'bg-gradient-to-r from-neutral-700 to-neutral-600 hover:from-neutral-600 hover:to-neutral-500 text-white'
-                        } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isLoading ? 'Processing...' : 'Subscribe Now'}
-                      </button>
+                      <p className="text-gray-300 text-sm leading-relaxed">{plan.description}</p>
                     </div>
 
-                    {/* Expanded Details */}
-                    {isExpanded && (
-                      <div className="px-8 pb-8 border-t border-neutral-700/50 pt-6">
-                        <p className="text-gray-300 text-sm leading-relaxed mb-6">{plan.description}</p>
-
-                        {/* Features */}
-                        <div className="space-y-4 mb-6">
-                          <div className="flex items-center text-white">
-                            <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm">{plan.credits.toLocaleString()} AI credits monthly</span>
-                          </div>
-                          <div className="flex items-center text-white">
-                            <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm">Text, Image & Video generation</span>
-                          </div>
-                          <div className="flex items-center text-white">
-                            <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm">PDF export & Video compilation</span>
-                          </div>
-                          <div className="flex items-center text-white">
-                            <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm">Priority support</span>
-                          </div>
-                          {planId === 'one_pro' && (
-                            <div className="flex items-center text-white">
-                              <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                              <span className="text-sm">API access & Advanced features</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Exact Limits Breakdown */}
-                        <div className="text-xs text-gray-400 text-center space-y-2">
-                          {planId === 'one_t' && (
-                            <>
-                              <div className="font-semibold text-cyan-400">✓ 200 images per month</div>
-                              <div className="font-semibold text-cyan-400">✓ 12 videos per month</div>
-                              <div className="text-xs opacity-50">= 1,120 total credits</div>
-                            </>
-                          )}
-                          {planId === 'one_z' && (
-                            <>
-                              <div className="font-semibold text-cyan-400">✓ 700 images per month</div>
-                              <div className="font-semibold text-cyan-400">✓ 55 videos per month</div>
-                              <div className="text-xs opacity-50">= 4,050 total credits</div>
-                            </>
-                          )}
-                          {planId === 'one_pro' && (
-                            <>
-                              <div className="font-semibold text-cyan-400">✓ 1,500 images per month</div>
-                              <div className="font-semibold text-cyan-400">✓ 120 videos per month</div>
-                              <div className="text-xs opacity-50">= 8,700 total credits</div>
-                            </>
-                          )}
-                        </div>
+                    {/* Features */}
+                    <div className="space-y-4 mb-8">
+                      <div className="flex items-center text-white">
+                        <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm">{plan.credits.toLocaleString()} AI credits monthly</span>
                       </div>
+                      <div className="flex items-center text-white">
+                        <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm">Text, Image & Video generation</span>
+                      </div>
+                      <div className="flex items-center text-white">
+                        <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm">PDF export & Video compilation</span>
+                      </div>
+                      <div className="flex items-center text-white">
+                        <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm">Priority support</span>
+                      </div>
+                      {planId === 'one_pro' && (
+                        <div className="flex items-center text-white">
+                          <svg className="w-5 h-5 text-cyan-400 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          <span className="text-sm">API access & Advanced features</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Subscribe Button */}
+                    <button
+                      onClick={() => handleSubscribe(planId)}
+                      disabled={loading}
+                      className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all transform hover:scale-105 ${
+                        isPopular
+                          ? 'bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-white shadow-lg shadow-cyan-500/30'
+                          : 'bg-gradient-to-r from-neutral-700 to-neutral-600 hover:from-neutral-600 hover:to-neutral-500 text-white'
+                      } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isLoading ? 'Processing...' : 'Subscribe Now'}
+                    </button>
+                    {lastError && selectedPlan === planId && (
+                      <div className="mt-3 text-sm text-red-400 text-center">{lastError}</div>
                     )}
 
-                    {lastError && selectedPlan === planId && (
-                      <div className="mx-8 mb-4 text-sm text-red-400 text-center">{lastError}</div>
-                    )}
+                    {/* Exact Limits Breakdown */}
+                    <div className="mt-6 text-xs text-gray-400 text-center space-y-2">
+                      {planId === 'one_t' && (
+                        <>
+                          <div className="font-semibold text-cyan-400">✓ 200 images per month</div>
+                          <div className="font-semibold text-cyan-400">✓ 12 videos per month</div>
+                          <div className="text-xs opacity-50">= 1,120 total credits</div>
+                        </>
+                      )}
+                      {planId === 'one_z' && (
+                        <>
+                          <div className="font-semibold text-cyan-400">✓ 700 images per month</div>
+                          <div className="font-semibold text-cyan-400">✓ 55 videos per month</div>
+                          <div className="text-xs opacity-50">= 4,050 total credits</div>
+                        </>
+                      )}
+                      {planId === 'one_pro' && (
+                        <>
+                          <div className="font-semibold text-cyan-400">✓ 1,500 images per month</div>
+                          <div className="font-semibold text-cyan-400">✓ 120 videos per month</div>
+                          <div className="text-xs opacity-50">= 8,700 total credits</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -568,7 +541,7 @@ export default function SubscriptionPage() {
                   <div className="mb-6">
                     <div className="text-sm text-gray-400 mb-3 font-semibold">Quick Top-up Amounts</div>
                     <div className="flex items-center gap-3 flex-wrap">
-                      {[100, 250, 500, 1000].map((v) => (
+                      {[10, 25, 50, 100].map((v) => (
                         <button
                           key={v}
                           onClick={() => setTopupAmount(v)}
@@ -586,7 +559,7 @@ export default function SubscriptionPage() {
                         <span className="text-sm text-gray-400">Custom</span>
                         <input
                           type="number"
-                          min={100}
+                          min={5}
                           value={topupAmount}
                           onChange={(e) => setTopupAmount(Number(e.target.value))}
                           className="w-24 rounded-xl bg-neutral-800/50 border border-neutral-600 px-3 py-2 text-sm outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/30 text-white"
@@ -606,7 +579,7 @@ export default function SubscriptionPage() {
                     disabled={loading}
                     className="group inline-flex items-center gap-3 rounded-xl px-6 py-4 font-bold text-lg text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 shadow-lg shadow-cyan-500/30 ring-1 ring-cyan-300/30 transition-all transform hover:scale-105 disabled:opacity-50"
                   >
-                    {loading && selectedPlan === 'one_max' ? 'Processing…' : `Add $${Math.max(100, Number(topupAmount) || 0)}`}
+                    {loading && selectedPlan === 'one_max' ? 'Processing…' : `Add $${Math.max(5, Number(topupAmount) || 0)}`}
                     <svg className="w-5 h-5 opacity-80 transition-transform group-hover:translate-x-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>

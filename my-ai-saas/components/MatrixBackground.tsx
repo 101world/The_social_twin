@@ -38,7 +38,7 @@ const MatrixBackground = () => {
     const brandColors = [
       '#ffffff', // White
       '#facc15', // Yellow (from your brand)
-      '#3b82f6', // Blue
+      '#6b7280', // Gray
       '#8b5cf6', // Purple
       '#06b6d4', // Cyan
     ];
