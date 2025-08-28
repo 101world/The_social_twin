@@ -213,7 +213,7 @@ const HamburgerMenu = () => {
                 className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                   simple
                     ? 'bg-gray-800/50 border border-gray-700/30 text-white hover:bg-gray-700/50 hover:border-gray-600/40'
-                    : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
+                    : 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border border-gray-500/30 text-gray-300 hover:from-gray-500/30 hover:to-gray-400/30'
                 }`}
                 title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
               >
@@ -233,10 +233,10 @@ const HamburgerMenu = () => {
               {(credits !== null || oneMaxBalance !== null) && (
                 <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg backdrop-blur-sm border transition-all duration-200 ${
                   isOneMaxUser
-                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border-purple-400/30 text-white'
+                    ? 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border-gray-500/30 text-white'
                     : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 border-cyan-400/30 text-white hover:from-cyan-500/30 hover:to-teal-500/30'
                 }`}>
-                  <Coins className={`w-4 h-4 ${isOneMaxUser ? 'text-purple-300' : 'text-cyan-300'}`} />
+                  <Coins className={`w-4 h-4 ${isOneMaxUser ? 'text-gray-300' : 'text-cyan-300'}`} />
                   <span className="text-sm font-bold">
                     {isOneMaxUser
                       ? `$${(oneMaxBalance || 0).toFixed(2)}`
@@ -291,15 +291,15 @@ const HamburgerMenu = () => {
                       href={item.href}
                       className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 group w-full text-left ${
                         isActive
-                          ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300'
-                          : 'hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-cyan-500/20 hover:border hover:border-blue-400/30 hover:text-blue-300 text-white'
+                          ? 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border border-gray-500/30 text-gray-300'
+                          : 'hover:bg-gradient-to-r hover:from-gray-500/20 hover:to-gray-400/20 hover:border hover:border-gray-500/30 hover:text-gray-300 text-white'
                       }`}
                     >
                       <Icon className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? 'text-blue-300' : 'text-gray-400 group-hover:text-blue-300'
+                        isActive ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-300'
                       }`} />
                       <span className={`text-sm font-medium transition-colors duration-200 ${
-                        isActive ? 'text-blue-300' : 'text-white group-hover:text-blue-300'
+                        isActive ? 'text-gray-300' : 'text-white group-hover:text-gray-300'
                       }`}>
                         {item.label}
                       </span>
