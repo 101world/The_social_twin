@@ -127,8 +127,8 @@ const HamburgerMenu = () => {
   return (
     <>
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-[99999] bg-gradient-to-r from-gray-900/90 via-gray-800/80 to-gray-900/90 backdrop-blur-xl border-b border-gray-600/20">
-        <div className="flex items-center justify-between px-4 py-3">
+      <div className="fixed top-0 left-0 right-0 z-[99999] bg-gradient-to-r from-gray-900 via-gray-900 to-gray-900 backdrop-blur-xl border-b border-gray-700/30">
+        <div className="flex items-center justify-between px-4 py-2">
           {/* Left Side - Hamburger Menu */}
           <div className="flex items-center">
             <button
@@ -151,14 +151,14 @@ const HamburgerMenu = () => {
               <select
                 value={aiPersonality}
                 onChange={(e) => setAiPersonality(e.target.value as any)}
-                className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg px-3 py-2 bg-gradient-to-r from-gray-700/20 to-gray-600/20 border border-gray-500/30 text-white hover:from-gray-600/30 hover:to-gray-500/30 transition-all duration-200 focus:ring-2 focus:ring-gray-400/50 focus:border-gray-400/50 backdrop-blur-sm appearance-none pr-8"
+                className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg pl-10 pr-10 py-2 min-w-[140px] bg-gradient-to-r from-gray-700/20 to-gray-600/20 border border-gray-500/30 text-white hover:from-gray-600/30 hover:to-gray-500/30 transition-all duration-200 focus:ring-2 focus:ring-gray-400/50 focus:border-gray-400/50 backdrop-blur-sm appearance-none"
               >
-                <option value="creative" className="bg-slate-800 text-white">Creative</option>
-                <option value="news" className="bg-slate-800 text-white">News</option>
-                <option value="police" className="bg-slate-800 text-white">Police</option>
-                <option value="lawyer" className="bg-slate-800 text-white">Lawyer</option>
-                <option value="accountant" className="bg-slate-800 text-white">Accountant</option>
-                <option value="teacher" className="bg-slate-800 text-white">Teacher</option>
+                <option value="creative" className="bg-gray-800 text-white">Creative</option>
+                <option value="news" className="bg-gray-800 text-white">News</option>
+                <option value="police" className="bg-gray-800 text-white">Police</option>
+                <option value="lawyer" className="bg-gray-800 text-white">Lawyer</option>
+                <option value="accountant" className="bg-gray-800 text-white">Accountant</option>
+                <option value="teacher" className="bg-gray-800 text-white">Teacher</option>
               </select>
               {/* Custom dropdown arrow */}
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -167,7 +167,7 @@ const HamburgerMenu = () => {
                 </svg>
               </div>
               {/* Icon display */}
-              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none flex items-center">
                 {aiPersonality === 'creative' && (
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
