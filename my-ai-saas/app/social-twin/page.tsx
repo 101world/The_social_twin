@@ -2529,13 +2529,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </h1>
           )}
           
-          {/* Right side: Credits */}
+          {/* Right side: Credits - removed duplicate display, using HamburgerMenu green bar */}
           <div className="flex items-center gap-2">
-            {/* Credits */}
-            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
-              <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
-              {creditInfo?.credits ?? '—'}
-            </div>
+            {/* Credits display removed - now using HamburgerMenu green bar only */}
             
             {/* Dark mode text toggle removed (use icon-based Theme toggle below) */}
             
@@ -2566,11 +2562,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <h2 className={`text-lg font-semibold ${
                     darkMode ? 'text-white' : 'text-black'
                   }`}>Menu</h2>
-                  {/* Credits in hamburger menu */}
-                  <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                    <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
-                    {creditInfo?.credits ?? '—'}
-                  </div>
+                  {/* Credits removed - using HamburgerMenu green bar only */}
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
@@ -4401,15 +4393,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Credits</div>
-                        <div className="text-base font-semibold">{creditInfo?.credits ?? '—'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Plan</div>
-                        <div className="text-base font-semibold">{creditInfo?.subscription_active && creditInfo?.subscription_plan ? (()=>{ const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim(); if (plan === 'one t') return 'ONE T'; if (plan === 'one z') return 'ONE Z'; if (plan === 'one pro') return 'ONE PRO'; return creditInfo?.subscription_plan; })() : 'Free'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Status</div>
-                        <div className="text-base font-semibold">{creditInfo?.subscription_active ? 'Active' : 'Free'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Last Active</div>
