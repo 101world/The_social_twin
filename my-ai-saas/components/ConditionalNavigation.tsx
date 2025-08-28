@@ -8,7 +8,8 @@ export default function ConditionalNavigation() {
   const pathname = usePathname();
   
   // Hide navigation on home page only - clean UI without hamburger menu
-  if (pathname === '/') {
+  // Force hide on exact home path
+  if (pathname === '/' || pathname === '') {
     return null;
   }
 
