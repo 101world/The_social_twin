@@ -27,11 +27,6 @@ const Navbar = () => {
   // Hide navbar on home page
   const isHomePage = pathname === '/' || pathname === '';
   
-  // Don't render anything on home page to avoid useEffect errors
-  if (isHomePage) {
-    return null;
-  }
-  
   // Mobile detection effect - Enhanced for iOS devices
   useEffect(() => {
     const checkMobile = () => {
@@ -147,6 +142,11 @@ const Navbar = () => {
     document.addEventListener('landing:state', onEvt as any);
     return () => document.removeEventListener('landing:state', onEvt as any);
   }, []);
+
+  // Don't render anything on home page - but after all useEffect hooks
+  if (isHomePage) {
+    return null;
+  }
 
   // Show credits on mobile instead of hiding navbar completely
   if (isMobile) {

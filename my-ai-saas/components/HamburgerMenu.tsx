@@ -21,15 +21,10 @@ const HamburgerMenu = () => {
   const isTwin = pathname?.startsWith('/social-twin');
   const isDashboard = pathname?.startsWith('/dashboard');
   
-  // Hide hamburger menu on home page
+  // Hide hamburger menu on home page - MUST be before any useEffect hooks
   const isHomePage = pathname === '/' || pathname === '';
   
-  // Don't render anything on home page to avoid useEffect errors
-  if (isHomePage) {
-    return null;
-  }
-
-  // Load credits
+  // Load credits - run on all pages to avoid React hook order issues
   useEffect(() => {
     let ignore = false;
     const load = async () => {
@@ -49,7 +44,7 @@ const HamburgerMenu = () => {
     return () => { ignore = true; clearInterval(id); };
   }, []);
 
-  // Mobile detection
+  // Mobile detection - run on all pages to avoid React hook order issues
   useEffect(() => {
     const checkMobile = () => {
       const isSmallScreen = window.innerWidth < 640;
@@ -69,7 +64,7 @@ const HamburgerMenu = () => {
     };
   }, []);
 
-  // Sync Simple/Pro with Social Twin page
+  // Sync Simple/Pro with Social Twin page - run on all pages to avoid React hook order issues
   useEffect(() => {
     if (!isTwin) return;
     const update = () => {
@@ -85,7 +80,7 @@ const HamburgerMenu = () => {
     return () => { window.removeEventListener('focus', onFocus); };
   }, [isTwin]);
 
-  // Close menu on Escape key
+  // Close menu on Escape key - run on all pages to avoid React hook order issues
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -95,6 +90,11 @@ const HamburgerMenu = () => {
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
+
+  // Don't render anything on home page - but after all useEffect hooks
+  if (isHomePage) {
+    return null;
+  }
 
   const toggleSimple = () => {
     const next = !simple;
