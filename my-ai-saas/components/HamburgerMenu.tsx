@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SignedOut, SignInButton, SignedIn, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Users, CreditCard, Zap } from 'lucide-react';
+import { Menu, X, Home, Users, CreditCard, Zap, BarChart3, Newspaper } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const HamburgerMenu = () => {
@@ -115,7 +115,8 @@ const HamburgerMenu = () => {
   const menuItems = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/social-twin', label: 'Social Twin', icon: Users },
-    { href: '/news', label: 'News', icon: () => <span className="text-lg">📰</span> },
+    { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { href: '/news', label: 'News', icon: Newspaper },
     { href: '/subscription', label: 'Subscriptions', icon: CreditCard },
     { href: '/one', label: 'Code of ONE', icon: Zap },
     { href: '/explore', label: 'Explore', icon: () => <span className="text-lg">🔍</span> },
