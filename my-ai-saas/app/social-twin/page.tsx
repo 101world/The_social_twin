@@ -2739,37 +2739,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   {/* Settings panel removed from global area; available in Dashboard tab */}
 
-        {/* Top Navigation - COMPLETELY HIDDEN on mobile, visible on desktop only */}
-        {!isMobile && window.innerWidth >= 640 && (
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar ${isMobile ? 'hidden md:flex' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-            <div className="flex gap-1">
-        {[
-          { id: 'chat', label: 'Chat', icon: '💬' },
-          { id: 'generated', label: 'Generated', icon: '🎨' },
-          { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-          { id: 'news', label: 'News', icon: '📰' }
-        ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
-                      ? (darkMode
-                          ? 'border-b border-neutral-300 text-neutral-100'
-                          : 'border-b border-neutral-800 text-neutral-900')
-                      : (darkMode
-                          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
-                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Save Project moved to bottom next to More */}
-          </div>
-        )}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : '80px' }}>
+        {/* Top Navigation - REMOVED - Chat moved to hamburger menu */}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : '80px' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>

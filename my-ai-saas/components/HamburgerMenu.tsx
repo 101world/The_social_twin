@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SignedOut, SignInButton, SignedIn, UserButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Users, CreditCard, Zap, BarChart3, Newspaper } from 'lucide-react';
+import { Menu, X, Home, Users, CreditCard, Zap, BarChart3, Newspaper, MessageCircle } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 const HamburgerMenu = () => {
@@ -115,6 +115,7 @@ const HamburgerMenu = () => {
   const menuItems = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/social-twin', label: 'Social Twin', icon: Users },
+    { href: '/chat', label: 'Chat', icon: MessageCircle },
     { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { href: '/news', label: 'News', icon: Newspaper },
     { href: '/subscription', label: 'Subscriptions', icon: CreditCard },
@@ -124,60 +125,67 @@ const HamburgerMenu = () => {
 
   return (
     <>
-      {/* Top Right Corner - Credits and Turbo Mode */}
-      <div className="fixed top-4 right-4 z-[99999] flex items-center space-x-3">
-        {/* Turbo Mode Toggle - Only show on Social Twin pages */}
-        {isTwin && (
-          <button
-            onClick={toggleSimple}
-            className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
-              simple
-                ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
-                : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
-            }`}
-            title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="currentColor"
+      {/* Top Navigation Bar */}
+      <div className="fixed top-0 left-0 right-0 z-[99999] bg-black/80 backdrop-blur-xl border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Left Side - Hamburger Menu */}
+          <div className="flex items-center">
+            <button
+              onClick={toggleSidebar}
+              className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
+                isOpen
+                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
+                  : 'bg-black/50 border border-white/20 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
+              }`}
+              aria-label={isOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isOpen}
             >
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </button>
-        )}
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
 
-        {/* Real Credits Display */}
-        <SignedIn>
-          {(credits !== null || oneMaxBalance !== null) && (
-            <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
-              isOneMaxUser
-                ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
-                : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
-            }`}>
-              {isOneMaxUser
-                ? `$${(oneMaxBalance || 0).toFixed(2)}`
-                : `${credits || 0} credits`
-              }
-            </div>
-          )}
-        </SignedIn>
+          {/* Right Side - Turbo Mode and Credits */}
+          <div className="flex items-center space-x-3">
+            {/* Turbo Mode Toggle - Only show on Social Twin pages */}
+            {isTwin && (
+              <button
+                onClick={toggleSimple}
+                className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
+                  simple
+                    ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
+                    : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
+                }`}
+                title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </button>
+            )}
+
+            {/* Real Credits Display */}
+            <SignedIn>
+              {(credits !== null || oneMaxBalance !== null) && (
+                <div className={`px-3 py-2 rounded-lg text-sm font-medium backdrop-blur-sm ${
+                  isOneMaxUser
+                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-400/30 text-white'
+                    : 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-400/30 text-white'
+                }`}>
+                  {isOneMaxUser
+                    ? `$${(oneMaxBalance || 0).toFixed(2)}`
+                    : `${credits || 0} credits`
+                  }
+                </div>
+              )}
+            </SignedIn>
+          </div>
+        </div>
       </div>
-
-      {/* Hamburger Menu Button */}
-      <button
-        onClick={toggleSidebar}
-        className={`fixed top-4 left-4 z-[99999] p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
-          isOpen
-            ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
-            : 'bg-black/50 border border-white/20 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
-        }`}
-        aria-label={isOpen ? "Close menu" : "Open menu"}
-        aria-expanded={isOpen}
-      >
-        {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
 
       {/* Dropdown Menu - Show on all pages when hamburger menu is clicked */}
       {isOpen && (
@@ -190,7 +198,7 @@ const HamburgerMenu = () => {
 
           {/* Menu Panel */}
           <div
-            className={`absolute top-12 left-4 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
+            className={`absolute top-14 left-4 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
               isMobile 
                 ? 'w-[calc(100vw-2rem)] max-w-sm max-h-[calc(100vh-5rem)] overflow-y-auto' 
                 : 'w-64'
