@@ -147,18 +147,61 @@ const HamburgerMenu = () => {
 
           {/* Center - AI Personality Dropdown */}
           <div className="flex-1 flex justify-center">
-            <select
-              value={aiPersonality}
-              onChange={(e) => setAiPersonality(e.target.value as any)}
-              className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg px-3 py-2 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 text-white hover:from-blue-500/20 hover:to-cyan-500/20 transition-all duration-200 focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 backdrop-blur-sm"
-            >
-              <option value="creative" className="bg-slate-800 text-white">🎨 Creative</option>
-              <option value="news" className="bg-slate-800 text-white">📰 News</option>
-              <option value="police" className="bg-slate-800 text-white">👮 Police</option>
-              <option value="lawyer" className="bg-slate-800 text-white">⚖️ Lawyer</option>
-              <option value="accountant" className="bg-slate-800 text-white">📊 Accountant</option>
-              <option value="teacher" className="bg-slate-800 text-white">🎓 Teacher</option>
-            </select>
+            <div className="relative">
+              <select
+                value={aiPersonality}
+                onChange={(e) => setAiPersonality(e.target.value as any)}
+                className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg px-3 py-2 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 text-white hover:from-blue-500/20 hover:to-cyan-500/20 transition-all duration-200 focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 backdrop-blur-sm appearance-none pr-8"
+              >
+                <option value="creative" className="bg-slate-800 text-white">Creative</option>
+                <option value="news" className="bg-slate-800 text-white">News</option>
+                <option value="police" className="bg-slate-800 text-white">Police</option>
+                <option value="lawyer" className="bg-slate-800 text-white">Lawyer</option>
+                <option value="accountant" className="bg-slate-800 text-white">Accountant</option>
+                <option value="teacher" className="bg-slate-800 text-white">Teacher</option>
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {/* Icon display */}
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                {aiPersonality === 'creative' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+                  </svg>
+                )}
+                {aiPersonality === 'news' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2 2zM7 9h.01M7 15h.01M11 9h.01M11 15h.01M15 9h.01M15 15h.01M7 21h10a2 2 0 002-2V8a2 2 0 00-2-2H7a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                )}
+                {aiPersonality === 'police' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+                {aiPersonality === 'lawyer' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 3m0 0l3-3m-3 3V3m6 3l3 3m0 0l3-3m-3 3V3m0 6v12m-6-6h12" />
+                  </svg>
+                )}
+                {aiPersonality === 'accountant' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                )}
+                {aiPersonality === 'teacher' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  </svg>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Right Side - Turbo Mode and Credits */}
