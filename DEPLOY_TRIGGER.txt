@@ -1,5 +1,7 @@
-Deployment trigger: 2025-08-28
+Deployment trigger: 2025-08-28 12:00
 Force Vercel rebuild for home page cleanup changes
 - Removed News button from home page
 - Hamburger menu hidden on home page
 - Blue-cyan theme applied
+- Enhanced navigation hiding logic
+- Clean home page design
