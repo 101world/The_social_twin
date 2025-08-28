@@ -20,6 +20,14 @@ const HamburgerMenu = () => {
   const router = useRouter();
   const isTwin = pathname?.startsWith('/social-twin');
   const isDashboard = pathname?.startsWith('/dashboard');
+  
+  // Hide hamburger menu on home page
+  const isHomePage = pathname === '/' || pathname === '';
+  
+  // Don't render anything on home page to avoid useEffect errors
+  if (isHomePage) {
+    return null;
+  }
 
   // Load credits
   useEffect(() => {

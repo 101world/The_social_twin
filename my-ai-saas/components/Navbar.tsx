@@ -24,6 +24,14 @@ const Navbar = () => {
   // Animation state for navbar click effects
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   
+  // Hide navbar on home page
+  const isHomePage = pathname === '/' || pathname === '';
+  
+  // Don't render anything on home page to avoid useEffect errors
+  if (isHomePage) {
+    return null;
+  }
+  
   // Mobile detection effect - Enhanced for iOS devices
   useEffect(() => {
     const checkMobile = () => {
