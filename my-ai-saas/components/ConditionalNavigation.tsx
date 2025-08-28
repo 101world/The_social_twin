@@ -9,10 +9,14 @@ export default function ConditionalNavigation() {
   
   // Hide navigation on home page only - clean UI without hamburger menu
   // Force hide on exact home path
+  console.log('ConditionalNavigation - Current pathname:', pathname);
+  
   if (pathname === '/' || pathname === '') {
+    console.log('ConditionalNavigation - Hiding navigation for home page');
     return null;
   }
 
+  console.log('ConditionalNavigation - Showing navigation for non-home page');
   return (
     <>
       {/* Desktop: Hamburger Menu, Mobile: Navbar */}
