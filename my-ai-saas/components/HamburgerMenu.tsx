@@ -136,7 +136,7 @@ const HamburgerMenu = () => {
               className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                 isOpen
                   ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
-                  : 'bg-gray-800/50 border border-gray-600/30 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
+                  : 'bg-gray-800/50 border border-gray-700/30 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
               }`}
               aria-label={isOpen ? "Close menu" : "Open menu"}
               aria-expanded={isOpen}
@@ -212,7 +212,7 @@ const HamburgerMenu = () => {
                 onClick={toggleSimple}
                 className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                   simple
-                    ? 'bg-gray-800/50 border border-gray-600/30 text-white hover:bg-gray-700/50 hover:border-gray-500/40'
+                    ? 'bg-gray-800/50 border border-gray-700/30 text-white hover:bg-gray-700/50 hover:border-gray-600/40'
                     : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
                 }`}
                 title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
@@ -261,7 +261,7 @@ const HamburgerMenu = () => {
 
           {/* Menu Panel */}
           <div
-            className={`absolute top-16 left-4 bg-gradient-to-r from-gray-900/95 via-gray-800/90 to-gray-900/95 border border-gray-600/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
+            className={`absolute top-16 left-4 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-900 border border-gray-700/30 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
               isMobile 
                 ? 'w-[calc(100vw-2rem)] max-w-sm max-h-[calc(100vh-5rem)] overflow-y-auto' 
                 : 'w-64'
