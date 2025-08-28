@@ -15,6 +15,7 @@ const HamburgerMenu = () => {
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const [simple, setSimple] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher'>('creative');
   const pathname = usePathname();
   const router = useRouter();
   const isTwin = pathname?.startsWith('/social-twin');
@@ -126,7 +127,7 @@ const HamburgerMenu = () => {
   return (
     <>
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-[99999] bg-black/80 backdrop-blur-xl border-b border-white/10">
+      <div className="fixed top-0 left-0 right-0 z-[99999] bg-gradient-to-r from-slate-900/90 via-blue-900/80 to-slate-900/90 backdrop-blur-xl border-b border-blue-400/20">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Left Side - Hamburger Menu */}
           <div className="flex items-center">
@@ -135,7 +136,7 @@ const HamburgerMenu = () => {
               className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                 isOpen
                   ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
-                  : 'bg-black/50 border border-white/20 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
+                  : 'bg-black/30 border border-white/20 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
               }`}
               aria-label={isOpen ? "Close menu" : "Open menu"}
               aria-expanded={isOpen}
@@ -144,16 +145,20 @@ const HamburgerMenu = () => {
             </button>
           </div>
 
-          {/* Center - AI Profile */}
+          {/* Center - AI Personality Dropdown */}
           <div className="flex-1 flex justify-center">
-            <SignedIn>
-              <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 backdrop-blur-sm">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">AI</span>
-                </div>
-                <UserButton />
-              </div>
-            </SignedIn>
+            <select
+              value={aiPersonality}
+              onChange={(e) => setAiPersonality(e.target.value as any)}
+              className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg px-3 py-2 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-400/20 text-white hover:from-blue-500/20 hover:to-cyan-500/20 transition-all duration-200 focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 backdrop-blur-sm"
+            >
+              <option value="creative" className="bg-slate-800 text-white">🎨 Creative</option>
+              <option value="news" className="bg-slate-800 text-white">📰 News</option>
+              <option value="police" className="bg-slate-800 text-white">👮 Police</option>
+              <option value="lawyer" className="bg-slate-800 text-white">⚖️ Lawyer</option>
+              <option value="accountant" className="bg-slate-800 text-white">📊 Accountant</option>
+              <option value="teacher" className="bg-slate-800 text-white">🎓 Teacher</option>
+            </select>
           </div>
 
           {/* Right Side - Turbo Mode and Credits */}
@@ -164,7 +169,7 @@ const HamburgerMenu = () => {
                 onClick={toggleSimple}
                 className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                   simple
-                    ? 'bg-black/50 border border-white/20 text-white hover:bg-black/70 hover:border-white/40'
+                    ? 'bg-black/30 border border-white/20 text-white hover:bg-black/50 hover:border-white/40'
                     : 'bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 text-blue-300 hover:from-blue-500/30 hover:to-cyan-500/30'
                 }`}
                 title={simple ? 'Switch to Pro Mode' : 'Switch to Normal Mode'}
@@ -213,7 +218,7 @@ const HamburgerMenu = () => {
 
           {/* Menu Panel */}
           <div
-            className={`absolute top-14 left-4 bg-black/95 border border-white/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
+            className={`absolute top-16 left-4 bg-gradient-to-r from-slate-900/95 via-blue-900/90 to-slate-900/95 border border-blue-400/20 rounded-lg shadow-xl backdrop-blur-xl z-[20001] ${
               isMobile 
                 ? 'w-[calc(100vw-2rem)] max-w-sm max-h-[calc(100vh-5rem)] overflow-y-auto' 
                 : 'w-64'
