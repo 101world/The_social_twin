@@ -135,8 +135,8 @@ const HamburgerMenu = () => {
               onClick={toggleSidebar}
               className={`p-2 rounded-lg transition-all duration-200 backdrop-blur-sm ${
                 isOpen
-                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-400'
-                  : 'bg-gray-800/50 border border-gray-700/30 text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-400/30 hover:text-purple-400'
+                  ? 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border border-gray-500/30 text-gray-300'
+                  : 'bg-gray-800/50 border border-gray-700/30 text-white hover:bg-gradient-to-r hover:from-gray-500/20 hover:to-gray-400/20 hover:border-gray-500/30 hover:text-gray-300'
               }`}
               aria-label={isOpen ? "Close menu" : "Open menu"}
               aria-expanded={isOpen}
@@ -234,9 +234,9 @@ const HamburgerMenu = () => {
                 <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg backdrop-blur-sm border transition-all duration-200 ${
                   isOneMaxUser
                     ? 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border-gray-500/30 text-white'
-                    : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 border-cyan-400/30 text-white hover:from-cyan-500/30 hover:to-teal-500/30'
+                    : 'bg-gradient-to-r from-gray-500/20 to-gray-400/20 border-gray-500/30 text-white hover:from-gray-500/30 hover:to-gray-400/30'
                 }`}>
-                  <Coins className={`w-4 h-4 ${isOneMaxUser ? 'text-gray-300' : 'text-cyan-300'}`} />
+                  <Coins className={`w-4 h-4 ${isOneMaxUser ? 'text-gray-300' : 'text-gray-300'}`} />
                   <span className="text-sm font-bold">
                     {isOneMaxUser
                       ? `$${(oneMaxBalance || 0).toFixed(2)}`
