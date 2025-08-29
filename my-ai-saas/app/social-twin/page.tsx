@@ -2615,10 +2615,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Desktop: Empty div for spacing, Mobile: Hidden */}
           {!isMobile && <div></div>}
           
-          {/* Center: Atom title for desktop only */}
-          <h1 className="hidden md:block text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
-            Atom
-          </h1>
+          {/* Center: AI Personality Dropdown */}
+          <div className="flex items-center justify-center">
+            <select 
+              value={aiPersonality}
+              onChange={(e) => {
+                const newPersonality = e.target.value as any;
+                setAiPersonality(newPersonality);
+                localStorage.setItem('ai_personality', newPersonality);
+              }}
+              className={`px-3 py-1 rounded-lg text-sm font-medium border transition-colors ${
+                darkMode 
+                  ? 'bg-neutral-800 text-white border-neutral-700 hover:bg-neutral-700' 
+                  : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <option value="atom">⚛️ Atom AI</option>
+              <option value="creative">🎨 Creative AI</option>
+              <option value="news">📰 News AI</option>
+              <option value="police">👮 Police AI</option>
+              <option value="lawyer">⚖️ Lawyer AI</option>
+              <option value="accountant">📊 Accountant AI</option>
+              <option value="teacher">🎓 Teacher AI</option>
+            </select>
+          </div>
           
           {/* Right side: Credits - removed duplicate display, using HamburgerMenu green bar */}
           <div className="flex items-center gap-2">
@@ -2908,6 +2928,73 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               )}
                               {m.content}
                             </div>
+                            
+                            {/* Action icons for text messages */}
+                            {!isUser && m.content && !m.imageUrl && !m.videoUrl && !isAssistantPlain && (
+                              <div className="mt-2 flex items-center gap-1">
+                                {/* Send to Chat */}
+                                <button
+                                  onClick={() => {
+                                    setInput(m.content);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
+                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                  }`}
+                                  title="Send to chat"
+                                >
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                  </svg>
+                                </button>
+                                
+                                {/* Copy */}
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(m.content);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
+                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                  }`}
+                                  title="Copy text"
+                                >
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                                  </svg>
+                                </button>
+                                
+                                {/* Generate Image */}
+                                <button
+                                  onClick={() => {
+                                    setMode('image');
+                                    setInput(m.content);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
+                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                  }`}
+                                  title="Generate image"
+                                >
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                  </svg>
+                                </button>
+                                
+                                {/* Generate Video */}
+                                <button
+                                  onClick={() => {
+                                    setMode('video');
+                                    setInput(m.content);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
+                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                  }`}
+                                  title="Generate video"
+                                >
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
                             {m.loading && m.pendingType==='image' ? (
                               <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
                             ) : null}
@@ -2942,10 +3029,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   }}>Load image</button>
                                 )}
                                 <div className="mt-2 flex items-center gap-2">
-                                  <button
-                                    className="rounded border px-2 py-0.5 text-xs"
-                                    onClick={()=>{ folderModalPayload.current = { url: m.imageUrl!, type: 'image', prompt: m.content }; setFolderModalOpen(true); }}
-                                  >Add to project</button>
                                   {m.sourceImageUrl ? (
                                     <button
                                       className="rounded border px-2 py-0.5 text-xs"
@@ -3040,12 +3123,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       Open in New Tab
                                     </a>
                                   </div>
-                                </div>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <button
-                                    className="rounded border px-2 py-0.5 text-xs"
-                                    onClick={()=>{ folderModalPayload.current = { url: m.pdfUrl!, type: 'pdf', prompt: m.content }; setFolderModalOpen(true); }}
-                                  >Add to project</button>
                                 </div>
                               </div>
                             ) : null}
@@ -5629,18 +5706,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
                 >
                   💬 Show in chat
-                </button>
-                
-                <button
-                  onClick={() => {
-                    const url = viewerItem.display_url || viewerItem.result_url;
-                    folderModalPayload.current = { url: String(url), type: viewerItem.type, prompt: viewerItem.prompt } as any;
-                    setFolderModalOpen(true);
-                    setViewerOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
-                >
-                  📁 Add to project
                 </button>
                 
                 <button
