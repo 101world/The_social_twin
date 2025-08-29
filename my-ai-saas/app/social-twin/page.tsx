@@ -2588,7 +2588,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${isMobile ? 'bg-transparent' : 'bg-gray-800'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${isMobile ? 'bg-transparent' : 'bg-transparent'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           {/* Mobile: Hamburger menu on the left */}
           {isMobile && (
             <button
@@ -2615,30 +2615,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Desktop: Empty div for spacing, Mobile: Hidden */}
           {!isMobile && <div></div>}
           
-          {/* Center: AI Personality Dropdown */}
-          <div className="flex items-center justify-center">
-            <select 
-              value={aiPersonality}
-              onChange={(e) => {
-                const newPersonality = e.target.value as any;
-                setAiPersonality(newPersonality);
-                localStorage.setItem('ai_personality', newPersonality);
-              }}
-              className={`px-3 py-1 rounded-lg text-sm font-medium border transition-colors ${
-                darkMode 
-                  ? 'bg-neutral-800 text-white border-neutral-700 hover:bg-neutral-700' 
-                  : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <option value="atom">Atom AI</option>
-              <option value="creative">Creative AI</option>
-              <option value="news">News AI</option>
-              <option value="police">Police AI</option>
-              <option value="lawyer">Lawyer AI</option>
-              <option value="accountant">Accounts AI</option>
-              <option value="teacher">Teacher AI</option>
-            </select>
-          </div>
+          {/* Center: Empty space */}
+          <div></div>
           
           {/* Right side: Credits - removed duplicate display, using HamburgerMenu green bar */}
           <div className="flex items-center gap-2">
@@ -2887,7 +2865,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
                                 <span className="font-semibold">
                                   {isUser ? (user?.fullName || 'You') : 
-                                    `${aiPersonality.charAt(0).toUpperCase() + aiPersonality.slice(1)} AI`
+                                    `${aiPersonality.charAt(0).toUpperCase() + aiPersonality.slice(1)}`
                                   }
                                 </span>
                                 {!isUser && (
