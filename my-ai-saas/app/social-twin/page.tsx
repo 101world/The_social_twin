@@ -4114,6 +4114,124 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   )}
                 </div>
 
+                {/* Mobile project button (above input area) */}
+                {isMobile && (
+                  <div className="flex justify-center mb-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                        className={`${isMobile ? 'h-8 w-28' : 'h-7 w-32'} rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
+                        title="Project Management"
+                        aria-label="Open Project Menu"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className="transition-colors">
+                          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        <span className="text-xs font-medium">Projects</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
+                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+
+                      {/* Project dropdown menu */}
+                      {projectDropdownOpen && (
+                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg border shadow-lg z-50 ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                          {/* Save Current Project */}
+                          <button
+                            onClick={async () => {
+                              if (currentProjectId) {
+                                await updateExistingProject();
+                              } else {
+                                const title = prompt('Enter project name:') || 'Untitled Project';
+                                await saveCurrentProject(title);
+                              }
+                              setProjectDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-t-lg transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none">
+                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
+                              <polyline points="17,8 12,3 7,8" stroke="currentColor" strokeWidth="2"/>
+                              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2"/>
+                            </svg>
+                            <div className="text-left">
+                              <div className="font-medium text-sm">
+                                {currentProjectId ? 'Save Changes' : 'Save as New Project'}
+                              </div>
+                              <div className="text-xs opacity-70">
+                                {currentProjectId ? 'Update existing project' : 'Create new project'}
+                              </div>
+                            </div>
+                          </button>
+
+                          <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+
+                          {/* Current Project Info */}
+                          {currentProjectId && currentProjectTitle && (
+                            <>
+                              <div className={`px-3 py-1.5 text-xs font-medium ${darkMode ? 'text-neutral-400 bg-neutral-800/50' : 'text-gray-500 bg-gray-50'}`}>
+                                Current: {currentProjectTitle}
+                              </div>
+                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+                            </>
+                          )}
+
+                          {/* Recent Projects */}
+                          <div className="max-h-40 overflow-y-auto">
+                            {projectsLoading ? (
+                              <div className="px-3 py-2 text-sm text-center opacity-70">Loading projects...</div>
+                            ) : projects.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-center opacity-70">No saved projects</div>
+                            ) : (
+                              projects.slice(0, 4).map((project) => (
+                                <button
+                                  key={project.id}
+                                  onClick={() => switchToProject(project.id, project.title)}
+                                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none">
+                                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
+                                    <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
+                                  </svg>
+                                  <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate text-sm">{project.title || 'Untitled'}</div>
+                                    <div className="text-xs opacity-70">
+                                      {formatRelativeTime(project.updated_at || project.created_at)}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+
+                          {/* View All Projects */}
+                          {projects.length > 0 && (
+                            <>
+                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+                              <button
+                                onClick={() => {
+                                  setProjectDropdownOpen(false);
+                                  setActiveTab('dashboard');
+                                  setDashProjectsOpen(true);
+                                }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-b-lg transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none">
+                                  <path d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" strokeWidth="2"/>
+                                  <path d="M9 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H9V5z" stroke="currentColor" strokeWidth="2"/>
+                                  <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                                <span className="text-sm">View All Projects</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Prompt input area with improved mobile aesthetics */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-0' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <div className="flex-1 relative">
@@ -4361,123 +4479,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
 
-                {/* Mobile project button (separate from input area) */}
-                {isMobile && (
-                  <div className="flex justify-center mt-3">
-                    <div className="relative">
-                      <button
-                        onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                        className={`${isMobile ? 'h-9 w-36' : 'h-7 w-32'} rounded-xl transition-all flex items-center justify-center gap-2 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-md`}
-                        title="Project Management"
-                        aria-label="Open Project Menu"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
-                          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                        <span className="text-sm font-medium">Projects</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
-                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
 
-                      {/* Project dropdown menu */}
-                      {projectDropdownOpen && (
-                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 rounded-xl border shadow-xl z-50 ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
-                          {/* Save Current Project */}
-                          <button
-                            onClick={async () => {
-                              if (currentProjectId) {
-                                await updateExistingProject();
-                              } else {
-                                const title = prompt('Enter project name:') || 'Untitled Project';
-                                await saveCurrentProject(title);
-                              }
-                              setProjectDropdownOpen(false);
-                            }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-t-xl transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
-                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                              <polyline points="17,8 12,3 7,8" stroke="currentColor" strokeWidth="2"/>
-                              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2"/>
-                            </svg>
-                            <div className="text-left">
-                              <div className="font-medium">
-                                {currentProjectId ? 'Save Changes' : 'Save as New Project'}
-                              </div>
-                              <div className="text-xs opacity-70">
-                                {currentProjectId ? 'Update existing project' : 'Create new project'}
-                              </div>
-                            </div>
-                          </button>
-
-                          <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
-
-                          {/* Current Project Info */}
-                          {currentProjectId && currentProjectTitle && (
-                            <>
-                              <div className={`px-4 py-2 text-xs font-medium ${darkMode ? 'text-neutral-400 bg-neutral-800/50' : 'text-gray-500 bg-gray-50'}`}>
-                                Current: {currentProjectTitle}
-                              </div>
-                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
-                            </>
-                          )}
-
-                          {/* Recent Projects */}
-                          <div className="max-h-48 overflow-y-auto">
-                            {projectsLoading ? (
-                              <div className="px-4 py-3 text-sm text-center opacity-70">Loading projects...</div>
-                            ) : projects.length === 0 ? (
-                              <div className="px-4 py-3 text-sm text-center opacity-70">No saved projects</div>
-                            ) : (
-                              projects.slice(0, 5).map((project) => (
-                                <button
-                                  key={project.id}
-                                  onClick={() => switchToProject(project.id, project.title)}
-                                  className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none">
-                                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
-                                    <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
-                                  </svg>
-                                  <div className="text-left flex-1 min-w-0">
-                                    <div className="font-medium truncate">{project.title || 'Untitled'}</div>
-                                    <div className="text-xs opacity-70">
-                                      {formatRelativeTime(project.updated_at || project.created_at)}
-                                    </div>
-                                  </div>
-                                </button>
-                              ))
-                            )}
-                          </div>
-
-                          {/* View All Projects */}
-                          {projects.length > 0 && (
-                            <>
-                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
-                              <button
-                                onClick={() => {
-                                  setProjectDropdownOpen(false);
-                                  setActiveTab('dashboard');
-                                  setDashProjectsOpen(true);
-                                }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-b-xl transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
-                                  <path d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" strokeWidth="2"/>
-                                  <path d="M9 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H9V5z" stroke="currentColor" strokeWidth="2"/>
-                                  <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="2"/>
-                                </svg>
-                                <span>View All Projects</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
                 {attached ? (
                   <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
                     <div className={`flex items-center gap-2 rounded-lg border ${isMobile ? 'p-2 flex-1' : 'p-3 w-full'} ${darkMode ? 'border-neutral-700 bg-neutral-800/50' : 'border-gray-200 bg-gray-50'}`}>
