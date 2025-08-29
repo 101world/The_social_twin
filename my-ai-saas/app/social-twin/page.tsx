@@ -2231,7 +2231,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
           userId: userId || undefined,
           attachment: attached || undefined,
-          imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
+          imageUrl: (mode==='image-modify' && (modifyImageUrl || attached?.dataUrl)) ? (modifyImageUrl || attached?.dataUrl) : undefined,
           workflow_settings: showWorkflowPopoverFor ? {
             target: showWorkflowPopoverFor,
             use_flux_dev: useFluxDev,
@@ -2288,7 +2288,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         imageUrl: aiImage,
         videoUrl: aiVideo || firstVideo || remappedFromImages,
         images: (batchImages && batchImages.length ? batchImages : undefined),
-        sourceImageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
+        sourceImageUrl: (mode==='image-modify' && (modifyImageUrl || attached?.dataUrl)) ? (modifyImageUrl || attached?.dataUrl) : undefined,
         loading: false,
       }) : m));
       // If multiple images, also add a thumb strip to canvas
@@ -3039,7 +3039,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     onClick={() => {
                                       setMode('image-modify');
                                       setInput(`Modify this image: ${m.imageUrl}`);
-                                      setModifyImageUrl(m.imageUrl);
+                                      setModifyImageUrl(m.imageUrl || null);
+                                      // Set attached image for modify mode
+                                      if (m.imageUrl) {
+                                        setAttached({
+                                          name: 'modify-image.png',
+                                          type: 'image/png',
+                                          dataUrl: m.imageUrl
+                                        });
+                                      }
                                     }}
                                     className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
                                       darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
@@ -3099,7 +3107,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         <button
                                           onClick={() => {
                                             const text = 'Check out this amazing image!';
-                                            const url = m.imageUrl;
+                                            const url = m.imageUrl || '';
                                             window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
                                             document.getElementById(`share-menu-${m.id}`)?.classList.add('hidden');
                                           }}
@@ -3113,7 +3121,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         <button
                                           onClick={() => {
                                             const text = 'Check out this amazing image!';
-                                            const url = m.imageUrl;
+                                            const url = m.imageUrl || '';
                                             window.open(`https://www.instagram.com/create/story/?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
                                             document.getElementById(`share-menu-${m.id}`)?.classList.add('hidden');
                                           }}
