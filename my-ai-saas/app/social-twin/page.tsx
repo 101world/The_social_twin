@@ -3049,7 +3049,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               />
 
   {/* Composer container - removed dark grey background/border, transparent */}
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute bottom-0 left-0 right-0 p-2'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-1' : 'absolute bottom-0 left-0 right-0 p-1'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
           style={{ 
             bottom: '0px'
           }}>
@@ -4027,7 +4027,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                     placeholder=""
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-2 pr-10 transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                     ref={bottomInputRef}
                     style={{ 
                       fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
