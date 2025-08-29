@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_URL = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://64e5p2jm3e5r3k-3001.proxy.runpod.net/';
+const DEFAULT_URL = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || 'https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/';
 const API_KEY = process.env.RUNPOD_API_KEY || process.env.RUNPOD_API_KEY;
 const SAMPLE_IMAGE = process.env.TEST_REF_IMAGE || 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png';
 

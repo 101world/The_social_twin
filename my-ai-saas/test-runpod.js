@@ -1,7 +1,7 @@
 // Simple RunPod -> ComfyUI connectivity test for text-to-image
 // Usage: node test-runpod.js "your prompt here" (optional)
 
-const DEFAULT_URL = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://64e5p2jm3e5r3k-3001.proxy.runpod.net/";
+const DEFAULT_URL = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/";
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
 const PROMPT_TEXT = process.argv.slice(2).join(" ") || "a cute corgi playing in a park, high detail, natural lighting";
 

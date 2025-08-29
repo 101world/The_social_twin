@@ -5,7 +5,7 @@ const { pickRunpodUrlFromConfig } = require('./lib/supabase.ts');
 
 // Test the function
 const testConfig = {
-  image_url: 'https://zgzg6ujmo94qpj-3001.proxy.runpod.net/',
+  image_url: 'https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/',
   text_url: null,
   video_url: null,
   image_modify_url: null

@@ -1081,7 +1081,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   useEffect(() => {
     // Load RunPod endpoints from localStorage with environment variable fallbacks
     const DEFAULT_TEXT = process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL || "";
-    const DEFAULT_IMAGE = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://64e5p2jm3e5r3k-3001.proxy.runpod.net/";
+    const DEFAULT_IMAGE = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/";
     const DEFAULT_IMAGE_MODIFY = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || DEFAULT_IMAGE;
     const DEFAULT_VIDEO = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL || "";
     const DEFAULT_VIDEO_WAN = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_WAN_URL || "";

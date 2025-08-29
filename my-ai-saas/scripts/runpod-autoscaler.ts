@@ -234,7 +234,7 @@ async function mainLoop() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   mainLoop().catch((e) => {
     console.error('autoscaler failed', e);
     process.exit(1);
