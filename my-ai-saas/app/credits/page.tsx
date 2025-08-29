@@ -27,7 +27,7 @@ export default function CreditSystemPage() {
             </h3>
             <div className="space-y-3 text-sm text-gray-600">
               <div className="flex items-start gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+                <span className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></span>
                 <div>
                   <strong>Monthly Wallet:</strong> Your plan grants a monthly credits wallet. When it’s used up, upgrade to continue.
                 </div>
@@ -65,7 +65,7 @@ export default function CreditSystemPage() {
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+                <span className="w-2 h-2 bg-gray-500 rounded-full mt-2 flex-shrink-0"></span>
                 <div>
                   <strong>Start Small:</strong> Text generation (1 credit) is perfect for testing ideas
                 </div>
@@ -90,44 +90,44 @@ export default function CreditSystemPage() {
         <div className="mt-8 bg-white p-6 rounded-lg border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">📊 Usage Examples</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="text-2xl mb-2">🎨</div>
-              <div className="font-semibold text-blue-800">Creative Package</div>
-              <div className="text-sm text-blue-600 mt-2">
+              <div className="font-semibold text-gray-800">Creative Package</div>
+              <div className="text-sm text-gray-600 mt-2">
                 10 Images + 5 Modifications + 2 Videos + 10 PDFs
               </div>
-              <div className="text-lg font-bold text-blue-800 mt-2">
+              <div className="text-lg font-bold text-gray-800 mt-2">
                 85 credits/day
               </div>
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-gray-600">
                 Needs: One S plan or higher
               </div>
             </div>
 
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="text-2xl mb-2">📝</div>
-              <div className="font-semibold text-green-800">Content Creator</div>
-              <div className="text-sm text-green-600 mt-2">
+              <div className="font-semibold text-gray-800">Content Creator</div>
+              <div className="text-sm text-gray-600 mt-2">
                 50 Texts + 20 Images + 1 Video + 20 PDFs
               </div>
-              <div className="text-lg font-bold text-green-800 mt-2">
+              <div className="text-lg font-bold text-gray-800 mt-2">
                 180 credits/day
               </div>
-              <div className="text-xs text-green-600">
+              <div className="text-xs text-gray-600">
                 Needs: One XT plan or higher
               </div>
             </div>
 
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="text-2xl mb-2">🎬</div>
-              <div className="font-semibold text-purple-800">Video Producer</div>
-              <div className="text-sm text-purple-600 mt-2">
+              <div className="font-semibold text-gray-800">Video Producer</div>
+              <div className="text-sm text-gray-600 mt-2">
                 100 Videos + 50 Images + 100 Texts + 50 PDFs
               </div>
-              <div className="text-lg font-bold text-purple-800 mt-2">
+              <div className="text-lg font-bold text-gray-800 mt-2">
                 1,400 credits/day
               </div>
-              <div className="text-xs text-purple-600">
+              <div className="text-xs text-gray-600">
                 Needs: One Z plan (premium)
               </div>
             </div>

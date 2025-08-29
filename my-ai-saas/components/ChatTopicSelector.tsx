@@ -110,7 +110,7 @@ export default function ChatTopicSelector({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-500"></div>
       </div>
     );
   }
@@ -120,7 +120,7 @@ export default function ChatTopicSelector({
       {/* Create New Topic Button */}
       <button
         onClick={() => setShowCreateForm(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
       >
         <PlusIcon className="h-5 w-5" />
         New Topic
@@ -134,19 +134,19 @@ export default function ChatTopicSelector({
             placeholder="Topic title"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
           />
           <textarea
             placeholder="Description (optional)"
             value={newDescription}
             onChange={(e) => setNewDescription(e.target.value)}
-            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
             rows={2}
           />
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleCreateTopic}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
             >
               Create
             </button>
@@ -174,7 +174,7 @@ export default function ChatTopicSelector({
               key={topic.id}
               className={`p-3 rounded-lg border cursor-pointer transition-all ${
                 selectedTopicId === topic.id
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-gray-500 bg-gray-50'
                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -184,19 +184,19 @@ export default function ChatTopicSelector({
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-500"
                   />
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     placeholder="Description (optional)"
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-gray-500"
                     rows={2}
                   />
                   <div className="flex gap-1">
                     <button
                       onClick={() => handleUpdateTopic(topic.id)}
-                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                      className="px-2 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
                     >
                       Save
                     </button>

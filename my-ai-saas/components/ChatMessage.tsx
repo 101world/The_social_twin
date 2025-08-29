@@ -33,7 +33,7 @@ export default function ChatMessage({ message, mediaGenerations = [] }: ChatMess
   const getRoleIcon = () => {
     switch (message.role) {
       case 'user':
-        return <UserIcon className="h-6 w-6 text-blue-600" />;
+        return <UserIcon className="h-6 w-6 text-gray-600" />;
       case 'ai':
         return <SparklesIcon className="h-6 w-6 text-purple-600" />;
       case 'system':
@@ -61,7 +61,7 @@ export default function ChatMessage({ message, mediaGenerations = [] }: ChatMess
   const getRoleColor = () => {
     switch (message.role) {
       case 'user':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-gray-50 border-gray-200';
       case 'ai':
         return 'bg-purple-50 border-purple-200';
       case 'system':
@@ -146,8 +146,8 @@ export default function ChatMessage({ message, mediaGenerations = [] }: ChatMess
                 )}
                 
                 {media.status === 'processing' && (
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
                     <span className="text-sm">Processing...</span>
                   </div>
                 )}
@@ -183,7 +183,7 @@ export default function ChatMessage({ message, mediaGenerations = [] }: ChatMess
                         href={media.result_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                        className="text-sm text-gray-600 hover:text-gray-800 underline"
                       >
                         View Full Size
                       </a>

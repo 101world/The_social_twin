@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { data, error } = await supabase
       .from('chat_topics')
       .select('id,title,created_at')
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const { title } = await req.json();
     const finalTitle = typeof title === 'string' && title.trim() ? title.trim() : `Topic ${new Date().toISOString()}`;
 
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { data, error } = await supabase
       .from('chat_topics')
       .insert({ user_id: userId, title: finalTitle })

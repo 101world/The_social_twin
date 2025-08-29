@@ -2,33 +2,66 @@ import { createClient } from "@supabase/supabase-js";
 
 // Create a Supabase client. If a Clerk JWT is provided, attach it for RLS.
 export function createSupabaseClient(jwt?: string) {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
-      },
-    }
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!url || !anonKey) {
+    throw new Error('Missing Supabase environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+  }
+  
+  return createClient(url, anonKey, {
+    global: {
+      headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+    },
+  });
 }
 
 // Server-side admin client using service role key (bypasses RLS). Do NOT expose to client.
 export function createSupabaseAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!url || !key) {
+    throw new Error('Missing Supabase admin environment variables. Please check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  
   return createClient(url, key);
 }
 
 // Fetch RunPod config from DB (admin client required to bypass RLS reliably)
 export async function getRunpodConfig() {
   try {
+    // During build time, environment variables might not be available
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!url || !key) {
+      console.warn('Supabase admin environment variables not available, skipping RunPod config fetch');
+      return null;
+    }
+    
     const admin = createSupabaseAdminClient();
     const { data, error } = await admin.from('runpod_config').select('*').eq('scope', 'global').maybeSingle();
     if (error) throw error;
     return data || null;
-  } catch {
+  } catch (err) {
+    console.warn('Failed to fetch RunPod config:', err);
     return null;
+  }
+}
+
+// Safe Supabase client creation that chooses admin or regular client at runtime
+export function createSafeSupabaseClient(jwt?: string) {
+  try {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (serviceRoleKey) {
+      return createSupabaseAdminClient();
+    } else {
+      return createSupabaseClient(jwt);
+    }
+  } catch (error) {
+    console.warn('Failed to create admin client, falling back to regular client:', error);
+    return createSupabaseClient(jwt);
   }
 }
 
@@ -36,13 +69,23 @@ export function pickRunpodUrlFromConfig(opts: {
   provided?: string | null;
   mode?: 'text' | 'image' | 'image-modify' | 'video';
   config?: any | null;
+  useCloudflareProxy?: boolean;
 }): string | undefined {
-  const { provided, mode = 'image', config } = opts || {};
+  const { provided, mode = 'image', config, useCloudflareProxy = true } = opts || {};
   
-  // First priority: user-provided URL (e.g., from localStorage)
+  // PRIORITY 1: Cloudflare Proxy (Stable URL for mobile/web compatibility)
+  if (useCloudflareProxy) {
+    const cloudflareProxyUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_RUNPOD_PROXY;
+    if (cloudflareProxyUrl && typeof cloudflareProxyUrl === 'string' && cloudflareProxyUrl.trim()) {
+      // Return proxy URL with mode path: https://runpod.yourdomain.com/image
+      return cloudflareProxyUrl.replace(/\/$/, '') + '/' + mode;
+    }
+  }
+  
+  // PRIORITY 2: User-provided URL (e.g., from localStorage)
   if (provided && typeof provided === 'string' && provided.trim()) return provided;
   
-  // Second priority: admin config from database
+  // PRIORITY 3: Admin config from database
   if (config) {
     const cfgByMode = {
       text: config.text_url,
@@ -57,7 +100,7 @@ export function pickRunpodUrlFromConfig(opts: {
     }
   }
   
-  // Third priority: environment variables (fallback)
+  // PRIORITY 4: Environment variables (fallback)
   const envByMode = {
     text: process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL,
     image: process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL,

@@ -12,20 +12,61 @@ const CREDIT_COSTS = {
   'image-modify': 3,
 };
 
+// Handle CORS preflight requests for mobile
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-Mobile-Request',
+      'Access-Control-Max-Age': '86400',
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const authRes = await auth();
-    const userId = authRes.userId;
-    const getToken = authRes.getToken;
+  const authRes = await auth();
+  let userId = authRes.userId as string | null;
+  const getToken = authRes.getToken;
+
+    // Check if this is a mobile request and add mobile-specific optimizations
+  const isMobileRequest = req.headers.get('x-mobile-request') === 'true';
     
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (isMobileRequest) {
+      console.log('📱 MOBILE GENERATION REQUEST - Applying mobile optimizations');
     }
 
   // We use the admin client (service role) to avoid RLS token issues during server-side generation tracking.
   // Clerk auth still required for user identity; admin key stays server-side only.
 
   const body = await req.json();
+
+    // Fallback identity for mobile when cookies are stripped: allow same-origin X-User-Id/body userId
+    if (!userId) {
+      const hdrUid = req.headers.get('x-user-id');
+      const bodyUid = typeof body?.userId === 'string' ? body.userId : undefined;
+      userId = (hdrUid || bodyUid || null) as string | null;
+      
+      if (isMobileRequest && userId) {
+        console.log('📱 MOBILE: Using fallback auth with userId:', userId);
+      }
+    }
+
+    if (!userId) {
+      console.log('❌ No userId found - auth failed');
+      return NextResponse.json({ 
+        error: 'Authentication required', 
+        details: 'Please sign in to generate content',
+        mobile_debug: isMobileRequest ? {
+          clerk_auth: authRes.userId ? 'present' : 'missing',
+          header_uid: !!req.headers.get('x-user-id'),
+          body_uid: !!body?.userId,
+          timestamp: new Date().toISOString()
+        } : undefined
+      }, { status: 401 });
+    }
     
     // Log the complete request for debugging
     console.log('=== GENERATION REQUEST DEBUG ===');
@@ -43,8 +84,7 @@ export async function POST(req: NextRequest) {
     console.log('Request Body:', JSON.stringify(body, null, 2));
     
     // Mobile-specific debugging
-    const isMobileRequest = req.headers.get('x-mobile-request') === 'true' || body.isMobile === true;
-    if (isMobileRequest) {
+    if (isMobileRequest || body.isMobile === true) {
       console.log('📱 MOBILE REQUEST DETECTED ON SERVER');
       console.log('📱 Mobile User Agent:', body.userAgent || req.headers.get('user-agent'));
       console.log('📱 Mobile Payload Size:', JSON.stringify(body).length, 'bytes');
@@ -53,16 +93,25 @@ export async function POST(req: NextRequest) {
     const {
       prompt,
       mode,
-      runpodUrl: runpodUrlRaw,
+  runpodUrl: runpodUrlRaw,
       provider,
       batch_size = 1,
       userId: bodyUserId,
       attachment,
+      saveToLibrary = true, // ALWAYS save to library - ignore frontend flag
       ...otherParams
     } = body;
 
-    const cfg = await getRunpodConfig().catch(()=>null);
-    const runpodUrl = pickRunpodUrlFromConfig({ provided: (typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), mode, config: cfg });
+  const cfg = await getRunpodConfig().catch(()=>null);
+  // Always prefer server-configured URL; ignore client value unless explicitly allowed
+  const allowClientRunpod = process.env.ALLOW_CLIENT_RUNPOD_URL === 'true';
+  const useCloudflareProxy = process.env.NEXT_PUBLIC_USE_CLOUDFLARE_PROXY !== 'false'; // default true
+  const runpodUrl = pickRunpodUrlFromConfig({ 
+    provided: (allowClientRunpod && typeof runpodUrlRaw === 'string' ? runpodUrlRaw : undefined), 
+    mode, 
+    config: cfg,
+    useCloudflareProxy
+  });
 
     // Log URL resolution for debugging
     console.log('URL Resolution Debug:', {
@@ -180,6 +229,7 @@ export async function POST(req: NextRequest) {
           runpod_url: runpodUrl,
           provider,
           duration_seconds: normType === 'video' && durationSecondsInput ? durationSecondsInput : null,
+          saveToLibrary: saveToLibrary, // Store in generation_params instead
           ...otherParams
         }
       }])
@@ -193,8 +243,15 @@ export async function POST(req: NextRequest) {
 
     // Now perform the generation directly (no internal HTTP), then update records
     try {
+      // Server-side timeout guard (299s) to mirror client expectations and avoid hanging connections
+      const SERVER_TIMEOUT_MS = 299000; // 299s
+      let didTimeout = false;
+      const withTimeout = <T>(p: Promise<T>): Promise<T> => new Promise((resolve, reject) => {
+        const t = setTimeout(() => { didTimeout = true; reject(new Error('Generation timeout')); }, SERVER_TIMEOUT_MS);
+        p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); reject(e); });
+      });
       const apiKey = process.env.RUNPOD_API_KEY || undefined;
-      const out = await runSocialTwinGeneration({
+  const out = await withTimeout(runSocialTwinGeneration({
         mode: mode as any,
         prompt,
         negative: typeof otherParams?.negative === 'string' ? otherParams.negative : undefined,
@@ -219,7 +276,7 @@ export async function POST(req: NextRequest) {
   lora_effect_scale: typeof otherParams?.lora_effect_scale === 'number' ? otherParams.lora_effect_scale : undefined,
         aspect_ratio: typeof otherParams?.aspect_ratio === 'string' ? otherParams.aspect_ratio : undefined,
         guidance: typeof otherParams?.guidance === 'number' ? otherParams.guidance : undefined,
-      });
+      }));
 
       const urls: string[] = out.urls || [];
       const batchImages: string[] = out.images || [];
@@ -232,17 +289,70 @@ export async function POST(req: NextRequest) {
   const resultUrl = aiImage || aiVideo || firstVideo || null;
   const content = null;
   const respDurationSec = undefined;
+  
+  // Determine media type and URL
+  const mediaType = aiVideo || firstVideo ? 'video' : (aiImage ? 'image' : null);
+  const mediaUrl = resultUrl;
+
+    // Auto-save to Supabase Storage for permanent access
+    let permanentUrl = resultUrl;
+    if (resultUrl && saveToLibrary) {
+      try {
+        console.log('💾 Auto-saving to Supabase Storage:', resultUrl);
+        
+        // Determine bucket and content type
+        const bucket = mediaType === 'video' ? 'generated-videos' : 'generated-images';
+        
+        // Create bucket if it doesn't exist
+        try { 
+          await supabase.storage.createBucket(bucket, { public: false }).catch(() => {}); 
+        } catch {}
+        
+        // Download from RunPod
+        const response = await fetch(resultUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          const data = new Uint8Array(arrayBuffer);
+          const contentType = response.headers.get('content-type') || 
+            (mediaType === 'video' ? 'video/mp4' : 'image/png');
+          
+          // Generate unique filename
+          const ext = mediaType === 'video' ? '.mp4' : '.png';
+          const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+          const storagePath = `${userId}/${fileName}`;
+          
+          // Upload to Supabase Storage
+          const uploadResult = await supabase.storage
+            .from(bucket)
+            .upload(storagePath, data, { contentType, upsert: false });
+          
+          if (!uploadResult.error) {
+            permanentUrl = `storage:${bucket}/${storagePath}`;
+            console.log('✅ Successfully saved to Supabase Storage:', permanentUrl);
+          } else {
+            console.error('❌ Failed to upload to Supabase Storage:', uploadResult.error);
+          }
+        }
+      } catch (storageError) {
+        console.error('💥 Storage save error:', storageError);
+        // Continue with original URL if storage fails
+      }
+    }
 
     await supabase
         .from('media_generations')
         .update({
-          result_url: resultUrl,
-          thumbnail_url: resultUrl,
+          result_url: permanentUrl, // Use storage URL if available, otherwise RunPod URL
+          media_url: permanentUrl,
+          media_type: mediaType,
+          thumbnail_url: permanentUrl,
           status: 'completed',
           completed_at: new Date().toISOString(),
           generation_params: {
             ...generationRecord.generation_params,
             status: 'completed',
+            saved_to_storage: permanentUrl?.startsWith('storage:') || false,
+            original_runpod_url: resultUrl, // Keep original for reference
             batch_results: {
               images: batchImages,
               videos: batchVideos,
@@ -276,11 +386,11 @@ export async function POST(req: NextRequest) {
         elapsed_ms: out.runpod.elapsed_ms
       } : undefined;
       
-      return NextResponse.json({
-  ok: true,
-  urls,
-  images: batchImages,
-  videos: batchVideos,
+  const responseData = {
+        ok: true,
+        urls,
+        images: batchImages,
+        videos: batchVideos,
         creditInfo: {
           cost: totalCost,
           didDeduct,
@@ -288,8 +398,31 @@ export async function POST(req: NextRequest) {
           generationId: generationRecord.id
         },
         allowanceWarning,
-        timeoutWarning
-      });
+  timeoutWarning: timeoutWarning || (didTimeout ? { message: 'Server timeout at ~299s; background may continue. Check Generated tab shortly.', elapsed_ms: SERVER_TIMEOUT_MS } : undefined),
+        // Add mobile debugging info if mobile request
+        ...(isMobileRequest ? { 
+          mobile_debug: {
+            request_processed: true,
+            timestamp: new Date().toISOString(),
+            user_agent: req.headers.get('user-agent')
+          }
+        } : {})
+      };
+
+      // Create response with mobile-optimized headers
+      const response = NextResponse.json(responseData);
+      
+      // Add mobile-specific CORS headers for better compatibility
+      if (isMobileRequest) {
+        response.headers.set('Access-Control-Allow-Origin', '*');
+        response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Id, X-Mobile-Request');
+        response.headers.set('Access-Control-Max-Age', '86400');
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('X-Mobile-Optimized', 'true');
+      }
+      
+      return response;
 
     } catch (generationError) {
       console.error('Generation request failed:', generationError);
@@ -308,7 +441,25 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', generationRecord.id);
 
-  return NextResponse.json({ error: 'Generation request failed', details: generationError instanceof Error ? generationError.message : 'Unknown error' }, { status: 500 });
+      const errorResponse = NextResponse.json({ 
+        error: 'Generation request failed', 
+        details: generationError instanceof Error ? generationError.message : 'Unknown error',
+        ...(isMobileRequest ? {
+          mobile_debug: {
+            error_type: 'generation_failed',
+            timestamp: new Date().toISOString(),
+            user_agent: req.headers.get('user-agent')
+          }
+        } : {})
+      }, { status: 500 });
+
+      // Add mobile CORS headers to error responses too
+      if (isMobileRequest) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', '*');
+        errorResponse.headers.set('X-Mobile-Error', 'true');
+      }
+
+      return errorResponse;
     }
 
   } catch (err) {

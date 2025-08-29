@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseAdminClient, createSupabaseClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: { folderId: st
     if (!userId) userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const folderId = params.folderId;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { data, error } = await supabase
       .from('media_folder_items')
       .select('id,media_id,media_url,type,prompt,created_at')
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, { params }: { params: { folderId: s
       type: body?.type || null,
       prompt: body?.prompt || null,
     } as any;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     const { error } = await supabase.from('media_folder_items').insert(item);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });

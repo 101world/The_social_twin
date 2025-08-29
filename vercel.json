@@ -1,9 +1,13 @@
 {
   "version": 2,
   "framework": "nextjs",
-  "functions": {
-    "app/api/**/*.ts": {
-      "maxDuration": 480
+  "buildCommand": "cd my-ai-saas && npm install && npm run build",
+  "installCommand": "cd my-ai-saas && npm install",
+  "outputDirectory": "my-ai-saas/.next",
+  "crons": [
+    {
+      "path": "/api/cron/scrape-news",
+      "schedule": "*/10 * * * *"
     }
-  }
+  ]
 }

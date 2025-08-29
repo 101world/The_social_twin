@@ -12,6 +12,11 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks/razorpay",
   // Internal server-to-server generation call; upstream route enforces auth+credits
   "/api/social-twin/generate",
+  // Main generation endpoint used by mobile and desktop; route handler enforces auth
+  "/api/generate-with-tracking",
+  // Library/generations endpoints for mobile and desktop
+  "/api/social-twin/generations",
+  "/api/social-twin/history",
   // Allow these in dev; route handlers still enforce auth for real data
   "/api/users/credits",
   "/api/generations",

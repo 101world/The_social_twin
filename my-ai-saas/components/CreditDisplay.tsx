@@ -50,7 +50,7 @@ export default function CreditDisplay({ className = '', showDetails = true }: Cr
       case 'free':
         return 'text-gray-600 bg-gray-100';
       case 'starter':
-        return 'text-blue-600 bg-blue-100';
+        return 'text-gray-600 bg-gray-100';
       case 'pro':
         return 'text-purple-600 bg-purple-100';
       case 'enterprise':
@@ -78,7 +78,7 @@ export default function CreditDisplay({ className = '', showDetails = true }: Cr
   if (loading) {
     return (
       <div className={`flex items-center gap-2 p-3 bg-gray-50 rounded-lg ${className}`}>
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
         <span className="text-sm text-gray-600">Loading credits...</span>
       </div>
     );
@@ -114,7 +114,7 @@ export default function CreditDisplay({ className = '', showDetails = true }: Cr
           <span className="font-medium text-gray-900">Credits</span>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-blue-600">{creditInfo.credits}</div>
+          <div className="text-2xl font-bold text-gray-600">{creditInfo.credits}</div>
           <div className="text-xs text-gray-500">available</div>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function CreditDisplay({ className = '', showDetails = true }: Cr
           </div>
           
           {/* Credit Usage Tips */}
-          <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-blue-700">
+          <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-700">
             <p className="font-medium mb-1">💡 Credit Usage:</p>
             <ul className="space-y-1">
               <li>• Text generation: 1 credit</li>

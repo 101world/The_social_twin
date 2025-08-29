@@ -35,7 +35,7 @@ This will:
 
 2. **Visit the test page:**
    ```
-   http://localhost:3000/test-razorpay-subscriptions
+   http://localhost:3000/subscription
    ```
 
 3. **Test subscription flow:**
@@ -53,7 +53,7 @@ After successful test payment, check:
 
 ## 🔧 Environment Variables (Already Configured)
 ```env
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_R7CcdMXFPJJh8H
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_R7go8Fh06RBb1y
 RAZORPAY_KEY_SECRET=0czg7fn69muH32FseXEy97F6
 RAZORPAY_WEBHOOK_SECRET=Patnibillions09!
 ```

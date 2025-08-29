@@ -2,17 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import Razorpay from 'razorpay';
 
-if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-  console.error('Razorpay configuration missing: ensure NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are set');
-}
+// Initialize Razorpay only if credentials are available
+let razorpay: Razorpay | null = null;
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID as string,
-  key_secret: process.env.RAZORPAY_KEY_SECRET as string,
-});
+if (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+  razorpay = new Razorpay({
+    key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID as string,
+    key_secret: process.env.RAZORPAY_KEY_SECRET as string,
+  });
+} else {
+  console.warn('Razorpay configuration missing: NEXT_PUBLIC_RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET not set');
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Razorpay is configured
+    if (!razorpay) {
+      return NextResponse.json({ 
+        error: 'Payment system not configured. Please contact support.' 
+      }, { status: 503 });
+    }
+
     const { userId } = await auth();
     
     if (!userId) {

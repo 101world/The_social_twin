@@ -1,0 +1,668 @@
+ 'use client';
+
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, TrendingUp, ExternalLink, Clock, Filter, Globe, Rocket, Heart, DollarSign, Palette, Leaf, Loader2, Play, Send } from 'lucide-react';
+
+interface NewsArticle {
+  id: string;
+  title: string;
+  content?: string;
+  snippet?: string;
+  summary?: string;
+  published_at: string;
+  source_name?: string;
+  source?: string;
+  source_url?: string;
+  url?: string;
+  category: string;
+  quality_score: number;
+  image_url?: string;
+}
+// Wrap via our optimizer to serve AVIF/WebP with resize
+function opt(url: string, w?: number, h?: number, q = 75) {
+  if (!url) return url;
+  if (url.startsWith('data:')) return url;
+  try {
+    const u = new URL(url);
+    return `/api/optimize-image?url=${encodeURIComponent(u.toString())}${w ? `&w=${w}` : ''}${h ? `&h=${h}` : ''}&q=${q}`;
+  } catch {
+    return url;
+  }
+}
+
+// Perplexity-like subtle 3D tilt wrapper with mouse-position parallax
+const TiltCard = ({ children, className = '', disabled = false, maxTilt = 8 }: { children: React.ReactNode; className?: string; disabled?: boolean; maxTilt?: number }) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;   // 0..1
+    const py = (e.clientY - rect.top) / rect.height;   // 0..1
+    const rx = (py - 0.5) * -2 * maxTilt; // invert Y for natural tilt
+    const ry = (px - 0.5) * 2 * maxTilt;
+    el.style.transform = `perspective(1000px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
+  };
+
+  const onLeave = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg)';
+  };
+
+  // Disable tilt on touch devices / small screens
+  const isSmall = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)').matches : false;
+  const off = disabled || isSmall;
+
+  return (
+    <div
+      ref={ref}
+      className={`will-change-transform transition-transform duration-300 ${className}`}
+      style={{ transform: 'perspective(1000px) rotateX(0deg) rotateY(0deg)' } as React.CSSProperties}
+      onMouseMove={off ? undefined : onMove}
+      onMouseLeave={off ? undefined : onLeave}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Build a resilient image URL (placeholder if missing) like the standalone News page
+function getCardImageUrl(article: NewsArticle, size: 'small' | 'medium' | 'large' = 'medium') {
+  if (article.image_url) {
+    // For hero/large cards prefer the original full-res image to avoid proxy downsampling
+    if (size === 'large') return article.image_url;
+    // For medium/small still request higher-res, but in portrait proportions
+    if (size === 'small') return opt(article.image_url, 360, 540, 92);
+    return opt(article.image_url, 800, 1200, 92);
+  }
+  const fallbackColors = ['ff6b6b', '4ecdc4', '45b7d1', 'f39c12', '9b59b6', 'e74c3c'];
+  const colorIndex = article.title.length % fallbackColors.length;
+  const color = fallbackColors[colorIndex];
+  const maxLen = size === 'small' ? 30 : size === 'large' ? 60 : 40;
+  const encodedTitle = encodeURIComponent(article.title.slice(0, maxLen) || 'News');
+  // Portrait fallbacks for better visual consistency
+  if (size === 'large') return `https://via.placeholder.com/900x1200/${color}/ffffff?text=${encodedTitle}`;
+  if (size === 'small') return `https://via.placeholder.com/360x540/${color}/ffffff?text=${encodedTitle}`;
+  return `https://via.placeholder.com/800x1200/${color}/ffffff?text=${encodedTitle}`;
+}
+
+// Modern news card with mobile-optimized smaller thumbnails and high quality images
+const ModernNewsCard = ({ article, layout = "default", onOpenArticle }: { article: NewsArticle; layout?: "default" | "large" | "compact"; onOpenArticle: (article: NewsArticle) => void }) => {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleTrend = () => {
+    console.log('Trending:', article.title);
+  };
+
+  const openSource = () => {
+    const url = article.source_url || article.url;
+    if (url) onOpenArticle(article);
+  };
+
+  const sourceName = article.source_name || article.source || 'Unknown Source';
+
+  if (layout === "large") {
+    // Breaking/large card — remove border and make image more square (1:1-ish) for stronger visuals
+    return (
+      <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 relative">
+        <div className="aspect-[3/4] md:aspect-[3/4] h-72 md:h-96 overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+          <img 
+            src={getCardImageUrl(article, 'large')} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 filter brightness-[1.08] contrast-110 saturate-110"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://picsum.photos/900/1200?random=${article.id || Math.random()}`;
+            }}
+          />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        </div>
+
+        <div className="p-3 md:p-5">
+          <h2 className="font-semibold tracking-tight text-white text-lg md:text-xl leading-snug mb-2 group-hover:text-gray-300 transition-colors" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+            {article.title}
+          </h2>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="font-medium text-gray-200">{sourceName}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(article.published_at)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleTrend}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors"
+                title="Trend this"
+              >
+                <TrendingUp className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={openSource}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                title="View source"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </TiltCard>
+    );
+  }
+
+  return (
+    <TiltCard className="group bg-black rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300">
+      <div className="flex flex-col gap-3 p-3 md:p-4">
+        {/* Thumbnail moved to top for docked layout (portrait thumbnails) */}
+  <div className="w-full h-36 md:h-44 lg:h-56 rounded-lg overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+          <img 
+            src={getCardImageUrl(article, 'small')} 
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-300 filter brightness-[1.05] contrast-110 saturate-110"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = `https://picsum.photos/360/540?random=${article.id || Math.random()}`;
+            }}
+          />
+        </div>
+        
+        {/* Content below thumbnail for docked layout */}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold tracking-tight text-white text-sm md:text-base leading-snug mb-2 line-clamp-2 group-hover:text-gray-300 transition-colors" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+            {article.title}
+          </h3>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="font-medium text-gray-300">{sourceName}</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(article.published_at)}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={handleTrend}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition-colors"
+                title="Trend this"
+              >
+                <TrendingUp className="w-3 h-3" />
+              </button>
+              <button 
+                onClick={openSource}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                title="View source"
+              >
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </TiltCard>
+  );
+};
+
+const HeadlinesSection = ({ title, articles, layout = "default", onOpenArticle }: { title: string; articles: NewsArticle[]; layout?: "default" | "hero" | "two-col" | "three-col"; onOpenArticle: (article: NewsArticle) => void }) => {
+  if (articles.length === 0) return null;
+
+  const getGridClass = () => {
+    switch (layout) {
+      case "hero": return "grid-cols-1";
+      case "two-col": return "grid-cols-1 md:grid-cols-2";
+      case "three-col": return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+      default: return "grid-cols-1";
+    }
+  };
+
+  return (
+    <div className="mb-6 md:mb-8">
+      <div className="flex items-center gap-2 mb-3 md:mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{title}</h2>
+        <div className="h-px bg-gray-800 flex-1"></div>
+      </div>
+      
+  <div className={`grid ${getGridClass()} gap-3 md:gap-4`}>
+        {articles.map(article => (
+          <ModernNewsCard 
+            key={article.id} 
+    article={article} 
+            layout={layout === "hero" ? "large" : "default"}
+    onOpenArticle={onOpenArticle}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Horizontal scrolling strip for full-width layout
+const HorizontalStrip = ({ title, articles, large = false, onOpenArticle }: { title: string; articles: NewsArticle[]; large?: boolean; onOpenArticle: (article: NewsArticle) => void }) => {
+  if (!articles.length) return null;
+  return (
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{title}</h2>
+      </div>
+      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent pb-2">
+        <div className="flex gap-3 md:gap-4">
+          {articles.map(a => (
+            // Narrower card width for denser, less-stretched thumbnails
+            <div key={a.id} className={large ? 'min-w-[140px] max-w-[140px]' : 'min-w-[110px] max-w-[110px]'}>
+              <ModernNewsCard article={a} layout={large ? 'large' : 'default'} onOpenArticle={onOpenArticle} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// Simple article modal (in-app viewer). Falls back to external if site blocks iframes.
+const ArticleModal = ({ article, onClose }: { article: NewsArticle | null; onClose: () => void }) => {
+  if (!article) return null;
+  const url = article.source_url || article.url;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-0 md:p-6" role="dialog" aria-modal="true">
+      <div className="relative w-full h-full md:h-[85vh] md:w-[min(100%,980px)] bg-black border border-gray-800 rounded-none md:rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-3 md:px-4 py-3 border-b border-gray-800 bg-black/80">
+          <div className="min-w-0 pr-2">
+            <h3 className="text-white text-sm md:text-base font-semibold truncate" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{article.title}</h3>
+            <p className="text-xs text-gray-400 truncate">{article.source_name || article.source || 'Source'} • {new Date(article.published_at).toLocaleString()}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Keep external open available but less prominent to encourage modal-first UX */}
+            {url && (
+              <a href={url} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[11px] rounded-md bg-gray-800 text-gray-300 hover:bg-gray-700" title="Open original source in a new tab">External</a>
+            )}
+            <button onClick={onClose} className="px-2 py-1.5 md:px-3 md:py-1.5 text-xs font-medium rounded-lg bg-white text-black hover:bg-gray-200">Close</button>
+          </div>
+        </div>
+        <div className="w-full h-[calc(100%-48px)] md:h-[calc(100%-56px)]">
+          {url ? (
+            <iframe src={url} title={article.title} className="w-full h-full" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400">No URL available</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Widgets removed: replaced by compact quick chips in the toolbar
+
+export default function NewsComponent({ simpleMode, mode = 'auto' }: { simpleMode?: boolean; mode?: 'auto' | 'vertical' | 'horizontal' }) {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [detectedSimple, setDetectedSimple] = useState<boolean>(false);
+  const [continent, setContinent] = useState<string>('');
+  const [country, setCountry] = useState<string>('');
+  const [activeArticle, setActiveArticle] = useState<NewsArticle | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [providerUsed, setProviderUsed] = useState<string | null>(null);
+  const quickChips = ['AI', 'Business', 'Science', 'World', 'Crypto'];
+
+  // Load real news from API
+  useEffect(() => {
+  const loadNews = async () => {
+      try {
+        setLoading(true);
+    const qs = new URLSearchParams();
+    qs.set('limit', '50');
+  // Prefer image-rich articles to match UI sections that require thumbnails
+  qs.set('media', 'images');
+    if (country) {
+      qs.set('country', country);
+    } else if (continent) {
+      qs.set('continent', continent);
+    }
+  const response = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
+        if (response.ok) {
+      const headerProvider = response.headers.get('x-provider-used');
+      const data = await response.json();
+      const jsonProvider = data?.data?.provider_used || data?.data?.metadata?.provider_used;
+      setProviderUsed(headerProvider || jsonProvider || null);
+          const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+          if (list.length) {
+            setArticles(list.slice(0, 30));
+            setLastUpdated(new Date().toISOString());
+          } else {
+            // Fallback: daily brief
+            const briefRes = await fetch('/api/news/daily-brief', { cache: 'no-store' });
+            if (briefRes.ok) {
+              const brief = await briefRes.json();
+              const mapped: NewsArticle[] = (brief?.articles || []).map((a: any, i: number) => ({
+                id: a.id || a.url || `brief-${i}`,
+                title: a.title || 'Untitled',
+                content: a.snippet || a.summary || '',
+                snippet: a.snippet || a.summary || '',
+                summary: a.snippet || a.summary || '',
+                published_at: a.publishDate || new Date().toISOString(),
+                source_name: a.source || 'Daily Brief',
+                source: a.source || 'Daily Brief',
+                source_url: a.url,
+                url: a.url,
+                category: a.category || 'General',
+                quality_score: 0,
+                image_url: a.imageUrl || undefined,
+              }));
+              setArticles(mapped);
+              setLastUpdated(new Date().toISOString());
+            } else {
+              setArticles([]);
+            }
+          }
+        } else {
+          console.error('Failed to fetch news');
+          setArticles([]);
+        }
+      } catch (error) {
+        console.error('Error loading news:', error);
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  loadNews();
+  }, [country, continent]);
+
+  // Constrain full-width desktop layout to a comfortable reading width
+  const desktopWrapperClass = `w-full ${simpleMode ? '' : 'max-w-[1100px] mx-auto px-4'}`;
+
+  // Detect simple mode (docked) if not provided
+  useEffect(() => {
+    if (typeof simpleMode === 'boolean') {
+      setDetectedSimple(simpleMode);
+      return;
+    }
+    if (mode !== 'auto') {
+      setDetectedSimple(mode === 'vertical');
+      return;
+    }
+    const check = () => {
+      try {
+        const sm = (window as any)?.__getSimpleMode?.() || false;
+        setDetectedSimple(!!sm);
+      } catch {}
+    };
+    check();
+    const id = setInterval(check, 1000);
+    return () => clearInterval(id);
+  }, [simpleMode, mode]);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery) return [];
+    return articles.filter(article => 
+      article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      article.source_name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, articles]);
+
+  if (loading) {
+    return (
+      <div className="h-full bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">Loading latest news...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Branch by layout: horizontal for full-width, vertical for docked (simple)
+  const renderHorizontal = mode === 'horizontal' ? true : mode === 'vertical' ? false : !detectedSimple;
+
+  return (
+    <div className={`h-full bg-black text-white overflow-y-auto overflow-x-hidden ${activeArticle ? 'md:overflow-hidden' : ''}`}>
+      <div className="h-full flex flex-col">
+        {/* Toolbar: search + quick chips + region selects */}
+        <div className="flex-shrink-0 p-3 md:p-4 border-b border-gray-800">
+              {/* ONE World News Header - only show in standalone mode */}
+          {!detectedSimple && (
+            <div className="mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                ONE World News
+              </h1>
+              <p className="text-gray-400 text-lg" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                Global News • Real Time • Trusted Sources
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search news..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchOpen(true)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-black border border-gray-800 rounded-lg focus:ring-2 focus:ring-gray-600 focus:border-gray-600 outline-none text-white placeholder-gray-400"
+              />
+            </div>
+
+            {/* Quick chips */}
+            <div className={`flex items-center gap-1 md:gap-2 ${renderHorizontal ? 'overflow-x-auto whitespace-nowrap' : 'flex-wrap'} max-w-full`}>
+              {quickChips.map((c) => (
+                <button key={c} onClick={() => setSearchQuery(c)} className="px-2.5 md:px-3 py-1.5 rounded-full text-xs font-medium bg-gray-900 border border-gray-800 text-gray-200 hover:border-gray-600 hover:text-white">
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Refresh */}
+              <button
+                onClick={async () => {
+                  try {
+                    setRefreshing(true);
+                    await fetch('/api/news/trigger', { cache: 'no-store' }).catch(() => {});
+                    // Reload with current filters
+                    const qs = new URLSearchParams();
+                    qs.set('limit', '50');
+                    qs.set('media', 'images');
+                    if (country) qs.set('country', country);
+                    else if (continent) qs.set('continent', continent);
+                    const res = await fetch(`/api/news?${qs.toString()}`, { cache: 'no-store' });
+                    if (res.ok) {
+                      const data = await res.json();
+                      const headerProvider2 = res.headers.get('x-provider-used');
+                      const jsonProvider2 = data?.data?.provider_used || data?.data?.metadata?.provider_used;
+                      setProviderUsed(headerProvider2 || jsonProvider2 || null);
+                      const list = Array.isArray(data?.data?.articles) ? data.data.articles : [];
+                      setArticles(list.slice(0, 30));
+                      setLastUpdated(new Date().toISOString());
+                    }
+                  } finally {
+                    setRefreshing(false);
+                  }
+                }}
+                className={`px-2.5 md:px-3 py-1.5 rounded-lg text-xs border border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${refreshing ? 'opacity-70 cursor-wait' : ''}`}
+                title="Refresh news"
+                aria-busy={refreshing}
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+
+              {lastUpdated && (
+                    <span className="text-[11px] text-gray-500">Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+              )}
+                  {providerUsed && (
+                    <span className="text-[11px] text-gray-500">Provider: {providerUsed}</span>
+                  )}
+
+              {/* Region selects */}
+              <select
+                value={continent}
+                onChange={(e) => { setContinent(e.target.value); setCountry(''); }}
+                className="px-2 py-2 bg-black border border-gray-800 rounded-lg text-xs md:text-sm"
+                aria-label="Select continent"
+              >
+                <option value="">Continent</option>
+                <option value="africa">Africa</option>
+                <option value="asia">Asia</option>
+                <option value="europe">Europe</option>
+                <option value="north-america">North America</option>
+                <option value="south-america">South America</option>
+                <option value="oceania">Oceania</option>
+              </select>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="px-2 py-2 bg-black border border-gray-800 rounded-lg text-xs md:text-sm"
+                aria-label="Select country"
+              >
+                <option value="">Country</option>
+                {/* options retained below for each continent */}
+                {continent === 'africa' && (<>
+                  <option value="ZA">South Africa</option>
+                  <option value="NG">Nigeria</option>
+                  <option value="KE">Kenya</option>
+                  <option value="EG">Egypt</option>
+                  <option value="GH">Ghana</option>
+                  <option value="MA">Morocco</option>
+                  <option value="TZ">Tanzania</option>
+                  <option value="UG">Uganda</option>
+                  <option value="DZ">Algeria</option>
+                  <option value="ET">Ethiopia</option>
+                </>)}
+                {continent === 'asia' && (<>
+                  <option value="IN">India</option>
+                  <option value="CN">China</option>
+                  <option value="JP">Japan</option>
+                  <option value="KR">South Korea</option>
+                  <option value="ID">Indonesia</option>
+                  <option value="PH">Philippines</option>
+                  <option value="TH">Thailand</option>
+                  <option value="MY">Malaysia</option>
+                  <option value="PK">Pakistan</option>
+                  <option value="VN">Vietnam</option>
+                </>)}
+                {continent === 'europe' && (<>
+                  <option value="GB">United Kingdom</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="IT">Italy</option>
+                  <option value="ES">Spain</option>
+                  <option value="NL">Netherlands</option>
+                  <option value="SE">Sweden</option>
+                  <option value="NO">Norway</option>
+                  <option value="PL">Poland</option>
+                  <option value="RU">Russia</option>
+                </>)}
+                {continent === 'north-america' && (<>
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="MX">Mexico</option>
+                  <option value="GT">Guatemala</option>
+                  <option value="CU">Cuba</option>
+                  <option value="HT">Haiti</option>
+                  <option value="DO">Dominican Republic</option>
+                  <option value="HN">Honduras</option>
+                  <option value="NI">Nicaragua</option>
+                  <option value="CR">Costa Rica</option>
+                </>)}
+                {continent === 'south-america' && (<>
+                  <option value="BR">Brazil</option>
+                  <option value="AR">Argentina</option>
+                  <option value="CO">Colombia</option>
+                  <option value="CL">Chile</option>
+                  <option value="PE">Peru</option>
+                  <option value="VE">Venezuela</option>
+                  <option value="EC">Ecuador</option>
+                  <option value="UY">Uruguay</option>
+                  <option value="PY">Paraguay</option>
+                  <option value="BO">Bolivia</option>
+                </>)}
+                {continent === 'oceania' && (<>
+                  <option value="AU">Australia</option>
+                  <option value="NZ">New Zealand</option>
+                  <option value="FJ">Fiji</option>
+                  <option value="PG">Papua New Guinea</option>
+                  <option value="WS">Samoa</option>
+                  <option value="TO">Tonga</option>
+                  <option value="VU">Vanuatu</option>
+                  <option value="SB">Solomon Islands</option>
+                  <option value="FM">Micronesia</option>
+                  <option value="KI">Kiribati</option>
+                </>)}
+              </select>
+            </div>
+          </div>
+
+          {isSearchOpen && searchQuery && (
+            <div className="relative max-w-2xl mx-auto mt-1">
+              <div className="absolute w-full bg-black border border-gray-800 rounded-xl shadow-lg z-40 max-h-96 overflow-y-auto">
+                <div className="p-4 border-b border-gray-800">
+                  <h3 className="text-sm font-semibold text-gray-400 mb-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>Search Results ({searchResults.length})</h3>
+                </div>
+                {searchResults.slice(0, 5).map(article => (
+                  <div key={article.id} className="p-4 hover:bg-gray-900 cursor-pointer border-b border-gray-800 last:border-b-0" onClick={() => {
+                    setActiveArticle(article);
+                    setIsSearchOpen(false);
+                  }}>
+                    <h4 className="font-medium text-white text-sm mb-1 line-clamp-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{article.title}</h4>
+                    <p className="text-xs text-gray-400">{article.source_name || article.source} • {new Date(article.published_at).toLocaleDateString()}</p>
+                  </div>
+                ))}
+                <div className="p-3 text-center border-t border-gray-800">
+                  <span className="text-xs text-gray-500">Powered by ONE World News</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+  <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-4 pb-4" onClick={() => setIsSearchOpen(false)}>
+          {renderHorizontal ? (
+            <>
+              <HorizontalStrip title="Breaking News" articles={articles.slice(0, 6)} large onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="World" articles={articles.filter(a => a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Technology" articles={articles.filter(a => a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Business" articles={articles.filter(a => a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business')).slice(0, 10)} onOpenArticle={(a) => setActiveArticle(a)} />
+              <HorizontalStrip title="Latest" articles={articles.slice(6, 20)} onOpenArticle={(a) => setActiveArticle(a)} />
+            </>
+          ) : (
+            <>
+  <HeadlinesSection title="Breaking News" articles={articles.slice(0, 1)} layout="hero" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Top Stories" articles={articles.slice(1, 3)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="World" articles={articles.filter(a => (a.title.toLowerCase().includes('world') || a.category?.toLowerCase().includes('world'))).slice(0, 6)} layout="three-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Technology" articles={articles.filter(a => (a.title.toLowerCase().includes('tech') || a.title.toLowerCase().includes('ai') || a.category?.toLowerCase().includes('tech'))).slice(0, 4)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Business" articles={articles.filter(a => (a.title.toLowerCase().includes('business') || a.title.toLowerCase().includes('market') || a.category?.toLowerCase().includes('business'))).slice(0, 6)} layout="three-col" onOpenArticle={(a) => setActiveArticle(a)} />
+  <HeadlinesSection title="Latest Updates" articles={articles.slice(6, 12)} layout="two-col" onOpenArticle={(a) => setActiveArticle(a)} />
+            </>
+          )}
+        </div>
+      </div>
+      {/* In-app modal viewer */}
+      <ArticleModal article={activeArticle} onClose={() => setActiveArticle(null)} />
+    </div>
+  );
+}

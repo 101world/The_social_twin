@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSafeSupabaseClient } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const thumbnailUrl: string | undefined = body?.thumbnailUrl;
 
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
     
     // Enhanced project data structure
     const enhancedData = {
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const jwt = getToken ? await getToken({ template: 'supabase' }).catch(() => null) : null;
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient(jwt || undefined);
+    const supabase = createSafeSupabaseClient(jwt || undefined);
     
     const { data, error } = await supabase
       .from('projects')
@@ -175,7 +175,7 @@ export async function PUT(req: NextRequest) {
     
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     
     // Get existing project data
     const { data: existing } = await supabase
@@ -237,7 +237,7 @@ export async function PATCH(req: NextRequest) {
     
     if (!projectId) return NextResponse.json({ error: 'Missing projectId' }, { status: 400 });
 
-    const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createSupabaseAdminClient() : createSupabaseClient();
+    const supabase = createSafeSupabaseClient();
     
     const { data: project, error } = await supabase
       .from('projects')

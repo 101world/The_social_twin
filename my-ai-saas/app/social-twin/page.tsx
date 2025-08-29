@@ -28,6 +28,7 @@ function IconButton({ children, title, onClick, className }: { children: React.R
 import GenerationCostDisplay from "@/components/GenerationCostDisplay";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useSafeCredits } from "@/hooks/useSafeCredits";
+import { cloudflareAI } from "@/lib/cloudflare-ai-new";
 
 type ChatRole = "user" | "assistant" | "system" | "error";
 type Mode = 'text'|'image'|'image-modify'|'video';
@@ -36,6 +37,7 @@ type ChatMessage = {
   id: string;
   role: ChatRole;
   content: string;
+  image?: string; // Base64 image data for vision mode
   imageUrl?: string;
   videoUrl?: string;
   pdfUrl?: string;
@@ -96,6 +98,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Providers and endpoints
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
@@ -107,8 +110,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [videoKlingUrl, setVideoKlingUrl] = useState<string>("");
 
   // LoRA and params
-  const [loraName, setLoraName] = useState<string>("");
-  const [loraScale, setLoraScale] = useState<number|''>('');
+  const [loraName, setLoraName] = useState<string>(""); // Character LoRA filename
+  const [loraScale, setLoraScale] = useState<number|''>(''); // Character LoRA strength
+  const [effectLora, setEffectLora] = useState<string>(""); // Effects/Style LoRA filename
+  const [effectLoraScale, setEffectLoraScale] = useState<number|''>(''); // Effects LoRA strength
+  const [availableLoras, setAvailableLoras] = useState<any[]>([]);
+  const [lorasLoading, setLorasLoading] = useState(false);
   const [batchSize, setBatchSize] = useState<number|''>('');
   const [seed, setSeed] = useState<number|''>('');
   const [aspectRatio, setAspectRatio] = useState<string>("");
@@ -133,6 +140,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>("");
   const [mode, setMode] = useState<Mode>('text');
+  const [chatMode, setChatMode] = useState<'normal' | 'prompt' | 'creative' | 'think'>('normal');
+  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher'>('creative');
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
   const [feedCursor, setFeedCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -214,16 +223,127 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     videoKling: 'social_twin_video_kling_url',
     loraName: 'social_twin_lora_name',
     loraScale: 'social_twin_lora_scale',
+    effectLora: 'social_twin_effect_lora',
+    effectLoraScale: 'social_twin_effect_lora_scale',
     batchSize: 'social_twin_batch_size',
     aspectRatio: 'social_twin_aspect_ratio',
   } as const;
-  const LORA_CHOICES = ['None','Custom...','Character-A','Character-B'] as const;
-  const BATCH_CHOICES = [1,2,4,6,8] as const;
-  const AR_CHOICES = ['1:1','3:4','4:3','16:9','9:16'] as const;
-  const isPresetLoRa = (name: string) => (LORA_CHOICES as readonly string[]).includes(name);
+  
+  // AI thinking phrases for more engaging loading states
+  const THINKING_PHRASES = [
+    "Hmmm…",
+    "Ahh let's answer this…",
+    "Ok let me give a thought before I answer to you…",
+    "Let me see…",
+    "Okay… thinking…",
+    "Well… that's interesting…",
+    "Hmm… I'm considering…",
+    "Alright… let's figure this out…",
+    "Let's see… how do I put this…",
+    "Mmm… give me a moment…",
+    "Okay, let's think this through…",
+    "Ah… this requires some thought…",
+    "Let me reason about that…",
+    "Hmm… interesting question…",
+    "Alright… I'm piecing it together…",
+    "Let's ponder this for a second…",
+    "Okay… breaking it down…",
+    "Mmm… let me weigh the options…",
+    "Hmmm… almost there…",
+    "I see… let me think…",
+    "Alright… connecting the dots…",
+    "Hmm… I need a moment to process…",
+    "Let's analyze this carefully…",
+    "Ah… thinking out loud…",
+    "Mmm… how can I explain this…",
+    "Okay… forming an answer…",
+    "Hmm… let me recall some info…",
+    "Ah… there's more to consider…",
+    "Let's see… what's the best way…",
+    "Hmm… let me reason it step by step…",
+    "Alright… weighing possibilities…",
+    "Mmm… thinking through it…",
+    "Hmmm… let me examine that…",
+    "Okay… trying to make sense of this…",
+    "Ah… I'm figuring it out…",
+    "Hmm… let me reflect on that…",
+    "Alright… I'm considering your request…",
+    "Mmm… let's break it down slowly…",
+    "Hmmm… thinking carefully…",
+    "Okay… let me sort through that…",
+    "Ah… almost there…",
+    "Hmm… I see what you mean…",
+    "Alright… let me think step by step…",
+    "Mmm… this is interesting…",
+    "Hmmm… connecting ideas…",
+    "Okay… let me map this out…",
+    "Ah… thinking about the best answer…",
+    "Hmm… let me reason this…",
+    "Alright… I'm reflecting on your question…",
+    "Mmm… let's think this through carefully…",
+    "Hmmm… almost figured it out…",
+    "Okay… just a bit more thinking…",
+    "Ah… I'm processing that idea…",
+    "Mmm… let me explore the possibilities…"
+  ];
+  
+  // Fixed: AR_CHOICES now match desktop with 3:2 and 2:3 ratios
+  // Fixed: BATCH_CHOICES now match desktop [1,2,4,8] 
+  // Fixed: LORA_CHOICES now load dynamically from API
+  // Deployment: 2025-08-24 - Force cache refresh
+  const LORA_CHOICES = ['None','Custom...'] as const;
+  const BATCH_CHOICES = [1,2,4,8] as const;
+  const AR_CHOICES = ['1:1','3:2','4:3','16:9','9:16','2:3'] as const;
+  const isPresetLoRa = (name: string) => {
+    return (LORA_CHOICES as readonly string[]).includes(name) || 
+           availableLoras.some(lora => lora.filename === name);
+  };
 
   // Id helper
   const generateId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  // Get random thinking phrase
+  const getRandomThinkingPhrase = () => {
+    return THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
+  };
+
+  // Animate thinking phrases
+  const [currentThinkingPhrase, setCurrentThinkingPhrase] = useState("");
+  const thinkingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startThinkingAnimation = (messageId: string) => {
+    const updatePhrase = () => {
+      const newPhrase = getRandomThinkingPhrase();
+      setCurrentThinkingPhrase(newPhrase);
+      
+      // Update the message content with the new thinking phrase
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId && msg.loading 
+          ? { ...msg, content: newPhrase }
+          : msg
+      ));
+    };
+
+    // Start with first phrase immediately
+    updatePhrase();
+    
+    // Then update every 1.5-3 seconds for variety
+    thinkingIntervalRef.current = setInterval(() => {
+      updatePhrase();
+    }, 1500 + Math.random() * 1500); // Random between 1.5-3 seconds
+  };
+
+  const stopThinkingAnimation = () => {
+    if (thinkingIntervalRef.current) {
+      clearInterval(thinkingIntervalRef.current);
+      thinkingIntervalRef.current = null;
+    }
+  };
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => stopThinkingAnimation();
+  }, []);
 
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ open: boolean; x: number; y: number; targetId: string | null }>({ open: false, x: 0, y: 0, targetId: null });
@@ -258,8 +378,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [guidance, setGuidance] = useState<number | ''>('');
   const [steps, setSteps] = useState<number | ''>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
+  const [showAdvancedControls, setShowAdvancedControls] = useState<boolean>(false);
   const [videoModel, setVideoModel] = useState<'ltxv'|'kling'|'wan'>('ltxv');
-  const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'generated' | 'dashboard' | 'news'>('chat');
   // Dashboard collapsibles
   const [dashOverviewOpen, setDashOverviewOpen] = useState(true);
   const [dashSettingsOpen, setDashSettingsOpen] = useState(false);
@@ -276,6 +397,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [viewerDetailsOpen, setViewerDetailsOpen] = useState<boolean>(false);
   // Hover state for showing video controls only on hover in Generated grid
   const [hoverVideoIds, setHoverVideoIds] = useState<Set<string>>(() => new Set());
+
+  // News tab state
+  const [newsArticles, setNewsArticles] = useState<any[]>([]);
+  const [newsLoading, setNewsLoading] = useState<boolean>(false);
+  const [newsCategory, setNewsCategory] = useState<string>('technology');
+  const [newsError, setNewsError] = useState<string>('');
+  const [newsSearch, setNewsSearch] = useState<string>('');
+  const [newsView, setNewsView] = useState<'cards' | 'list'>('cards');
+  const [bookmarkedArticles, setBookmarkedArticles] = useState<Set<string>>(new Set());
+  const [imageLoadingStates, setImageLoadingStates] = useState<Map<string, boolean>>(new Map());
+  const [imageErrorStates, setImageErrorStates] = useState<Map<string, boolean>>(new Map());
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [articleModalOpen, setArticleModalOpen] = useState<boolean>(false);
 
   // Reset viewer details when opening a new item
   useEffect(() => {
@@ -302,6 +436,201 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   
   const [projects, setProjects] = useState<any[]>([]);
   const [projectsLoading, setProjectsLoading] = useState<boolean>(false);
+
+  // News fetching function with multiple APIs and Supabase caching
+  const fetchNews = async (category: string = 'technology') => {
+    setNewsLoading(true);
+    setNewsError('');
+
+    try {
+      // First, try to load from Supabase cache if it's less than 20 minutes old
+      let cachedArticles = null;
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          const { data: cacheData, error } = await supabase
+            .from('news_cache')
+            .select('articles, updated_at')
+            .eq('category', category)
+            .single();
+
+          if (!error && cacheData) {
+            const cacheAge = Date.now() - new Date(cacheData.updated_at).getTime();
+            const twentyMinutes = 20 * 60 * 1000;
+
+            if (cacheAge < twentyMinutes) {
+              // Use cached data
+              cachedArticles = JSON.parse(cacheData.articles);
+              console.log(`Using cached news for ${category} (${Math.round(cacheAge / 1000 / 60)} minutes old)`);
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Cache check failed:', error);
+      }
+
+      // If we have valid cached data, use it
+      if (cachedArticles && cachedArticles.length > 0) {
+        setNewsArticles(cachedArticles);
+        setNewsLoading(false);
+        return;
+      }
+
+      // Otherwise, fetch fresh data from APIs
+      let articles = [];
+
+      // 1. Try NewsAPI.org first
+      try {
+        const newsApiKey = process.env.NEXT_PUBLIC_NEWS_API_KEY || '3bf80b934d154d3790c54f292c2a81a9';
+        const response = await fetch(
+          `https://newsapi.org/v2/top-headlines?category=${category}&country=us&apiKey=${newsApiKey}&pageSize=15`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.articles && data.articles.length > 0) {
+            articles = data.articles.map((article: any) => ({
+              ...article,
+              source: { name: article.source?.name || 'NewsAPI' },
+              apiSource: 'NewsAPI'
+            }));
+          }
+        }
+      } catch (error) {
+        console.log('NewsAPI failed:', error);
+      }
+
+      // 2. Try GNews.io if NewsAPI didn't return enough articles
+      if (articles.length < 10) {
+        try {
+          const gnewsApiKey = process.env.NEXT_PUBLIC_GNEWS_IO_KEY || 'a8bcacc75413f60e5087c825d04e5c6a';
+          const response = await fetch(
+            `https://gnews.io/api/v4/top-headlines?category=${category}&lang=en&country=us&max=15&apikey=${gnewsApiKey}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.articles && data.articles.length > 0) {
+              const gnewsArticles = data.articles.map((article: any) => ({
+                ...article,
+                source: { name: article.source?.name || 'GNews' },
+                apiSource: 'GNews'
+              }));
+
+              // Merge with existing articles, avoiding duplicates
+              const existingUrls = new Set(articles.map((a: any) => a.url));
+              const uniqueGnewsArticles = gnewsArticles.filter((article: any) => !existingUrls.has(article.url));
+              articles = [...articles, ...uniqueGnewsArticles].slice(0, 20);
+            }
+          }
+        } catch (error) {
+          console.log('GNews.io failed:', error);
+        }
+      }
+
+      // 3. Try NewsData.io as final fallback
+      if (articles.length < 10) {
+        try {
+          const newsDataApiKey = process.env.NEXT_PUBLIC_NEWSDATA_KEY || 'pub_22f3393a92744498a4535f2e65643d95';
+          const response = await fetch(
+            `https://newsdata.io/api/1/news?category=${category}&language=en&size=15&apikey=${newsDataApiKey}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const newsDataArticles = data.results.map((article: any) => ({
+                title: article.title,
+                description: article.description || article.content?.substring(0, 200) + '...',
+                url: article.link,
+                urlToImage: article.image_url,
+                publishedAt: article.pubDate,
+                source: { name: article.source_id || 'NewsData' },
+                apiSource: 'NewsData'
+              }));
+
+              // Merge with existing articles, avoiding duplicates
+              const existingUrls = new Set(articles.map((a: any) => a.url));
+              const uniqueNewsDataArticles = newsDataArticles.filter((article: any) => !existingUrls.has(article.url));
+              articles = [...articles, ...uniqueNewsDataArticles].slice(0, 20);
+            }
+          }
+        } catch (error) {
+          console.log('NewsData.io failed:', error);
+        }
+      }
+
+      // Process articles to add better image handling
+      articles = articles.map((article: any) => ({
+        ...article,
+        // Enhance image URLs with proxy support and fallbacks
+        urlToImage: article.urlToImage ? getDisplayUrl(article.urlToImage) : null,
+        rawImageUrl: article.urlToImage, // Keep original for fallbacks
+        // Add image loading state
+        imageLoaded: false,
+        imageError: false
+      }));
+
+      // Cache articles in Supabase for 20-minute intervals
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = await import('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+
+          // Store news in Supabase
+          const { error } = await supabase
+            .from('news_cache')
+            .upsert({
+              category,
+              articles: JSON.stringify(articles),
+              updated_at: new Date().toISOString()
+            });
+
+          if (error) {
+            console.log('Supabase cache error:', error);
+          }
+        }
+      } catch (error) {
+        console.log('Supabase caching failed:', error);
+      }
+
+      setNewsArticles(articles);
+    } catch (error) {
+      console.error('News fetch error:', error);
+      setNewsError(error instanceof Error ? error.message : 'Failed to load news. Please try again later.');
+      setNewsArticles([]);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
+
+  // Load news when tab becomes active or category changes
+  useEffect(() => {
+    if (activeTab === 'news') {
+      fetchNews(newsCategory);
+    }
+  }, [activeTab, newsCategory]);
+
+  // Auto-refresh news every 20 minutes
+  useEffect(() => {
+    if (activeTab !== 'news') return;
+
+    const interval = setInterval(() => {
+      fetchNews(newsCategory);
+    }, 20 * 60 * 1000); // 20 minutes
+
+    return () => clearInterval(interval);
+  }, [activeTab, newsCategory]);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [modeRowExpanded, setModeRowExpanded] = useState(false);
   // Helper: format relative time like "3h ago"
   function formatRelativeTime(dateInput: string | number | Date | null | undefined): string {
     try {
@@ -419,16 +748,44 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
   }, []);
 
-  // Mobile detection effect
+  // Mobile viewport height handling
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
+    const setVH = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
     };
-    
-    checkMobile(); // Initial check
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+
+    setVH();
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+
+    return () => {
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
   }, []);
+
+  // Handle mobile menu interactions (escape key and outside clicks)
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    // Prevent body scroll when mobile menu is open
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   // Animate wind lines continuously - throttled to reduce re-renders
   const linkAnimRef = useRef<number>(0);
@@ -524,6 +881,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           setShowSaveProject(false);
           setProjectModalOpen(false);
           
+          // Refresh projects list
+          loadProjects();
+          
           // Add success message to chat
           setMessages(prev => [...prev, {
             id: generateId(),
@@ -549,6 +909,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setCurrentProjectTitle(j.title || (title || currentProjectTitle || null));
       setShowSaveProject(false);
       setProjectModalOpen(false);
+      
+      // Refresh projects list
+      loadProjects();
     } catch (e:any) {
       console.error('Save project failed:', e);
       setMessages(prev => [...prev, {
@@ -589,6 +952,146 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setProjects([]);
     } finally {
       setProjectsLoading(false);
+    }
+  }
+
+  // Switch to a different project - ROBUST IMPLEMENTATION
+  async function switchToProject(projectId: string, projectTitle: string) {
+    try {
+      console.log('🔄 SWITCHING TO PROJECT:', projectId, projectTitle);
+      
+      // Try enhanced projects API first (handles both chat and grid)
+      let project = null;
+      try {
+        const r = await fetch(`/api/social-twin/enhanced-projects/${projectId}`, { 
+          headers: { 'X-User-Id': userId || '' } 
+        });
+        if (r.ok) {
+          project = await r.json();
+          console.log('✅ Enhanced project loaded:', project);
+        }
+      } catch (enhancedError) {
+        console.warn('Enhanced API failed, trying legacy:', enhancedError);
+      }
+      
+      // Fallback to legacy API if enhanced fails
+      if (!project) {
+        const r = await fetch(`/api/social-twin/projects/${projectId}`, { 
+          headers: { 'X-User-Id': userId || '' } 
+        });
+        if (!r.ok) {
+          console.error('Failed to load project from both APIs');
+          return;
+        }
+        project = await r.json();
+        console.log('📦 Legacy project loaded:', project);
+      }
+      
+      // Update current project info
+      setCurrentProjectId(projectId);
+      setCurrentProjectTitle(projectTitle);
+      
+      // Load chat data (enhanced format first, then legacy)
+      if (project.chatData?.messages) {
+        console.log('💬 Loading enhanced chat data:', project.chatData.messages.length, 'messages');
+        setMessages(project.chatData.messages);
+        
+        // Restore topic if available
+        if (project.chatData.topic) {
+          setCurrentTopic(project.chatData.topic);
+        }
+      } else if (project.data?.messages) {
+        console.log('💬 Loading legacy chat data:', project.data.messages.length, 'messages');
+        setMessages(project.data.messages);
+      } else {
+        console.log('💬 No chat data found, starting fresh');
+        setMessages([]);
+      }
+      
+      // Load grid data (enhanced format first, then legacy)
+      if (project.gridData?.items) {
+        console.log('🎨 Loading enhanced grid data:', project.gridData.items.length, 'items');
+        setCanvasItems(project.gridData.items);
+        setEdges(project.gridData.edges || []);
+      } else if (project.data?.canvasItems) {
+        console.log('🎨 Loading legacy grid data:', project.data.canvasItems.length, 'items');
+        setCanvasItems(project.data.canvasItems);
+        setEdges(project.data.edges || []);
+      } else if (project.data?.items) {
+        console.log('🎨 Loading legacy items data:', project.data.items.length, 'items');
+        setCanvasItems(project.data.items);
+        setEdges(project.data.edges || []);
+      } else {
+        console.log('🎨 No grid data found, starting fresh');
+        setCanvasItems([]);
+        setEdges([]);
+      }
+      
+      // Close dropdown
+      setProjectDropdownOpen(false);
+      
+      // Add confirmation message to chat
+      const chatMessagesCount = project.chatData?.messages?.length || project.data?.messages?.length || 0;
+      const gridItemsCount = project.gridData?.items?.length || project.data?.canvasItems?.length || project.data?.items?.length || 0;
+      
+      setMessages(prev => [...prev, {
+        id: generateId(),
+        role: 'assistant',
+        content: `✅ **Project Loaded: "${projectTitle}"**\n\n🔄 **Restoration Complete:**\n• 💬 **${chatMessagesCount} chat messages** restored\n• 🎨 **${gridItemsCount} canvas items** restored\n• 🔗 **All connections** maintained\n\n*You're now working in the "${projectTitle}" project. All your previous work has been restored.*`,
+        createdAt: new Date().toISOString()
+      }]);
+      
+      console.log('🎉 Project switch completed successfully!');
+      
+    } catch (error) {
+      console.error('❌ Error switching project:', error);
+      
+      // Show error to user
+      setMessages(prev => [...prev, {
+        id: generateId(),
+        role: 'error',
+        content: `❌ **Failed to Load Project**\n\nError loading "${projectTitle}": ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support if the issue persists.`,
+        createdAt: new Date().toISOString()
+      }]);
+    }
+  }
+
+  // Auto-save current project when messages change (to prevent data loss)
+  async function autoSaveProject() {
+    // Only auto-save if we're in an existing project with content
+    if (!currentProjectId || !currentProjectTitle || messages.length === 0) return;
+    
+    try {
+      console.log('🔄 Auto-saving project:', currentProjectTitle);
+      
+      const gridData = { items: canvasItems || [], edges: edges || [] };
+      const filteredMessages = messages.filter(msg => 
+        !(msg.content.includes('Project Saved Successfully') || 
+          msg.content.includes('Auto-saved') ||
+          msg.content.includes('Project') && msg.content.includes('Loaded'))
+      );
+      
+      const chatData = { 
+        messages: filteredMessages,
+        topic: currentTopic ? { id: currentTopic.id, title: currentTopic.title } : null,
+        messageCount: filteredMessages.length
+      };
+      
+      // Update existing project silently
+      await fetch(`/api/social-twin/enhanced-projects/${currentProjectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': userId || '' },
+        body: JSON.stringify({ 
+          title: currentProjectTitle,
+          gridData,
+          chatData,
+          topicId: currentTopic?.id || null
+        })
+      });
+      
+      console.log('✅ Auto-save completed');
+    } catch (error) {
+      console.warn('Auto-save failed:', error);
     }
   }
 
@@ -634,6 +1137,33 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         .catch(() => {});
     }
   }, [activeTab, userId]);
+
+  // Close project dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (projectDropdownOpen) {
+        const target = event.target as Element;
+        const dropdown = target.closest('[data-project-dropdown]');
+        if (!dropdown) {
+          setProjectDropdownOpen(false);
+        }
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [projectDropdownOpen]);
+
+  // Auto-save when messages change (debounced to avoid excessive API calls)
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const autoSaveTimer = setTimeout(() => {
+      autoSaveProject();
+    }, 3000); // Auto-save 3 seconds after last message
+    
+    return () => clearTimeout(autoSaveTimer);
+  }, [messages, canvasItems, currentProjectId, currentProjectTitle]);
 
   // Load project from URL if projectId is provided
   useEffect(() => {
@@ -1080,7 +1610,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   useEffect(() => {
     // Load RunPod endpoints from localStorage with environment variable fallbacks
-    const DEFAULT_TEXT = process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL || "";
+    const DEFAULT_TEXT = process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL || "/api/cloudflare-ai";
     const DEFAULT_IMAGE = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/";
     const DEFAULT_IMAGE_MODIFY = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || DEFAULT_IMAGE;
     const DEFAULT_VIDEO = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL || "";
@@ -1099,7 +1629,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || DEFAULT_VIDEO_KLING);
     setLoraName(localStorage.getItem(LOCAL_KEYS.loraName) || "");
     const lsScale = localStorage.getItem(LOCAL_KEYS.loraScale);
-    setLoraScale(lsScale ? Number(lsScale) : "");
+  setLoraScale(lsScale ? Number(lsScale) : "");
+  const lsEffect = localStorage.getItem(LOCAL_KEYS.effectLora);
+  setEffectLora(lsEffect || "");
+  const lsEffectScale = localStorage.getItem(LOCAL_KEYS.effectLoraScale);
+  setEffectLoraScale(lsEffectScale ? Number(lsEffectScale) : "");
     const lsBatch = localStorage.getItem(LOCAL_KEYS.batchSize);
     setBatchSize(lsBatch ? Number(lsBatch) : "");
     setAspectRatio(localStorage.getItem(LOCAL_KEYS.aspectRatio) || "");
@@ -1119,6 +1653,56 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       }
     } catch {}
   }, [searchParams]);
+
+  // Load available LoRAs
+  useEffect(() => {
+    const loadAvailableLoras = async () => {
+      setLorasLoading(true);
+      try {
+        // Pass the active RunPod origin so server can query your storage even if config isn't set
+        const pickOrigin = (u?: string) => {
+          try { if (u && /^https?:\/\//i.test(u)) return new URL(u).origin; } catch {}
+          return undefined;
+        };
+        const origin = pickOrigin(imageUrl) || pickOrigin(imageModifyUrl) || pickOrigin(process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '');
+        const url = origin ? `/api/runpod/discover-loras?url=${encodeURIComponent(origin)}` : '/api/runpod/discover-loras';
+        
+        console.log('🔍 Loading LoRAs from:', url);
+        console.log('RunPod origin detected:', origin);
+        
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📦 LoRA discovery response:', data);
+          
+          if (data.success && data.loras) {
+            // Flatten all LoRA types into a single array
+            const allLoras = [
+              ...data.loras.character,
+              ...data.loras.style,
+              ...data.loras.concept,
+              ...data.loras.other
+            ];
+            console.log('✅ Found LoRAs:', allLoras.length, allLoras);
+            setAvailableLoras(allLoras);
+          } else {
+            console.log('❌ No LoRAs found in response');
+            setAvailableLoras([]);
+          }
+        } else {
+          console.error('❌ LoRA discovery failed:', response.status, response.statusText);
+          setAvailableLoras([]);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load LoRAs:', error);
+        setAvailableLoras([]);
+      } finally {
+        setLorasLoading(false);
+      }
+    };
+    
+    loadAvailableLoras();
+  }, [imageUrl, imageModifyUrl]); // Re-load when URLs change
 
   useEffect(() => {
     try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
@@ -1252,8 +1836,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     localStorage.setItem(LOCAL_KEYS.video, videoUrl);
     localStorage.setItem(LOCAL_KEYS.videoWan, videoWanUrl);
     localStorage.setItem(LOCAL_KEYS.videoKling, videoKlingUrl);
-    localStorage.setItem(LOCAL_KEYS.loraName, loraName);
-    if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
+  localStorage.setItem(LOCAL_KEYS.loraName, loraName);
+  if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
+  if (effectLora) localStorage.setItem(LOCAL_KEYS.effectLora, effectLora);
+  if (effectLoraScale !== "") localStorage.setItem(LOCAL_KEYS.effectLoraScale, String(effectLoraScale));
     if (batchSize !== "") localStorage.setItem(LOCAL_KEYS.batchSize, String(batchSize));
     localStorage.setItem(LOCAL_KEYS.aspectRatio, aspectRatio);
   try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
@@ -1261,21 +1847,24 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   async function handleSend() {
     console.log('🚀 HANDLE_SEND CALLED');
-    console.log('Raw input:', JSON.stringify(input));
+    console.log('Mode:', mode);
+    console.log('Input:', JSON.stringify(input));
+    console.log('Active endpoint:', activeEndpoint);
+    console.log('User agent:', navigator.userAgent);
+    console.log('Is mobile detected:', isMobile);
+    console.log('Window width:', window.innerWidth);
+    console.log('Credits info:', creditInfo);
+    console.log('Can afford generation:', canAffordGeneration);
+    console.log('Generation cost:', generationCost);
+    console.log('LoRA name:', loraName);
+    console.log('LoRA scale:', loraScale);
+    console.log('Batch size:', batchSize);
+    console.log('Aspect ratio:', aspectRatio);
+    console.log('Effects preset:', effectsPreset);
+    console.log('Effects on:', effectsOn);
+    console.log('Video model:', videoModel);
+    console.log('User ID:', userId);
     console.log('Call stack:', new Error().stack);
-    
-    // 📱 MOBILE DEBUG: Add comprehensive mobile detection and logging
-    const isMobileUA = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const windowWidth = window.innerWidth;
-    console.log('📱 MOBILE DEBUG INFO:', {
-      isMobile,
-      isMobileUA,
-      windowWidth,
-      userAgent: navigator.userAgent,
-      mode,
-      userId,
-      activeEndpoint
-    });
     
     const trimmed = input.trim();
     console.log('Trimmed input:', JSON.stringify(trimmed));
@@ -1326,7 +1915,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    if (!activeEndpoint) {
+    if (!activeEndpoint && mode !== 'text') {
       setMessages((prev) => [
         ...prev,
         { id: generateId(), role: "error", content: `No endpoint configured for '${mode}'. Open settings to set a URL.` },
@@ -1340,123 +1929,214 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const placeholder: ChatMessage = {
         id: tempId,
         role: "assistant",
-        content: (mode==='text') ? 'Generating…' : ((mode==='image' || mode==='image-modify') ? 'Generating image…' : (mode==='video' ? 'Generating video…' : 'Working…')),
+        content: (mode==='text') ? getRandomThinkingPhrase() : ((mode==='image' || mode==='image-modify') ? 'Generating image…' : (mode==='video' ? 'Generating video…' : 'Working…')),
         loading: true,
         pendingType: ((mode==='image' || mode==='image-modify') ? 'image' : (mode==='video' ? 'video' : 'text')),
         createdAt: new Date().toISOString(),
       };
       setMessages((prev)=> [...prev, placeholder]);
       
-      // Use the new tracking API endpoint
-      const apiPayload = {
-        prompt: trimmed,
-        mode,
-        // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
-        ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
-        provider: textProvider,
-        lora: loraName || undefined,
-        lora_scale: typeof loraScale === 'number' ? loraScale : undefined,
-        batch_size: typeof batchSize === 'number' ? batchSize : undefined,
-        seed: typeof seed === 'number' ? seed : undefined,
-        denoise: typeof denoise === 'number' ? denoise : undefined,
-        unet: unetName || undefined,
-        aspect_ratio: aspectRatio || undefined,
-            cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
-            guidance: typeof guidance === 'number' ? guidance : undefined,
-            steps: typeof steps === 'number' ? steps : undefined,
-            video_model: mode==='video' ? videoModel : undefined,
-            video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
-        userId: userId || undefined,
-        attachment: attached || undefined,
-        imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
-        workflow_settings: showWorkflowPopoverFor ? {
-          target: showWorkflowPopoverFor,
-          use_flux_dev: useFluxDev,
-          sampler,
-          denoise: typeof denoise === 'number' ? denoise : undefined,
-          unet: unetName || undefined,
-        } : undefined,
-        // Respect user's choice whether to save generated media into their personal library
-        saveToLibrary: saveToLibrary === true,
-        // Add mobile debugging flag
-        __mobile_debug: isMobile,
-        __user_agent: navigator.userAgent
-      };
-      
-      // 📱 MOBILE: Log API call details
-      if (isMobile) {
-        console.log('📱 MOBILE API CALL STARTING');
-        console.log('📱 Payload size:', JSON.stringify(apiPayload).length, 'bytes');
-        console.log('📱 Key parameters:', {
-          mode: apiPayload.mode,
-          prompt_length: apiPayload.prompt.length,
-          has_attachment: !!apiPayload.attachment,
-          batch_size: apiPayload.batch_size,
-          aspect_ratio: apiPayload.aspect_ratio
-        });
+      // Start thinking animation for text mode
+      if (mode === 'text') {
+        startThinkingAnimation(tempId);
       }
       
+      // For text mode, use Cloudflare Workers AI
+      if (mode === 'text') {
+        try {
+          // Check if user uploaded an image or PDF - if so, use vision mode
+          if (attached && (attached.type.startsWith('image') || attached.type === 'application/pdf')) {
+            // Add user message with both text and image to chat
+            const userMessageWithImage = { 
+              id: tempId, 
+              role: 'user' as const, 
+              content: trimmed,
+              image: attached.dataUrl, // Store image data in message
+              loading: false 
+            };
+            
+            // Add AI loading message with thinking animation
+            const aiLoadingMessage = { 
+              id: generateId(), 
+              role: 'assistant' as const, 
+              content: getRandomThinkingPhrase(), 
+              loading: true 
+            };
+            
+            setMessages((prev) => [
+              ...prev.filter(msg => msg.id !== tempId), // Remove temp message
+              userMessageWithImage,
+              aiLoadingMessage
+            ]);
+
+            // Start thinking animation
+            startThinkingAnimation(aiLoadingMessage.id);
+
+            // Convert current messages to format expected by Cloudflare AI
+            const conversationHistory = messages
+              .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+              .filter(msg => !msg.loading) // Exclude loading messages
+              .map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+              }));
+
+            // Add personality-based system prompt for vision mode
+            const personalityPrompts = {
+              creative: "You are a creative AI assistant focused on artistic expression, innovation, and imaginative solutions. Analyze images/documents with a creative perspective, offering artistic insights and imaginative interpretations.",
+              news: "You are a professional news analyst and journalist. Analyze images/documents with journalistic integrity, focusing on factual observations and news-worthy elements.",
+              police: "You are a professional law enforcement expert. Analyze images/documents from a security and legal perspective, noting any relevant details for public safety or legal procedures.",
+              lawyer: "You are a professional legal expert. Analyze images/documents for legal relevance, potential evidence, or legal implications. Always emphasize consulting qualified legal professionals.",
+              accountant: "You are a professional financial and accounting expert. Analyze images/documents for financial data, accounting records, or business-related information.",
+              teacher: "You are an experienced educator. Analyze images/documents from an educational perspective, explaining what you see and providing learning opportunities."
+            };
+
+            // Create enhanced message with personality context
+            const enhancedMessage = `${personalityPrompts[aiPersonality]}\n\nUser's message: ${trimmed}`;
+
+            const response = await handleCreditDeductingAPI(() => 
+              cloudflareAI.sendMessageWithImage(
+                enhancedMessage,
+                attached.dataUrl, // Base64 image data
+                conversationHistory,
+                userId || 'anonymous'
+              )
+            );
+            
+            // Stop thinking animation
+            stopThinkingAnimation();
+            
+            setMessages((prev) => prev.map(msg => 
+              msg.id === aiLoadingMessage.id 
+                ? { ...msg, content: response, loading: false }
+                : msg
+            ));
+            
+            // Clear the attachment after sending
+            setAttached(null);
+            return;
+          } else {
+            // Text-only conversation with AI personality
+            const conversationHistory = messages
+              .filter(msg => msg.role === 'user' || msg.role === 'assistant')
+              .filter(msg => !msg.loading) // Exclude loading messages
+              .map(msg => ({
+                role: msg.role as 'user' | 'assistant',
+                content: msg.content
+              }));
+
+            // Add personality-based system prompt
+            const personalityPrompts = {
+              creative: "You are a creative AI assistant focused on artistic expression, innovation, and imaginative solutions. Respond with creativity, inspiration, and out-of-the-box thinking.",
+              news: "You are a professional news analyst and journalist. Provide factual, well-researched responses with journalistic integrity. Focus on current events, analysis, and objective reporting.",
+              police: "You are a professional law enforcement expert. Provide responses related to legal procedures, public safety, criminal justice, and law enforcement best practices. Always emphasize legal and ethical conduct.",
+              lawyer: "You are a professional legal expert. Provide responses about legal matters, procedures, and advice. Always emphasize the importance of consulting with qualified legal professionals for specific legal issues.",
+              accountant: "You are a professional financial and accounting expert. Focus on financial planning, accounting principles, tax matters, and business finance. Always recommend consulting certified professionals for specific financial advice.",
+              teacher: "You are an experienced educator. Provide clear, educational responses that help users learn and understand concepts. Break down complex topics into digestible parts and encourage learning."
+            };
+
+            // Prepend personality system message to conversation history
+            const enhancedHistory = [
+              { role: 'system' as const, content: personalityPrompts[aiPersonality] },
+              ...conversationHistory
+            ];
+
+            const response = await handleCreditDeductingAPI(() => 
+              cloudflareAI.sendMessage(
+                trimmed,
+                enhancedHistory as any,
+                chatMode,
+                userId || 'anonymous'
+              )
+            );
+            
+            // Stop thinking animation
+            stopThinkingAnimation();
+            
+            setMessages((prev) => prev.map(msg => 
+              msg.id === tempId 
+                ? { ...msg, content: response, loading: false }
+                : msg
+            ));
+            return;
+          }
+        } catch (error) {
+          console.error('Cloudflare AI error:', error);
+          // Stop thinking animation on error
+          stopThinkingAnimation();
+          setMessages((prev) => prev.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, content: 'Error: Failed to generate response. Please try again.', loading: false, role: 'error' }
+              : msg
+          ));
+          return;
+        }
+      }
+      
+      // Use the new tracking API endpoint for image/video generation
   const res = await fetch("/api/generate-with-tracking", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "X-User-Id": userId || "",
-          // Add mobile header for server-side detection
-          ...(isMobile ? { "X-Mobile-Request": "true" } : {})
-        },
-        body: JSON.stringify(apiPayload),
+        headers: { "Content-Type": "application/json", "X-User-Id": userId || "" },
+        body: JSON.stringify({
+          prompt: trimmed,
+          mode,
+          // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
+          ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
+          provider: textProvider,
+          // Character & Effects LoRAs
+          lora_character: loraName || undefined,
+          lora_character_scale: typeof loraScale === 'number' ? loraScale : undefined,
+          lora_effect: effectLora || undefined,
+          lora_effect_scale: typeof effectLoraScale === 'number' ? effectLoraScale : undefined,
+          batch_size: typeof batchSize === 'number' ? batchSize : undefined,
+          seed: typeof seed === 'number' ? seed : undefined,
+          denoise: typeof denoise === 'number' ? denoise : undefined,
+          unet: unetName || undefined,
+          aspect_ratio: aspectRatio || undefined,
+              cfg: typeof cfgScale === 'number' ? cfgScale : undefined,
+              guidance: typeof guidance === 'number' ? guidance : undefined,
+              steps: typeof steps === 'number' ? steps : undefined,
+              effects_preset: effectsPreset || undefined,
+              effects_on: effectsOn || undefined,
+              video_model: mode==='video' ? videoModel : undefined,
+              video_type: mode==='video' ? (attached?.dataUrl ? 'image' : 'text') : undefined,
+          userId: userId || undefined,
+          attachment: attached || undefined,
+          imageUrl: (mode==='image-modify' && attached?.dataUrl) ? attached.dataUrl : undefined,
+          workflow_settings: showWorkflowPopoverFor ? {
+            target: showWorkflowPopoverFor,
+            use_flux_dev: useFluxDev,
+            sampler,
+            denoise: typeof denoise === 'number' ? denoise : undefined,
+            unet: unetName || undefined,
+          } : undefined,
+          // Respect user's choice whether to save generated media into their personal library
+          saveToLibrary: saveToLibrary === true,
+        }),
       });
-      
-      // 📱 MOBILE: Log response details
-      if (isMobile) {
-        console.log('📱 MOBILE API RESPONSE:', {
-          status: res.status,
-          statusText: res.statusText,
-          ok: res.ok,
-          headers: Object.fromEntries(res.headers.entries())
-        });
-      }
+
+      console.log('🌐 API Response status:', res.status);
+      console.log('🌐 API Response headers:', res.headers);
 
       if (!res.ok) {
         // Show a clear message when the workflow isn't available yet (501) or other errors
         let detail = `HTTP ${res.status}`;
         try {
           const errJson = await res.json();
+          console.log('❌ API Error response:', errJson);
           if (errJson?.error) {
             detail = errJson.workflow ? `${errJson.error} (${errJson.workflow})` : errJson.error;
           }
         } catch {}
-        
-        // 📱 MOBILE: Enhanced error logging
-        if (isMobile) {
-          console.log('📱 MOBILE API ERROR:', {
-            status: res.status,
-            statusText: res.statusText,
-            detail,
-            headers: Object.fromEntries(res.headers.entries())
-          });
-        }
-        
         setMessages((prev) => [
           ...prev,
-          { id: generateId(), role: "error", content: isMobile ? `📱 Mobile Error: ${detail}` : detail },
+          { id: generateId(), role: "error", content: detail },
         ]);
         return;
       }
 
       const payload = await res.json().catch(() => ({} as any));
-      
-      // 📱 MOBILE: Log successful response structure
-      if (isMobile) {
-        console.log('📱 MOBILE SUCCESS PAYLOAD:', {
-          has_runpod: !!payload.runpod,
-          has_urls: !!payload.urls,
-          has_images: !!payload.images,
-          urls_count: (payload.urls || []).length,
-          images_count: (payload.images || []).length,
-          payload_keys: Object.keys(payload)
-        });
-      }
+      console.log('✅ API Success payload:', payload);
       const data = payload.runpod ?? payload; // our API returns { ok, urls, runpod }
       const urls: string[] = payload.urls || (data?.urls || []);
       const batchImages: string[] = payload.images || (data?.images || []);
@@ -1507,30 +2187,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   // Make sure Save Project button is available after generation
   setShowSaveProject(true);
     } catch (err: any) {
-      // 📱 MOBILE: Enhanced error handling with detailed logging
-      if (isMobile) {
-        console.log('📱 MOBILE GENERATION ERROR:', {
-          error_type: typeof err,
-          error_name: err?.name,
-          error_message: err?.message,
-          error_stack: err?.stack,
-          network_status: navigator.onLine ? 'ONLINE' : 'OFFLINE',
-          user_agent: navigator.userAgent,
-          window_width: window.innerWidth,
-          mode,
-          userId
-        });
-      }
-      
       setMessages((prev) => [
         ...prev,
-        { 
-          id: generateId(), 
-          role: "error", 
-          content: isMobile 
-            ? `📱 Mobile generation failed: ${err?.message ?? "Unknown error"}\n\nNetwork: ${navigator.onLine ? 'Online' : 'Offline'}\nDevice: Mobile (${window.innerWidth}px)\n\nTip: Try refreshing the page or check your internet connection.`
-            : `Request failed: ${err?.message ?? "Unknown error"}` 
-        },
+        { id: generateId(), role: "error", content: `Request failed: ${err?.message ?? "Unknown error"}` },
       ]);
     }
   }
@@ -1761,55 +2420,33 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return buildSmoothPath(pts, 1);
   }
 
-  // iOS viewport + keyboard-safe: set --vh and --kb-offset using visualViewport
+  // Simplified mobile handling
   useEffect(() => {
-    const docEl = document.documentElement;
-    const updateVh = () => {
-      const vh = (window.visualViewport?.height ?? window.innerHeight) * 0.01;
-      docEl.style.setProperty('--vh', `${vh}px`);
+    // Simple mobile detection
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
     };
-    const updateKb = () => {
-      const vv = window.visualViewport;
-      const kb = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
-      docEl.style.setProperty('--kb-offset', `${kb}px`);
-    };
-    const updateComposerH = () => {
-      const h = composerRef.current?.offsetHeight || 64;
-      docEl.style.setProperty('--composer-h', `${h}px`);
-    };
-    const onVvResize = () => { updateVh(); updateKb(); };
-    const onVvScroll = () => { updateKb(); };
-    let ro: ResizeObserver | null = null;
-    if (typeof (window as any).ResizeObserver === 'function') {
-      ro = new (window as any).ResizeObserver(() => updateComposerH());
-      if (composerRef.current && ro) ro.observe(composerRef.current);
-    }
-    updateVh();
-    updateKb();
-    updateComposerH();
-    window.addEventListener('resize', updateVh);
-    window.addEventListener('orientationchange', updateVh);
-    window.visualViewport?.addEventListener('resize', onVvResize);
-    window.visualViewport?.addEventListener('scroll', onVvScroll);
-    window.addEventListener('resize', updateComposerH);
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
     return () => {
-      window.removeEventListener('resize', updateVh);
-      window.removeEventListener('orientationchange', updateVh);
-      window.visualViewport?.removeEventListener('resize', onVvResize);
-      window.visualViewport?.removeEventListener('scroll', onVvScroll);
-      window.removeEventListener('resize', updateComposerH);
-  try { ro?.disconnect?.(); } catch {}
+      window.removeEventListener('resize', checkMobile);
     };
   }, []);
 
   return (
-  <main className={`relative h-screen-dvh w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-purple-50'} max-w-full`}> 
+  <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-white'} max-w-full`}
+         style={{ height: isMobile ? '100vh' : '100vh' }}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0 h-screen'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-black/20' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
-        style={simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' }}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-neutral-900' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
+         style={{
+           height: '100vh',
+           ...(simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' })
+         }}
       >
         {/* Full-rail click target when collapsed */}
         {chatCollapsed ? (
@@ -1823,7 +2460,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         {/* Collapse handle - Hidden on mobile in simple mode to avoid interfering with mobile UX */}
         {!(simpleMode && isMobile) && (
         <button
-          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
+          className="absolute md:left-[-40px] left-2 top-1/2 z-[10020] -translate-y-1/2 rounded-full p-3 shadow-lg bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 transition-all duration-200 border-2 border-white/20 hover:border-white/40 hover:scale-110 animate-pulse hover:animate-none"
           onClick={()=> setChatCollapsed(v=>!v)}
           title={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
           aria-label={chatCollapsed ? 'Expand chat panel' : 'Collapse chat panel'}
@@ -1840,25 +2477,61 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </button>
         )}
   <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-          <h1 className="text-base md:text-lg font-semibold tracking-tight">
-            {creditInfo?.subscription_active && creditInfo?.subscription_plan
-              ? (()=>{
-                  const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim();
-                  // Map new plan names: one t -> ONE T, one z -> ONE Z, one pro -> ONE PRO
-                  if (plan === 'one t') return 'ONE T';
-                  if (plan === 'one z') return 'ONE Z';
-                  if (plan === 'one pro') return 'ONE PRO';
-                  return 'ONE';
-                })()
-              : 'ONE'}
-          </h1>
+          {/* Mobile: Hamburger menu on the left */}
+          {isMobile && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${
+                darkMode 
+                  ? 'text-white hover:bg-neutral-800' 
+                  : 'text-black hover:bg-gray-100'
+              }`}
+              aria-label="Toggle menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path 
+                  d="M3 12H21M3 6H21M3 18H21" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
           
-            <div className="flex items-center gap-2">
-            {/* Credits */}
-            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${darkMode ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-800'}`}>
-              <div className={`h-1 w-1 rounded-full ${darkMode ? 'bg-green-400' : 'bg-green-500'}`} />
-              {creditInfo?.credits ?? '—'}
+          {/* Desktop: Empty div for spacing, Mobile: Hidden */}
+          {!isMobile && <div></div>}
+          
+          {/* Center: AI Personality Dropdown (Chat tab) or Atom title (other tabs) */}
+          {activeTab === 'chat' ? (
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <select
+                value={aiPersonality}
+                onChange={(e) => setAiPersonality(e.target.value as any)}
+                className={`text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-md px-3 py-1 transition-colors ${
+                  darkMode 
+                    ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
+                    : 'bg-gray-100 text-black hover:bg-gray-200'
+                } focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50`}
+              >
+                <option value="creative">🎨 Creative</option>
+                <option value="news">📰 News</option>
+                <option value="police">👮 Police</option>
+                <option value="lawyer">⚖️ Lawyer</option>
+                <option value="accountant">📊 Accountant</option>
+                <option value="teacher">🎓 Teacher</option>
+              </select>
             </div>
+          ) : (
+            <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
+              Atom
+            </h1>
+          )}
+          
+          {/* Right side: Credits - removed duplicate display, using HamburgerMenu green bar */}
+          <div className="flex items-center gap-2">
+            {/* Credits display removed - now using HamburgerMenu green bar only */}
             
             {/* Dark mode text toggle removed (use icon-based Theme toggle below) */}
             
@@ -1868,58 +2541,215 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           </div>
         </header>
 
-  {/* Settings panel removed from global area; available in Dashboard tab */}
-
-        {/* Top Navigation - always visible; scrollable on mobile */}
-          <div className={`flex justify-between items-center border-b ${darkMode ? 'border-neutral-800' : 'border-neutral-300'} overflow-x-auto no-scrollbar`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
-            <div className="flex gap-1">
-        {[
-          { id: 'chat', label: 'Chat', icon: '💬' },
-          { id: 'generated', label: 'Generated', icon: '🎨' },
-          { id: 'dashboard', label: 'Dashboard', icon: '📊' }
-        ].map((tab) => (
+        {/* Mobile Menu Overlay */}
+        {isMobile && mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50" 
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            
+            {/* Menu Panel */}
+            <div className={`fixed left-0 top-0 h-full w-80 transform transition-transform duration-300 ease-in-out ${
+              darkMode ? 'bg-neutral-900' : 'bg-white'
+            } shadow-xl`}>
+              {/* Menu Header */}
+              <div className={`flex items-center justify-between p-4 border-b ${
+                darkMode ? 'border-neutral-800' : 'border-gray-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <h2 className={`text-lg font-semibold ${
+                    darkMode ? 'text-white' : 'text-black'
+                  }`}>Menu</h2>
+                  {/* Credits removed - using HamburgerMenu green bar only */}
+                </div>
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-xs md:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
-                      ? (darkMode
-                          ? 'border-b border-neutral-300 text-neutral-100'
-                          : 'border-b border-neutral-800 text-neutral-900')
-                      : (darkMode
-                          ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
-                          : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/5')
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`p-2 rounded-md transition-colors ${
+                    darkMode 
+                      ? 'text-white hover:bg-neutral-800' 
+                      : 'text-black hover:bg-gray-100'
                   }`}
                 >
-                  <span>{tab.label}</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path 
+                      d="M18 6L6 18M6 6L18 18" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
-              ))}
-            </div>
-            
-            {/* Save Project moved to bottom next to More */}
-          </div>
+              </div>
+              
+              {/* Menu Items */}
+              <div className="p-4 space-y-3">
+                {/* Main Navigation */}
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Main Navigation</h3>
+                  {[
+                    { id: 'chat', label: 'Chat' },
+                    { id: 'generated', label: 'Generated' },
+                    { id: 'dashboard', label: 'Dashboard' },
+                    { id: 'news', label: 'News' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as any);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === tab.id
+                          ? (darkMode
+                              ? 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-cyan-300 border border-cyan-500/30'
+                              : 'bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-cyan-700 border border-cyan-500/30')
+                          : (darkMode
+                              ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                              : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600')
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: 'calc(var(--composer-h, 64px) + env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
+                {/* Account & Billing */}
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Account & Billing</h3>
+                  <Link
+                    href="/"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    href="/subscription"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    Subscription
+                  </Link>
+                  <Link
+                    href="/user"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    Profile
+                  </Link>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Quick Actions</h3>
+                  <button
+                    onClick={() => {
+                      setProjectModalOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    Save Project
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    Settings
+                  </button>
+                </div>
+
+                {/* Appearance */}
+                <div className="space-y-1">
+                  <h3 className={`text-xs font-medium mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Appearance</h3>
+                  <button
+                    onClick={() => {
+                      setDarkMode(!darkMode);
+                      localStorage.setItem('social_twin_dark', !darkMode ? '1' : '0');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      darkMode
+                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
+                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
+                    }`}
+                  >
+                    {darkMode ? 'Light Mode' : 'Dark Mode'}
+                  </button>
+                </div>
+
+                {/* Recent Projects */}
+                {projects.length > 0 && (
+                  <div className="space-y-2">
+                    <h3 className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Recent Projects</h3>
+                    {projects.slice(0, 3).map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => {
+                          switchToProject(project.id, project.title);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                          darkMode
+                            ? 'text-gray-300 hover:bg-neutral-800 hover:text-white'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-black'
+                        }`}
+                      >
+                        <span className="text-lg">📁</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{project.title}</div>
+                          <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                            {formatRelativeTime(project.updatedAt)}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+  {/* Settings panel removed from global area; available in Dashboard tab */}
+
+        {/* Top Navigation - REMOVED - Chat moved to hamburger menu */}        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${simpleMode ? 'items-stretch' : ''}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined, paddingBottom: isMobile ? '80px' : '80px' }}>
           {/* Tab Content */}
           {activeTab === 'chat' && (
             <>
-        <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ios-smooth-scroll ${simpleMode ? 'max-w-2xl mx-auto w-full no-scrollbar' : ''}`}
+        <div ref={listRef} className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''}`}
           style={{ paddingBottom: '8px' }}>
                 {messages.length === 0 ? (
                   <div className={`text-sm text-gray-500 ${simpleMode ? 'flex h-full items-center justify-center' : ''}`}>
                     {simpleMode ? (
-                      <div className={`w-full max-w-2xl transition-all duration-200 ${composerShown ? 'opacity-0 -translate-y-2 pointer-events-none select-none' : 'opacity-100 translate-y-0'}`}>
-                        <div className="mb-4 text-center text-lg opacity-70">What's on your mind today?</div>
-                        <div className="rounded-lg border p-2">
-                          <textarea
-                            value={input}
-                            onChange={(e)=> { const v = e.target.value; setInput(v); if (!composerShown && v.trim().length > 0) setComposerShown(true); }}
-                            placeholder="Ask anything"
-                            className={`h-12 w-full resize-none rounded-md border p-3 text-sm ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`}
-                            onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); if (!composerShown) setComposerShown(true); } }}
-                          />
-                        </div>
-                      </div>
+                      // Remove middle prompt box completely
+                      null
                     ) : 'Start by entering a prompt below.'}
                   </div>
                 ) : (
@@ -1936,7 +2766,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 ? 'max-w-[75%] text-sm'
                                 : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
                                     isUser
-                                      ? (darkMode ? 'bg-blue-600 text-white border-blue-500' : 'bg-blue-600 text-white border-blue-600')
+                                      ? (darkMode ? 'bg-gray-600 text-white border-gray-500' : 'bg-gray-600 text-white border-gray-600')
                                       : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
                                   }`
                             }
@@ -1944,10 +2774,48 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           >
                             {!isAssistantPlain && (
                               <div className={`mb-1 flex items-center gap-2 text-[11px] ${isUser ? 'opacity-90' : (darkMode ? 'text-neutral-400' : 'text-gray-500')}`}>
-                                <span className="font-semibold">{isUser ? (user?.fullName || 'You') : 'Assistant'}</span>
+                                <span className="font-semibold">
+                                  {isUser ? (user?.fullName || 'You') : 
+                                    `${aiPersonality.charAt(0).toUpperCase() + aiPersonality.slice(1)} AI`
+                                  }
+                                </span>
+                                {!isUser && (
+                                  <span className="text-[10px] opacity-75">
+                                    {aiPersonality === 'creative' && '🎨'} 
+                                    {aiPersonality === 'news' && '📰'}
+                                    {aiPersonality === 'police' && '👮'}
+                                    {aiPersonality === 'lawyer' && '⚖️'}
+                                    {aiPersonality === 'accountant' && '📊'}
+                                    {aiPersonality === 'teacher' && '🎓'}
+                                  </span>
+                                )}
                               </div>
                             )}
-                            <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>{m.content}</div>
+                            <div className={`whitespace-pre-wrap text-sm break-words overflow-wrap-anywhere ${isAssistantPlain ? '' : ''}`}>
+                              {/* Display image if present */}
+                              {m.image && m.image.startsWith('data:image') && (
+                                <div className="mb-2">
+                                  <img 
+                                    src={m.image} 
+                                    alt="User uploaded image" 
+                                    className="max-w-full max-h-64 rounded-lg border object-contain"
+                                    style={{ maxWidth: '250px' }}
+                                  />
+                                </div>
+                              )}
+                              {/* Display PDF document if present */}
+                              {m.image && m.image.startsWith('data:application/pdf') && (
+                                <div className="mb-2 p-2 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                                  <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                    </svg>
+                                    <span className="text-sm font-medium">📄 PDF Document</span>
+                                  </div>
+                                </div>
+                              )}
+                              {m.content}
+                            </div>
                             {m.loading && m.pendingType==='image' ? (
                               <div className="mt-2 h-40 w-full animate-pulse rounded-lg border bg-gradient-to-r from-white/5 to-white/0" />
                             ) : null}
@@ -2067,7 +2935,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     <a
                                       href={m.pdfUrl}
                                       download="exported-layout.pdf"
-                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-blue-400' : 'border-gray-400 hover:bg-gray-100 text-blue-600'} transition-colors`}
+                                      className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-gray-400' : 'border-gray-400 hover:bg-gray-100 text-gray-600'} transition-colors`}
                                     >
                                       📄 Download PDF
                                     </a>
@@ -2109,13 +2977,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 hideUI
                 onCostCalculated={(cost, canAfford) => {
                   setGenerationCost(cost);
-                  setCanAffordGeneration(canAfford);
+                  // Mobile-safe: handle undefined credits gracefully
+                  const hasCredits = creditInfo?.credits !== undefined && creditInfo?.credits !== null;
+                  const actualCanAfford = hasCredits ? canAfford : true; // Allow generation if credits are loading
+                  setCanAffordGeneration(actualCanAfford);
                 }}
               />
 
-  <div ref={composerRef} className={`border-t p-2 ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-300 bg-white'} ${simpleMode ? 'max-w-2xl mx-auto w-full' : ''} absolute left-0 right-0 z-[10015]`}
-          style={{ display: (simpleMode && messages.length===0 && !composerShown) ? 'none' : undefined, bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--kb-offset, 0px))' }}>
-                {/* Character input row (only when needed) */}
+  {/* Composer container - removed dark grey background/border, transparent */}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-2' : 'absolute bottom-0 left-0 right-0 p-2'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
+          style={{ 
+            bottom: '0px'
+          }}>
+                
+                {/* Character input row (only when needed) - same for mobile and desktop */}
                 {(mode === 'image-modify' || (mode === 'image' && loraName && !isPresetLoRa(loraName))) && (
                   <div className="mb-2 flex items-center gap-2">
                     <input
@@ -2159,7 +3034,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               onClick={() => setTextProvider(provider.id as any)}
                               className={`rounded-lg p-3 text-xs transition-all relative ${
                                 textProvider === provider.id
-                                  ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                                  ? (darkMode ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white')
                                   : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
                               }`}
                             >
@@ -2483,7 +3358,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">Character LoRA</label>
+                            <label className="text-xs font-medium opacity-80">Character LoRA {lorasLoading && '(loading...)'}</label>
                             <select
                               value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
                               onChange={(e) => {
@@ -2493,9 +3368,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else setLoraName(v);
                               }}
                               className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
                                 <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {lora.name} ({lora.type})
+                                </option>
                               ))}
                             </select>
                             
@@ -2511,7 +3392,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                           
                           <div className="space-y-2">
-                            <label className="text-xs font-medium opacity-80">LoRA Strength</label>
+                            <label className="text-xs font-medium opacity-80">Character Strength</label>
                             <div className="space-y-1">
                               <input
                                 type="range"
@@ -2525,6 +3406,61 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               <div className="flex justify-between text-xs opacity-60">
                                 <span>0.0</span>
                                 <span className="font-medium">{(loraScale || 0.8).toFixed(2)}</span>
+                                <span>1.0</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Effects LoRA */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Effects LoRA {lorasLoading && '(loading...)'}</label>
+                            <select
+                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setEffectLora('');
+                                else if (v === 'Custom...') setEffectLora(effectLora || '');
+                                else setEffectLora(v);
+                              }}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              disabled={lorasLoading}
+                            >
+                              {LORA_CHOICES.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {lora.name} ({lora.type})
+                                </option>
+                              ))}
+                            </select>
+                            {effectLora && !isPresetLoRa(effectLora) && (
+                              <input
+                                type="text"
+                                placeholder="effects-style.safetensors"
+                                value={effectLora}
+                                onChange={(e) => setEffectLora(e.target.value)}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              />
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium opacity-80">Effects Strength</label>
+                            <div className="space-y-1">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={effectLoraScale || 0.6}
+                                onChange={(e) => setEffectLoraScale(Number(e.target.value))}
+                                className="w-full"
+                              />
+                              <div className="flex justify-between text-xs opacity-60">
+                                <span>0.0</span>
+                                <span className="font-medium">{(effectLoraScale || 0.6).toFixed(2)}</span>
                                 <span>1.0</span>
                               </div>
                             </div>
@@ -2632,168 +3568,274 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode buttons row with Save Project on right */}
-                <div className="mb-2 flex items-center gap-2 justify-between">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {/* Mode buttons */}
-                    <button 
-                      title="Text mode" 
-                      onClick={() => setMode('text')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-blue-500/10"
-                    > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M4 8h16M4 16h10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M4 12h12" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                    <button 
-                      title="Image mode" 
-                      onClick={() => setMode('image')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-green-500/10"
-                    > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-green-500">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5" stroke="#fff" strokeWidth="2"/>
-                        <path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth="2"/>
-                      </svg>
-                    </button>
-                    <button 
-                      title="Modify image" 
-                      onClick={() => setMode('image-modify')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-purple-500/10"
-                    > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-purple-500">
-                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" stroke="#fff" strokeWidth="2"/>
-                        <path d="M15 5l4 4" stroke="#fff" strokeWidth="2"/>
-                      </svg>
-                    </button>
-                    <button 
-                      title="Video mode" 
-                      onClick={() => setMode('video')}
-                      className="group p-1.5 rounded-lg transition-all hover:bg-red-500/10"
-                    > 
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition-colors group-hover:stroke-red-500">
-                        <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="#fff" strokeWidth="2"/>
-                      </svg>
-                    </button>
+                {/* Collapsible Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
+                {modeRowExpanded && (
+                  <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'} transition-all duration-300 animate-in slide-in-from-top-2`}>
+                  <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
+                    {/* Mode buttons - SVG icons for mobile, text for desktop */}
+                    {isMobile ? (
+                      <>
+                        {/* Mobile: SVG icon buttons (no background) */}
+                        <button 
+                          title="Text mode" 
+                          onClick={() => setMode('text')}
+                          className={`p-2 transition-all ${
+                            mode === 'text'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Image mode" 
+                          onClick={() => setMode('image')}
+                          className={`p-2 transition-all ${
+                            mode === 'image'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Modify image" 
+                          onClick={() => setMode('image-modify')}
+                          className={`p-2 transition-all ${
+                            mode === 'image-modify'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Video mode" 
+                          onClick={() => setMode('video')}
+                          className={`p-2 transition-all ${
+                            mode === 'video'
+                              ? 'opacity-100 scale-110'
+                              : 'opacity-60 hover:opacity-90 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
+                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Desktop: SVG icon buttons (same as mobile) */}
+                        <button 
+                          title="Text mode" 
+                          onClick={() => setMode('text')}
+                          className={`p-2 rounded-lg transition-all ${
+                            mode === 'text'
+                              ? 'bg-gray-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Image mode" 
+                          onClick={() => setMode('image')}
+                          className={`p-2 rounded-lg transition-all ${
+                            mode === 'image'
+                              ? 'bg-green-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Modify image" 
+                          onClick={() => setMode('image-modify')}
+                          className={`p-2 rounded-lg transition-all ${
+                            mode === 'image-modify'
+                              ? 'bg-purple-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        <button 
+                          title="Video mode" 
+                          onClick={() => setMode('video')}
+                          className={`p-2 rounded-lg transition-all ${
+                            mode === 'video'
+                              ? 'bg-red-500/20 scale-110'
+                              : 'hover:bg-neutral-800/50 hover:scale-105'
+                          }`}
+                        > 
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
+                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      </>
+                    )}
                     
-                    {/* Quick dropdowns */}
+                    {/* Mode-specific controls - same layout for both */}
                     {mode === 'text' && (
-                      <select
-                        value={textProvider}
-                        onChange={(e)=> setTextProvider(e.target.value as any)}
-                        className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                        title="Provider"
-                      >
-                        <option value="social">Social</option>
-                        <option value="openai">OpenAI</option>
-                        <option value="deepseek">DeepSeek</option>
-                      </select>
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={chatMode}
+                          onChange={(e)=> setChatMode(e.target.value as any)}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="AI Mode"
+                        >
+                          <option value="normal">General</option>
+                          <option value="prompt">Prompt</option>
+                          <option value="creative">Creative</option>
+                          <option value="think">Think</option>
+                        </select>
+                      </div>
                     )}
                     
-                    {mode === 'image' && (
+                    {(mode === 'image' || mode === 'image-modify') && (
                       <>
-                        <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Effects"
+                        {/* Advanced Controls Toggle */}
+                        <button
+                          onClick={() => setShowAdvancedControls(!showAdvancedControls)}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-500 border-gray-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
+                          title="Advanced Controls"
                         >
-                          <option value="off">Effects: Off</option>
-                          <option value="subtle">Effects: Subtle</option>
-                          <option value="cinematic">Effects: Cinematic</option>
-                          <option value="stylized">Effects: Stylized</option>
-                        </select>
+                          <div className="flex items-center gap-1">
+                            <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            {!isMobile && <span>Style</span>}
+                          </div>
+                        </button>
+
+                        {showAdvancedControls && (
+                          <>
+                            {/* Effects LoRA (Power Loader) */}
+                            <select
+                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setEffectLora('');
+                                else if (v === 'Custom...') setEffectLora(effectLora || '');
+                                else setEffectLora(v);
+                              }}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              title="Effects LoRA"
+                            >
+                              {(['None','Custom...'] as const).map((opt) => (
+                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                                </option>
+                              ))}
+                            </select>
+
+                            {/* Character LoRA */}
+                            <select
+                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (v === 'None') setLoraName('');
+                                else if (v === 'Custom...') setLoraName(loraName || '');
+                                else setLoraName(v);
+                              }}
+                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                              title="Character LoRA"
+                            >
+                              {(['None','Custom...'] as const).map((opt) => (
+                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                              ))}
+                              {availableLoras.map((lora) => (
+                                <option key={lora.filename} value={lora.filename}>
+                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                                </option>
+                              ))}
+                            </select>
+                          </>
+                        )}
+
+                        {/* Batch size */}
                         <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Quantity"
                         >
-                          <option value="">Qty: 1</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
+                            <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
+
+                        {/* Aspect ratio */}
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Aspect Ratio"
                         >
-                          <option value="">1:1</option>
+                          <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
                           {AR_CHOICES.map((ar) => (
                             <option key={ar} value={ar}>{ar}</option>
                           ))}
                         </select>
                       </>
                     )}
-                    
-                    {mode === 'image-modify' && (
-                      <>
-                        <select
-                          value={effectsPreset}
-                          onChange={(e)=> { const v = e.target.value as any; setEffectsPreset(v); setEffectsOn(v !== 'off'); }}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Effects"
-                        >
-                          <option value="off">Effects: Off</option>
-                          <option value="subtle">Effects: Subtle</option>
-                          <option value="cinematic">Effects: Cinematic</option>
-                          <option value="stylized">Effects: Stylized</option>
-                        </select>
-                        <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Quantity"
-                        >
-                          <option value="">Qty: 1</option>
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={aspectRatio}
-                          onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Aspect Ratio"
-                        >
-                          <option value="">1:1</option>
-                          {AR_CHOICES.map((ar) => (
-                            <option key={ar} value={ar}>{ar}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-                    
+
                     {mode === 'video' && (
                       <>
                         <select
                           value={videoModel}
-                          onChange={(e)=> setVideoModel(e.target.value as any)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
-                          title="Model"
+                          onChange={(e) => setVideoModel(e.target.value as any)}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="Video model"
                         >
-                          <option value="ltxv">LTXV</option>
-                          <option value="wan">WAN</option>
+                          <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
+                          <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
                         </select>
+
                         <select
-                          value={batchSize === '' ? '' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Quantity"
                         >
-                          <option value="">Qty: 1</option>
                           {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>Qty: {n}</option>
+                            <option key={n} value={n}>{n}</option>
                           ))}
                         </select>
+
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-300'}`}
+                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -2803,47 +3845,165 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </select>
                       </>
                     )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {(messages.length > 0 || canvasItems.length > 0) && (
-                      <button
-                        onClick={() => setProjectModalOpen(true)}
-                        className={`rounded-lg border px-2 py-1 text-xs font-medium transition-all ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-100 hover:border-neutral-600' : 'border-neutral-300 hover:bg-gray-50 text-neutral-900 hover:border-neutral-400'}`}
-                        title="Save chat conversation and grid layout together"
-                      >
-                        Save Project
-                      </button>
+
+                    {mode === 'image' && (
+                      <>
+                        <button
+                          onClick={() => setImgTab('character')}
+                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                        >
+                          {isMobile ? 'Char' : 'Character'}
+                        </button>
+                        {loraName && (
+                          <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
+                            {isMobile ? loraName.slice(0, 8) : loraName}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
-                </div>
+                  <div className="flex items-center gap-2">
+                    {/* Project Management - Always visible */}
+                    <div className="relative flex items-center gap-2" data-project-dropdown>
+                      {/* Save Project Icon */}
+                      <button
+                        className={`rounded-lg p-1.5 shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-gray-600 hover:bg-gray-700 border border-gray-500 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white shadow-gray-200'}`}
+                        onClick={()=> setProjectModalOpen(true)}
+                        title="Save Project"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="shrink-0">
+                          <path d="M4 7a2 2 0 012-2h8l4 4v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.6" fill="none"/>
+                          <path d="M8 7h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                          <rect x="8" y="12" width="8" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6"/>
+                        </svg>
+                      </button>
 
-                {/* Compact prompt box with minimal padding */}
-        <div className={`flex gap-2 items-end ${simpleMode ? 'sticky bottom-2' : ''} rounded-xl p-2 shadow-lg ${darkMode ? 'bg-neutral-900/90 border border-neutral-700 shadow-black/20' : 'bg-white border border-neutral-200 shadow-gray-200/60'} backdrop-blur-sm`}>
+                      {/* Project Dropdown - Always visible on desktop */}
+                      {!isMobile && (
+                        <>
+                          <button
+                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs shadow-lg transition-all duration-200 hover:scale-105 min-w-[120px] ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white' : 'bg-white hover:bg-neutral-50 text-neutral-800 shadow-neutral-200 border border-neutral-200'}`}
+                            onClick={() => {
+                              setProjectDropdownOpen(!projectDropdownOpen);
+                              if (!projectDropdownOpen) loadProjects();
+                            }}
+                            title="Switch Project"
+                          >
+                            <span className="truncate flex-1 text-left">
+                              {currentProjectTitle || 'New Project'}
+                            </span>
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              viewBox="0 0 24 24" 
+                              width="12" 
+                              height="12" 
+                              fill="none"
+                              className={`shrink-0 transition-transform duration-200 ${projectDropdownOpen ? 'rotate-180' : ''}`}
+                            >
+                              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+
+                          {/* Dropdown Menu */}
+                          {projectDropdownOpen && (
+                            <div className={`absolute top-full right-0 mt-1 w-72 rounded-xl border shadow-xl z-[10002] max-h-80 overflow-y-auto ${darkMode ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-neutral-200'}`}>
+                              {/* New Project Option */}
+                              <button
+                                className={`w-full px-4 py-3 text-left text-sm transition-colors border-b ${darkMode ? 'hover:bg-neutral-700 border-neutral-600' : 'hover:bg-neutral-50 border-neutral-200'}`}
+                                onClick={() => {
+                                  setCurrentProjectId(null);
+                                  setCurrentProjectTitle(null);
+                                  setMessages([]);
+                                  setCanvasItems([]);
+                                  setProjectDropdownOpen(false);
+                                }}
+                              >
+                                <div className="font-medium">✨ New Project</div>
+                                <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                                  Start fresh with empty chat and canvas
+                                </div>
+                              </button>
+
+                              {/* Existing Projects */}
+                              {projectsLoading ? (
+                                <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                                  Loading projects...
+                                </div>
+                              ) : projects.length > 0 ? (
+                                projects.map((project) => (
+                                  <button
+                                    key={project.id}
+                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${currentProjectId === project.id ? (darkMode ? 'bg-gray-900/50' : 'bg-gray-50') : (darkMode ? 'hover:bg-neutral-700' : 'hover:bg-neutral-50')}`}
+                                    onClick={() => switchToProject(project.id, project.title)}
+                                  >
+                                    <div className="font-medium truncate">{project.title}</div>
+                                    <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                                      {new Date(project.updated_at).toLocaleDateString()}
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                                  No saved projects yet
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {/* Prompt input area with underglow effect */}
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your prompt..."
-          className={`min-h-[28px] max-h-[60px] flex-1 resize-none rounded-lg p-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50 border-0 ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'}`}
-          ref={bottomInputRef}
+                    onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                    placeholder=""
+                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg p-3 pr-10 transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                    ref={bottomInputRef}
+                    style={{ 
+                      fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
+                    }}
+                    disabled={isGeneratingBatch}
                   />
-                   <div className={`${isMobile ? 'grid grid-cols-2 gap-1' : 'flex items-center gap-1'}`}>
-                    {/* Top row mobile: Send + Attach */}
+                    {/* Action buttons in 2x2 grid for more text box space */}
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
-                      disabled={!canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-8 w-full' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 p-1 ${canAffordGeneration ? 'hover:bg-blue-500/10' : 'cursor-not-allowed opacity-50'}`}
-                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
-                      aria-label="Send"
+                      disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
+                      title={canAffordGeneration ? `Send to Atom AI` : `Need ${generationCost} credits`}
+                      aria-label="Send to Atom AI"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-blue-500">
-                        <path d="M22 2L11 13" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      {/* Clean Send Arrow SVG Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
+                        <path 
+                          d="M22 2L11 13" 
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
+                        <path 
+                          d="M22 2L15 22L11 13L2 9L22 2Z" 
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
+                          strokeWidth="2.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
                       </svg>
-                      {/* Cost badge */}
-                      <span className={`absolute -top-1 -right-1 rounded-full px-1 py-0.5 text-[9px] leading-none ${darkMode ? 'bg-white text-black' : 'bg-black text-white'} border border-black/10`}>~{generationCost}</span>
                     </button>
-                    <label className={`group cursor-pointer rounded-lg p-1.5 ${isMobile ? 'w-full' : ''} flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                       <input
@@ -2853,55 +4013,147 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         onChange={async (e) => {
                           const f = e.target.files?.[0];
                           if (!f) return;
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            const dataUrl = String(reader.result || '');
-                            setAttached({ name: f.name, type: f.type, dataUrl });
-                          };
-                          reader.readAsDataURL(f);
+                          
+                          // Process image files for better AI compatibility
+                          if (f.type.startsWith('image/')) {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const img = new Image();
+                            
+                            img.onload = () => {
+                              // Resize if too large (max 1024px on longest side for efficiency)
+                              const maxSize = 1024;
+                              let { width, height } = img;
+                              
+                              if (width > maxSize || height > maxSize) {
+                                if (width > height) {
+                                  height = (height * maxSize) / width;
+                                  width = maxSize;
+                                } else {
+                                  width = (width * maxSize) / height;
+                                  height = maxSize;
+                                }
+                              }
+                              
+                              canvas.width = width;
+                              canvas.height = height;
+                              ctx?.drawImage(img, 0, 0, width, height);
+                              
+                              // Convert to JPEG for better compatibility and smaller size
+                              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                              setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
+                            };
+                            
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              img.src = String(reader.result || '');
+                            };
+                            reader.readAsDataURL(f);
+                          } else if (f.type === 'application/pdf') {
+                            // For PDF files, convert first page to image for vision processing
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              try {
+                                // For now, store PDF as-is and we'll handle conversion in the API
+                                // In the future, we can implement client-side PDF-to-image conversion
+                                const dataUrl = String(reader.result || '');
+                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                              } catch (error) {
+                                console.error('PDF processing error:', error);
+                                // Fallback: just store the PDF
+                                const dataUrl = String(reader.result || '');
+                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                              }
+                            };
+                            reader.readAsDataURL(f);
+                          } else {
+                            // For other files, use direct FileReader
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const dataUrl = String(reader.result || '');
+                              setAttached({ name: f.name, type: f.type, dataUrl });
+                            };
+                            reader.readAsDataURL(f);
+                          }
                         }}
                       />
                     </label>
                     
-                    {/* Bottom row mobile: Create button spanning full width */}
-                    {isMobile && (
-                      <button
-                        onClick={() => setQuickCreateOpen(true)}
-                        className={`col-span-2 h-8 w-full cursor-pointer rounded-lg flex items-center justify-center gap-1 transition-all hover:scale-105 hover:bg-blue-500/10 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}
-                        title="Show creation tools (modes, settings, effects)"
-                      >
-                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                        </svg>
-                        <span className="text-xs font-medium">Create</span>
-                      </button>
-                    )}
+                    {/* Bottom row: Atom AI Toggle + Generated Bin Button */}
+                    <button 
+                      title="Toggle AI Controls" 
+                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      }`}
+                    >
+                      {/* Enhanced Atom SVG Icon - More Descriptive */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        {/* Central nucleus with gradient effect */}
+                        <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} opacity="0.6" className="transition-colors"/>
+                        
+                        {/* Electron orbits - more visible and descriptive */}
+                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="5.5" ry="5.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" transform="rotate(45 12 12)" className="transition-colors" opacity="0.8"/>
+                        
+                        {/* Electrons with enhanced visibility */}
+                        <circle cx="20" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        
+                        {/* Atomic symbol "A" hint in center */}
+                        <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
+                      </svg>
+                    </button>
+                    {/* Generated Bin button */}
+                    <button
+                      onClick={() => setShowBin(true)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="View Generated Items"
+                      aria-label="Open Generated Bin"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" stroke="currentColor"/>
+                        <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
+                      </svg>
+                    </button>
                   </div>
-
                 </div>
                 {attached ? (
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex items-center gap-2 rounded border p-2">
+                  <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
+                    <div className={`flex items-center gap-2 rounded-lg border ${isMobile ? 'p-2 flex-1' : 'p-3 w-full'} ${darkMode ? 'border-neutral-700 bg-neutral-800/50' : 'border-gray-200 bg-gray-50'}`}>
                       {attached && attached.type.startsWith('image') ? (
-                        <img src={attached.dataUrl} alt={attached.name || 'attachment'} className="h-12 w-12 object-cover rounded" />
+                        <img src={attached.dataUrl} alt={attached.name || 'attachment'} className={`${isMobile ? 'h-10 w-10' : 'h-16 w-16'} object-cover rounded-lg`} />
                       ) : attached && attached.type.startsWith('video') ? (
-                        <div className="h-12 w-12 overflow-hidden rounded border">
+                        <div className={`${isMobile ? 'h-10 w-10' : 'h-16 w-16'} overflow-hidden rounded-lg border`}>
                           <video src={attached.dataUrl} className="h-full w-full object-cover" />
                         </div>
+                      ) : attached && attached.type === 'application/pdf' ? (
+                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-600 text-gray-300' : 'bg-gray-100 border-gray-300 text-gray-600'}`}>
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                        </div>
                       ) : (
-                        <div className={`flex h-12 w-12 items-center justify-center rounded border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
-                          PDF
+                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                          📄
                         </div>
                       )}
-                      <div className="text-xs">
-                        <div className="font-medium truncate max-w-[40vw]" title={attached?.name || ''}>{attached?.name || ''}</div>
-                        <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : ''}`}>{attached?.type || ''}</div>
+                      <div className={`${isMobile ? 'text-xs' : 'text-sm'} flex-1 min-w-0`}>
+                        <div className={`font-medium truncate`} title={attached?.name || ''}>{attached?.name || ''}</div>
+                        <div className={`opacity-70 ${darkMode ? 'text-neutral-400' : 'text-gray-500'}`}>{attached?.type || ''}</div>
                       </div>
                     </div>
                     <button
-                      className={`rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`}
+                      className={`rounded-lg border ${isMobile ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} font-medium transition-all hover:scale-105 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300' : 'border-gray-300 hover:bg-gray-100 text-gray-700'}`}
                       onClick={() => setAttached(null)}
-                    >Remove</button>
+                    >
+                      {isMobile ? '✕' : 'Remove'}
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -3111,15 +4363,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Credits</div>
-                        <div className="text-base font-semibold">{creditInfo?.credits ?? '—'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Plan</div>
-                        <div className="text-base font-semibold">{creditInfo?.subscription_active && creditInfo?.subscription_plan ? (()=>{ const plan = (creditInfo?.subscription_plan || '').toLowerCase().trim(); if (plan === 'one t') return 'ONE T'; if (plan === 'one z') return 'ONE Z'; if (plan === 'one pro') return 'ONE PRO'; return creditInfo?.subscription_plan; })() : 'Free'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Status</div>
-                        <div className="text-base font-semibold">{creditInfo?.subscription_active ? 'Active' : 'Free'}</div>
+                        <div className="text-base font-semibold">—</div>
                       </div>
                       <div>
                         <div className={`text-[11px] uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>Last Active</div>
@@ -3225,8 +4477,537 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {/* Details merged into Overview below */}
             </div>
           )}
+
+          {activeTab === 'news' && (
+            <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+              {/* News Header */}
+              <div className="mb-8 flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-400 via-gray-400 to-gray-400 bg-clip-text text-transparent flex items-center gap-3">
+                    <span className="text-3xl">📰</span>
+                    <span>Live News Feed</span>
+                  </h2>
+                  <p className="text-sm text-gray-400 mt-2 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Real-time news from trusted sources • Updates every 20 minutes
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  {/* Category Selector */}
+                  <select
+                    value={newsCategory}
+                    onChange={(e) => setNewsCategory(e.target.value)}
+                    className="bg-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 text-white px-4 py-2 rounded-xl text-sm hover:bg-neutral-700/80 hover:border-cyan-500/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500"
+                  >
+                    <option value="technology" className="bg-neutral-800">Technology</option>
+                    <option value="business" className="bg-neutral-800">Business</option>
+                    <option value="science" className="bg-neutral-800">Science</option>
+                    <option value="health" className="bg-neutral-800">Health</option>
+                    <option value="sports" className="bg-neutral-800">Sports</option>
+                    <option value="entertainment" className="bg-neutral-800">Entertainment</option>
+                  </select>
+                  {/* Refresh Button */}
+                  <button
+                    onClick={() => fetchNews(newsCategory)}
+                    disabled={newsLoading}
+                    className="bg-neutral-800/80 backdrop-blur-sm hover:bg-neutral-700/80 border border-neutral-700/50 hover:border-cyan-500/50 text-white p-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                    title="Refresh News"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-cyan-400">
+                      <path d="M4 4V9H4.582M4.582 9C5.1506 7.56584 6.3534 6.56584 7.8284 6.19248M4.582 9H9M20 20V15H19.418M19.418 15C18.8494 16.4342 17.6466 17.4342 16.1716 17.8075M19.418 15H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* News Content */}
+              {newsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="flex items-center gap-6 bg-neutral-900/60 backdrop-blur-sm rounded-2xl p-8 border border-neutral-800/50 shadow-2xl">
+                    <div className="animate-spin rounded-full h-10 w-10 border-3 border-cyan-500 border-t-transparent"></div>
+                    <div>
+                      <div className="text-white font-semibold text-lg">Fetching Latest News...</div>
+                      <div className="text-gray-400 text-sm mt-1">Connecting to news sources...</div>
+                    </div>
+                  </div>
+                </div>
+              ) : newsError ? (
+                <div className="bg-red-950/30 backdrop-blur-sm border border-red-800/50 rounded-2xl p-8 text-center shadow-2xl">
+                  <div className="text-red-400 text-5xl mb-4">⚠️</div>
+                  <div className="text-red-300 font-semibold text-xl mb-3">News Feed Unavailable</div>
+                  <div className="text-red-400/80 text-sm mb-6">{newsError}</div>
+                  <button
+                    onClick={() => fetchNews(newsCategory)}
+                    className="bg-red-900/50 hover:bg-red-900/70 text-red-300 border border-red-800 hover:border-red-700 px-6 py-3 rounded-xl text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                  >
+                    Retry Connection
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {newsArticles.length === 0 ? (
+                    <div className="bg-neutral-900/60 backdrop-blur-sm border border-neutral-800/50 rounded-2xl p-12 text-center shadow-2xl">
+                      <div className="text-5xl mb-4">📰</div>
+                      <div className="text-white font-semibold text-xl mb-3">No News Available</div>
+                      <div className="text-gray-400 text-sm">
+                        Unable to load news for this category. Please try a different category or check back later.
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Breaking News - Large Featured Article */}
+                      {newsArticles[0] && (
+                        <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
+                          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-gray-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="relative p-8">
+                            <div className="flex flex-col lg:flex-row gap-8 items-center">
+                              {/* Breaking News Badge */}
+                              <div className="flex-shrink-0">
+                                <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                  BREAKING NEWS
+                                </div>
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1 text-center lg:text-left">
+                                <h3 className="font-bold text-white text-2xl lg:text-3xl leading-tight mb-4 group-hover:text-cyan-300 transition-colors duration-300">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedArticle(newsArticles[0]);
+                                      setArticleModalOpen(true);
+                                    }}
+                                    className="hover:underline decoration-cyan-400/50 text-left"
+                                  >
+                                    {newsArticles[0].title}
+                                  </button>
+                                </h3>
+
+                                {newsArticles[0].description && (
+                                  <p className="text-gray-300 text-lg leading-relaxed mb-6 line-clamp-3">
+                                    {newsArticles[0].description}
+                                  </p>
+                                )}
+
+                                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-400">
+                                  <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                                    {newsArticles[0].source?.name || 'Unknown'}
+                                  </span>
+                                  {newsArticles[0].publishedAt && (
+                                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                                      {new Date(newsArticles[0].publishedAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
+                                  {newsArticles[0].apiSource && (
+                                    <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg">
+                                      {newsArticles[0].apiSource}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Image */}
+                              {newsArticles[0].urlToImage && (
+                                <div className="flex-shrink-0">
+                                  <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-cyan-500/20 transition-shadow duration-500">
+                                    <img
+                                      src={getDisplayUrl(newsArticles[0].urlToImage)}
+                                      alt={newsArticles[0].title}
+                                      className="w-48 h-32 lg:w-64 lg:h-40 object-cover group-hover:scale-105 transition-transform duration-500"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Two Column News Cards */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {newsArticles.slice(1, 3).map((article, index) => (
+                          <div
+                            key={index}
+                            className="group relative overflow-hidden rounded-2xl bg-neutral-900/60 backdrop-blur-sm border border-neutral-700/50 shadow-xl hover:shadow-cyan-500/10 hover:border-cyan-500/30 transition-all duration-300"
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            <div className="relative p-6">
+                              <div className="flex gap-4">
+                                {/* Article Image */}
+                                {article.urlToImage && (
+                                  <div className="flex-shrink-0">
+                                    <img
+                                      src={getDisplayUrl(article.urlToImage)}
+                                      alt={article.title}
+                                      className="w-20 h-20 object-cover rounded-xl border border-neutral-700/50 group-hover:border-cyan-500/50 transition-colors duration-300"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Article Content */}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-white text-base leading-tight mb-3 line-clamp-2 group-hover:text-cyan-300 transition-colors duration-300">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedArticle(article);
+                                        setArticleModalOpen(true);
+                                      }}
+                                      className="hover:underline decoration-cyan-400/50 text-left"
+                                    >
+                                      {article.title}
+                                    </button>
+                                  </h4>
+
+                                  {article.description && (
+                                    <p className="text-gray-300 text-sm leading-relaxed mb-4 line-clamp-2">
+                                      {article.description}
+                                    </p>
+                                  )}
+
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                      <span className="bg-neutral-800/60 px-2 py-1 rounded-md font-medium">
+                                        {article.source?.name || 'Unknown'}
+                                      </span>
+                                      {article.publishedAt && (
+                                        <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric'
+                                        })}</span>
+                                      )}
+                                    </div>
+
+                                    <button
+                                      onClick={() => {
+                                        setSelectedArticle(article);
+                                        setArticleModalOpen(true);
+                                      }}
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded-lg text-xs font-medium transition-all duration-200"
+                                    >
+                                      <span>Read</span>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                                        <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Featured Article - Large Card */}
+                      {newsArticles[3] && (
+                        <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900/80 to-neutral-800/80 backdrop-blur-sm border border-neutral-700/50 shadow-2xl hover:shadow-teal-500/10 transition-all duration-500">
+                          <div className="absolute inset-0 bg-gradient-to-r from-gray-500/5 to-gray-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                          <div className="relative p-8">
+                            <div className="flex flex-col lg:flex-row gap-8 items-start">
+                              {/* Featured Badge */}
+                              <div className="flex-shrink-0">
+                                <div className="bg-gradient-to-r from-gray-500 to-gray-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                                  FEATURED
+                                </div>
+                              </div>
+
+                              {/* Content */}
+                              <div className="flex-1">
+                                <h4 className="font-bold text-white text-xl lg:text-2xl leading-tight mb-4 group-hover:text-teal-300 transition-colors duration-300">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedArticle(newsArticles[3]);
+                                      setArticleModalOpen(true);
+                                    }}
+                                    className="hover:underline decoration-teal-400/50 text-left"
+                                  >
+                                    {newsArticles[3].title}
+                                  </button>
+                                </h4>
+
+                                {newsArticles[3].description && (
+                                  <p className="text-gray-300 text-base leading-relaxed mb-6 line-clamp-4">
+                                    {newsArticles[3].description}
+                                  </p>
+                                )}
+
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 mb-6">
+                                  <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                                    {newsArticles[3].source?.name || 'Unknown'}
+                                  </span>
+                                  {newsArticles[3].publishedAt && (
+                                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                                      {new Date(newsArticles[3].publishedAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
+                                  {newsArticles[3].apiSource && (
+                                    <span className="bg-teal-500/20 text-teal-400 px-3 py-1 rounded-lg">
+                                      {newsArticles[3].apiSource}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={() => {
+                                    setSelectedArticle(newsArticles[3]);
+                                    setArticleModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-2 px-6 py-3 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/40 rounded-xl text-sm font-medium transition-all duration-300 group-hover:shadow-lg group-hover:shadow-teal-500/20"
+                                >
+                                  <span>Read Full Article</span>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {/* Image */}
+                              {newsArticles[3].urlToImage && (
+                                <div className="flex-shrink-0">
+                                  <div className="relative overflow-hidden rounded-2xl shadow-2xl group-hover:shadow-teal-500/20 transition-shadow duration-500">
+                                    <img
+                                      src={getDisplayUrl(newsArticles[3].urlToImage)}
+                                      alt={newsArticles[3].title}
+                                      className="w-56 h-40 object-cover group-hover:scale-105 transition-transform duration-500"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Remaining Articles - Compact List */}
+                      {newsArticles.length > 4 && (
+                        <div className="space-y-3">
+                          <h5 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <span className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-teal-400 rounded-full"></span>
+                            More Stories
+                          </h5>
+                          {newsArticles.slice(4).map((article, index) => (
+                            <article
+                              key={index + 4}
+                              className="group bg-neutral-900/40 backdrop-blur-sm border border-neutral-700/30 rounded-xl transition-all duration-300 hover:bg-neutral-900/60 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5"
+                            >
+                              <div className="p-4">
+                                <div className="flex gap-4">
+                                  {/* Article Image */}
+                                  {article.urlToImage && (
+                                    <div className="flex-shrink-0">
+                                      <img
+                                        src={getDisplayUrl(article.urlToImage)}
+                                        alt={article.title}
+                                        className="w-16 h-16 object-cover rounded-lg border border-neutral-700/50"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Article Content */}
+                                  <div className="flex-1 min-w-0">
+                                    <h6 className="font-semibold text-white text-sm leading-tight mb-2 line-clamp-2 group-hover:text-cyan-400 transition-colors">
+                                      <button
+                                        onClick={() => {
+                                          setSelectedArticle(article);
+                                          setArticleModalOpen(true);
+                                        }}
+                                        className="hover:underline decoration-cyan-400/50 text-left"
+                                      >
+                                        {article.title}
+                                      </button>
+                                    </h6>
+
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                                        <span className="bg-neutral-800/60 px-2 py-1 rounded-md font-medium">
+                                          {article.source?.name || 'Unknown'}
+                                        </span>
+                                        {article.publishedAt && (
+                                          <span>{new Date(article.publishedAt).toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric'
+                                          })}</span>
+                                        )}
+                                      </div>
+
+                                      <button
+                                        onClick={() => {
+                                          setSelectedArticle(article);
+                                          setArticleModalOpen(true);
+                                        }}
+                                        className="flex items-center gap-1 px-2 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-cyan-500/20 hover:border-cyan-500/40 rounded text-xs font-medium transition-all duration-200"
+                                      >
+                                        <span>Read</span>
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none">
+                                          <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* News Status Footer */}
+              <div className="mt-12 bg-neutral-900/40 backdrop-blur-sm border border-neutral-700/30 rounded-2xl p-6 shadow-xl">
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center gap-6">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      Live Updates Active
+                    </span>
+                    <span>•</span>
+                    <span>{newsArticles.length} articles loaded</span>
+                    <span>•</span>
+                    <span>Category: {newsCategory}</span>
+                  </div>
+                  <div className="text-cyan-400/70 font-medium">
+                    Powered by NewsAPI • GNews • NewsData
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Article Preview Modal */}
+      {articleModalOpen && selectedArticle && (
+        <div className="fixed inset-0 z-[10001] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setArticleModalOpen(false)}>
+          <div className={`w-full max-w-4xl max-h-[90vh] rounded-2xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className={`flex items-center justify-between p-6 border-b ${darkMode ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'}`}>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Article Preview</h2>
+                  <p className="text-sm text-neutral-400">Quick preview without leaving the page</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setArticleModalOpen(false)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg ${darkMode ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-neutral-100 text-neutral-500'} transition-all`}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Article Header */}
+                <div className="space-y-4">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white leading-tight">
+                    {selectedArticle.title}
+                  </h1>
+
+                  {/* Article Meta */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
+                    <span className="bg-neutral-800/80 px-3 py-1 rounded-lg font-medium">
+                      {selectedArticle.source?.name || 'Unknown Source'}
+                    </span>
+                    {selectedArticle.publishedAt && (
+                      <span className="bg-neutral-800/80 px-3 py-1 rounded-lg">
+                        {new Date(selectedArticle.publishedAt).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
+                    {selectedArticle.apiSource && (
+                      <span className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg">
+                        {selectedArticle.apiSource}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Article Image */}
+                {selectedArticle.urlToImage && (
+                  <div className="relative overflow-hidden rounded-2xl shadow-2xl">
+                    <img
+                      src={getDisplayUrl(selectedArticle.urlToImage)}
+                      alt={selectedArticle.title}
+                      className="w-full h-64 lg:h-80 object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  </div>
+                )}
+
+                {/* Article Content */}
+                <div className="space-y-4">
+                  {selectedArticle.description && (
+                    <div className="bg-neutral-800/40 backdrop-blur-sm border border-neutral-700/50 rounded-xl p-6">
+                      <h3 className="text-lg font-semibold text-white mb-3">Summary</h3>
+                      <p className="text-neutral-300 leading-relaxed text-base">
+                        {selectedArticle.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Read Full Article Button */}
+                  <div className="flex justify-center pt-4">
+                    <a
+                      href={selectedArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-cyan-500/25 transform hover:scale-105"
+                    >
+                      <span>Read Full Article</span>
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M7 17L17 7M17 7H7M17 7V17"/>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Modal */}
       {settingsOpen && (
         <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
@@ -3302,7 +5083,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   <section
     ref={gridSectionRef as any}
   className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-white'}`}
-        style={{ cursor: gridEnabled ? 'grab' : undefined, overflow: 'hidden' }}
+        style={{
+          cursor: gridEnabled ? 'grab' : undefined,
+          overflow: 'hidden',
+          // Dynamic height for mobile keyboard responsiveness
+          height: '100vh',
+          // Ensure background stays responsive during keyboard transitions
+          transition: undefined
+        }}
         onDragOver={(e)=>{ e.preventDefault(); }}
         onDrop={(e)=>{
           e.preventDefault();
@@ -3438,15 +5226,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               reader.readAsDataURL(f);
             }} />
           </label>
-          {/* Generate via current mini-prompt/input - HIDE ON MOBILE */}
-          {!isMobile && (
-            <button className="rounded-full p-3 shadow" title="Generate" onClick={()=>{ handleSend(); if (quickCreateOpen) setQuickCreateOpen(false); }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
-                <path d="M4 12h10M9 7l5 5-5 5" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                <rect x="16" y="6" width="4" height="12" rx="1.2" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
-              </svg>
-            </button>
-          )}
+          {/* Generate via current mini-prompt/input */}
+          <button className="rounded-full p-3 shadow" title="Generate" onClick={()=>{ handleSend(); if (quickCreateOpen) setQuickCreateOpen(false); }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path d="M4 12h10M9 7l5 5-5 5" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="16" y="6" width="4" height="12" rx="1.2" stroke={darkMode ? '#fff' : '#111111'} strokeWidth="1.4"/>
+            </svg>
+          </button>
           <button className="rounded-full p-3 shadow" title="Create"
             onClick={()=> setQuickCreateOpen(true)}
           >
@@ -3654,7 +5440,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               )}
             </div>
             <div className="mt-4 flex justify-between gap-2">
-              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700 hover:bg-neutral-800 text-blue-400':'border-gray-400 hover:bg-gray-100 text-blue-600'}`} onClick={()=> {
+              <button type="button" className={`rounded border px-3 py-1 text-sm ${darkMode?'border-neutral-700 hover:bg-neutral-800 text-gray-400':'border-gray-400 hover:bg-gray-100 text-gray-600'}`} onClick={()=> {
                 // Switch to layout editor mode
                 const allMedia = getIncomingMedia(composeOriginId || '');
                 const imageInputs = allMedia.filter(i=> i.type==='image');
@@ -3861,23 +5647,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           });
         }}
       />
-      {/* Save Project floating button (always visible when chat has content or grid has items) */}
-      {!simpleMode && (messages.length > 0 || canvasItems.length > 0) ? (
-        <button
-          className={`fixed bottom-20 left-6 z-[10001] rounded-full px-4 py-2 text-sm shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-blue-600 hover:bg-blue-700 border border-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white shadow-blue-200'}`}
-          onClick={()=> setProjectModalOpen(true)}
-          title="Save both chat conversation and grid layout"
-        >
-          <span className="inline-flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="shrink-0">
-              <path d="M4 7a2 2 0 012-2h8l4 4v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.6" fill="none"/>
-              <path d="M8 7h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-              <rect x="8" y="12" width="8" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6"/>
-            </svg>
-            <span className="truncate max-w-[24ch]" title={currentProjectTitle || 'Save Project'}>{currentProjectTitle || 'Save Project'}</span>
-          </span>
-        </button>
-      ) : null}
       <ProjectModal
         isOpen={projectModalOpen}
         onClose={()=> setProjectModalOpen(false)}
@@ -4226,7 +5995,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       'cool minimal poster, bold geometry',
                       'cool editorial portrait, high key',
                       'cool abstract gradients, soft glow',
-                      'cool tech product hero, blue accents',
+                      'cool tech product hero, gray accents',
                       'cool street fashion, crisp tones',
                     ] : []).map((txt, idx) => (
                       <button
@@ -4260,9 +6029,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Attachment Preview */}
             {attached && (
-              <div className="mb-3 rounded border p-2 bg-blue-50">
+              <div className="mb-3 rounded border p-2 bg-gray-50">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-blue-700">{attached.name}</span>
+                  <span className="text-xs text-gray-700">{attached.name}</span>
                   <button onClick={() => setAttached(null)} className="text-xs text-red-600 hover:underline">Remove</button>
                 </div>
               </div>
@@ -4372,7 +6141,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <textarea 
               value={input} 
               onChange={(e)=> setInput(e.target.value)} 
-              placeholder="Describe what you want to create..." 
               className="mb-3 h-32 w-full resize-none rounded border p-3 text-sm" 
             />
 
@@ -4564,7 +6332,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     <label className="text-xs font-semibold">Character (LoRA)</label>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-xs font-medium opacity-80">Character</label>
+                        <label className="text-xs font-medium opacity-80">Character {lorasLoading && '(loading...)'}</label>
                         <select
                           value={isPresetLoRa(loraName) ? loraName : 'Custom...'}
                           onChange={(e) => {
@@ -4574,9 +6342,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             else setLoraName(v);
                           }}
                           className="w-full rounded border px-2 py-1 text-xs"
+                          disabled={lorasLoading}
                         >
                           {LORA_CHOICES.map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                          {availableLoras.map((lora) => (
+                            <option key={lora.filename} value={lora.filename}>
+                              {lora.name} ({lora.type})
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -4624,7 +6398,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           onClick={() => setTextProvider(provider.id as any)}
                           className={`rounded-lg px-3 py-2 text-xs transition-all ${
                             textProvider === provider.id
-                              ? (darkMode ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white')
+                              ? (darkMode ? 'bg-gray-600 text-white' : 'bg-gray-500 text-white')
                               : (darkMode ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-gray-100 hover:bg-gray-200')
                           }`}
                         >
@@ -4708,20 +6482,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </aside>
       ) : null}
       {/* Quick access to Generated tab - only show if not already on generated tab */}
-      {activeTab !== 'generated' && binItems.length > 0 && (
-        <button
-          className={`fixed bottom-4 left-4 rounded-full p-3 shadow-lg transition-all hover:scale-105 ${darkMode ? 'bg-neutral-900 border border-neutral-700 text-neutral-100' : 'bg-white border border-neutral-200'}`}
-          onClick={() => setActiveTab('generated')}
-          title="View your generated content"
-        >
-          <span className="text-lg">🎨</span>
-          {binItems.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {binItems.length > 9 ? '9+' : binItems.length}
-            </span>
-          )}
-        </button>
-      )}
 
       {/* Legacy panel removed - now using tab interface */}
       {/* Legacy pinned grid removed */}
@@ -5283,7 +7043,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     onClick={() => setDirectorMode('gallery')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                       directorMode === 'gallery'
-                        ? 'bg-blue-500 text-white shadow-md'
+                        ? 'bg-gray-500 text-white shadow-md'
                         : 'text-neutral-400 hover:text-white'
                     }`}
                   >
@@ -5334,7 +7094,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         value={batchPrompt}
                         onChange={(e) => setBatchPrompt(e.target.value)}
                         placeholder="Describe the shots you want to generate..."
-                        className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                        className="w-full bg-neutral-700 text-white border border-neutral-600 rounded-lg px-4 py-3 text-sm focus:border-gray-500 focus:outline-none"
                       />
                     </div>
                     <select
@@ -5378,7 +7138,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }
                       }}
                       disabled={!batchPrompt.trim() || isGeneratingBatch}
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-3 rounded-lg font-medium transition-all"
+                      className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 disabled:from-neutral-600 disabled:to-neutral-700 text-white px-6 py-3 rounded-lg font-medium transition-all"
                     >
                       {isGeneratingBatch ? (
                         <div className="flex items-center gap-2">
@@ -5404,7 +7164,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       {imageGallery.map((image) => (
                         <div
                           key={image.id}
-                          className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+                          className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-gray-500 transition-all"
                         >
                           <div className="aspect-video bg-neutral-700 flex items-center justify-center">
                             <img 
@@ -5545,7 +7305,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             className="max-w-full max-h-full object-contain rounded-lg"
                           />
                           {/* Motion Preview Overlay */}
-                          <div className="absolute inset-0 border-2 border-blue-500/50 rounded-lg flex items-center justify-center pointer-events-none">
+                          <div className="absolute inset-0 border-2 border-gray-500/50 rounded-lg flex items-center justify-center pointer-events-none">
                             <div className="bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                               🎥 {storyboardFrames[selectedFrameIndex].motionPreset}
                             </div>
@@ -5631,7 +7391,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <p className="text-neutral-400 mb-4">Add frames from the Gallery to start building your story</p>
                       <button
                         onClick={() => setDirectorMode('gallery')}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
                       >
                         Go to Gallery
                       </button>

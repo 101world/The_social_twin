@@ -2,6 +2,8 @@
 
 A production-ready, subscription-based AI chat platform with topic organization, media generation, and credit management.
 
+🔥 **Latest Update**: Mobile UI optimized with hidden empty-state prompt and unified Create button features across desktop/mobile.
+
 ## 🚀 Features
 
 ### Core Functionality

@@ -78,7 +78,7 @@ export default function CreditsDebugPage() {
           <h2 className="text-xl font-semibold mb-4">Credits API Response</h2>
           <button 
             onClick={fetchCredits}
-            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="mb-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
             disabled={loading}
           >
             {loading ? 'Loading...' : 'Refresh Credits'}

@@ -1,7 +1,11 @@
 {
-  "functions": {
-    "app/api/**/*.ts": {
-      "maxDuration": 480
+  "version": 2,
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/news",
+      "destination": "/social-twin",
+      "permanent": true
     }
-  }
+  ]
 }
