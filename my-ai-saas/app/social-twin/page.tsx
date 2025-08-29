@@ -3937,7 +3937,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
                 {/* Mode selector and controls - always visible above text input */}
-                <div className={`mb-0.5 mt-2 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
+                <div className={`mb-0 mt-2 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
                   {/* Mode Selector Dropdown */}
                   <div className="flex items-center gap-2">
                     <select
