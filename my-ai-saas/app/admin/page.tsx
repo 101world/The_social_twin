@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Settings, Server, Cloud, Save, RefreshCw } from 'lucide-react';
+import { Loader2, Settings, Server, Cloud, RefreshCw, TrendingUp, Activity, AlertTriangle, CheckCircle, Users, BarChart3, Zap, Save } from 'lucide-react';
 
 interface RunPodConfig {
   id?: string;
@@ -25,6 +25,58 @@ interface CloudflareConfig {
   r2_public_url: string;
 }
 
+interface AnalyticsData {
+  userMetrics: {
+    totalUsers: number;
+    activeUsers: number;
+    growthRate: number;
+    trend: 'growing' | 'stable' | 'declining';
+  };
+  generationMetrics: {
+    last7Days: number;
+    previous7Days: number;
+    avgDailyGenerations: number;
+    dailyBreakdown: Array<{ date: string; count: number }>;
+  };
+  scaling: {
+    currentPods: number;
+    recommendedPods: number;
+    needsScaling: boolean;
+    scalingUrgency: 'low' | 'medium' | 'high';
+  };
+  systemHealth: {
+    runpodConfigs: number;
+    lastUpdated: string;
+  };
+}
+
+interface ScalingData {
+  healthChecks: Array<{
+    id: string;
+    mode: string;
+    url: string;
+    isHealthy: boolean;
+    responseTime: number;
+    error: string | null;
+    lastChecked: string;
+  }>;
+  loadStats: { [url: string]: number };
+  recommendations: Array<{
+    type: 'critical' | 'warning' | 'info' | 'suggestion';
+    message: string;
+    action: string;
+    affected: string[];
+  }>;
+  summary: {
+    totalPods: number;
+    healthyPods: number;
+    unhealthyPods: number;
+    avgResponseTime: number;
+    totalLoad: number;
+    optimalPods: number;
+  };
+}
+
 export default function AdminPage() {
   const { user } = useUser();
   const [configs, setConfigs] = useState<RunPodConfig[]>([]);
@@ -33,6 +85,8 @@ export default function AdminPage() {
     r2_bucket: '',
     r2_public_url: ''
   });
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [scaling, setScaling] = useState<ScalingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -45,6 +99,8 @@ export default function AdminPage() {
     if (isAdmin) {
       loadConfigs();
       loadCloudflareConfig();
+      loadAnalytics();
+      loadScaling();
     }
   }, [isAdmin]);
 
@@ -79,6 +135,30 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Failed to load Cloudflare config:', error);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    try {
+      const response = await fetch('/api/admin/analytics');
+      if (response.ok) {
+        const data = await response.json();
+        setAnalytics(data);
+      }
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    }
+  };
+
+  const loadScaling = async () => {
+    try {
+      const response = await fetch('/api/admin/scaling');
+      if (response.ok) {
+        const data = await response.json();
+        setScaling(data);
+      }
+    } catch (error) {
+      console.error('Failed to load scaling data:', error);
     }
   };
 
@@ -202,21 +282,247 @@ export default function AdminPage() {
           </Alert>
         )}
 
-        <Tabs defaultValue="runpod" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="analytics" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="scaling" className="flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Auto Scaling
+            </TabsTrigger>
             <TabsTrigger value="runpod" className="flex items-center gap-2">
               <Server className="w-4 h-4" />
               RunPod Config
             </TabsTrigger>
             <TabsTrigger value="cloudflare" className="flex items-center gap-2">
               <Cloud className="w-4 h-4" />
-              Cloudflare Config
+              Cloudflare
             </TabsTrigger>
             <TabsTrigger value="status" className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
+              <Activity className="w-4 h-4" />
               System Status
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* User Metrics Cards */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{analytics?.userMetrics.totalUsers || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Registered users
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{analytics?.userMetrics.activeUsers || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Last 7 days
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${(analytics?.userMetrics.growthRate || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {analytics?.userMetrics.growthRate || 0}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {analytics?.userMetrics.trend || 'stable'}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Daily Generations</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{analytics?.generationMetrics.avgDailyGenerations || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Average per day
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Generation Trends Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Generation Trends (Last 30 Days)</CardTitle>
+                <CardDescription>
+                  Daily generation activity over the past month
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center text-muted-foreground">
+                  {analytics?.generationMetrics.dailyBreakdown.length ? (
+                    <div className="w-full">
+                      <div className="flex justify-between text-sm mb-2">
+                        <span>Last 7 days: {analytics.generationMetrics.last7Days}</span>
+                        <span>Previous 7 days: {analytics.generationMetrics.previous7Days}</span>
+                      </div>
+                      <div className="grid grid-cols-7 gap-2">
+                        {analytics.generationMetrics.dailyBreakdown.slice(-7).map((day, index) => (
+                          <div key={day.date} className="text-center">
+                            <div
+                              className="bg-blue-500 rounded-t mx-auto"
+                              style={{
+                                height: `${Math.min((day.count / Math.max(...analytics.generationMetrics.dailyBreakdown.map(d => d.count))) * 100, 100)}px`,
+                                width: '20px',
+                                minHeight: '4px'
+                              }}
+                            ></div>
+                            <div className="text-xs mt-1">{new Date(day.date).getDate()}</div>
+                            <div className="text-xs text-muted-foreground">{day.count}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>No data available</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scaling" className="space-y-6">
+            {/* Scaling Recommendations */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Auto Scaling Recommendations
+                </CardTitle>
+                <CardDescription>
+                  AI-powered recommendations based on user growth and system load
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {scaling?.recommendations.map((rec, index) => (
+                  <Alert key={index} className={
+                    rec.type === 'critical' ? 'border-red-500 bg-red-50' :
+                    rec.type === 'warning' ? 'border-yellow-500 bg-yellow-50' :
+                    rec.type === 'info' ? 'border-blue-500 bg-blue-50' :
+                    'border-green-500 bg-green-50'
+                  }>
+                    <div className="flex items-start gap-3">
+                      {rec.type === 'critical' && <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />}
+                      {rec.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-500 mt-0.5" />}
+                      {rec.type === 'info' && <Activity className="w-5 h-5 text-blue-500 mt-0.5" />}
+                      {rec.type === 'suggestion' && <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />}
+                      <div className="flex-1">
+                        <div className="font-medium">{rec.message}</div>
+                        <div className="text-sm text-muted-foreground mt-1">{rec.action}</div>
+                        {rec.affected.length > 0 && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Affected: {rec.affected.join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Alert>
+                ))}
+                {(!scaling?.recommendations || scaling.recommendations.length === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                    <p>All systems running optimally!</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Health Check Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle>RunPod Health Status</CardTitle>
+                <CardDescription>
+                  Real-time health monitoring of all RunPod endpoints
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {scaling?.healthChecks.map((check) => (
+                    <div key={check.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${check.isHealthy ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <div>
+                          <div className="font-medium capitalize">{check.mode}</div>
+                          <div className="text-sm text-muted-foreground font-mono">{check.url}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-sm font-medium ${check.isHealthy ? 'text-green-600' : 'text-red-600'}`}>
+                          {check.isHealthy ? 'Healthy' : 'Unhealthy'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {check.responseTime}ms response
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Scaling Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Current Pods</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{scaling?.summary.totalPods || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {scaling?.summary.healthyPods || 0} healthy, {scaling?.summary.unhealthyPods || 0} unhealthy
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Recommended Pods</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{scaling?.summary.optimalPods || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Based on current load
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Avg Response Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{scaling?.summary.avgResponseTime || 0}ms</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across all endpoints
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="runpod" className="space-y-6">
             <Card>

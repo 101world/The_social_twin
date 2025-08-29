@@ -15,7 +15,7 @@ const HamburgerMenu = () => {
   const [isOneMaxUser, setIsOneMaxUser] = useState<boolean>(false);
   const [simple, setSimple] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
-  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher'>('creative');
+  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher' | 'atom'>('atom');
   const pathname = usePathname();
   const router = useRouter();
   const isTwin = pathname?.startsWith('/social-twin');
@@ -183,6 +183,7 @@ const HamburgerMenu = () => {
                 <option value="lawyer" className="bg-gray-800 text-white">Lawyer</option>
                 <option value="accountant" className="bg-gray-800 text-white">Accountant</option>
                 <option value="teacher" className="bg-gray-800 text-white">Teacher</option>
+                <option value="atom" className="bg-gray-800 text-white">Atom</option>
               </select>
               {/* Custom dropdown arrow */}
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -222,6 +223,17 @@ const HamburgerMenu = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                  </svg>
+                )}
+                {aiPersonality === 'atom' && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="2" strokeWidth={2} />
+                    <circle cx="12" cy="12" r="8" strokeWidth={1.5} opacity="0.8" />
+                    <circle cx="12" cy="12" r="5" strokeWidth={1.5} opacity="0.6" />
+                    <circle cx="12" cy="4" r="1" fill="currentColor" />
+                    <circle cx="20" cy="12" r="1" fill="currentColor" />
+                    <circle cx="12" cy="20" r="1" fill="currentColor" />
+                    <circle cx="4" cy="12" r="1" fill="currentColor" />
                   </svg>
                 )}
               </div>

@@ -96,7 +96,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [chatCollapsed, setChatCollapsed] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [darkMode, setDarkMode] = useState<boolean>(true);
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
@@ -141,7 +141,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [input, setInput] = useState<string>("");
   const [mode, setMode] = useState<Mode>('text');
   const [chatMode, setChatMode] = useState<'normal' | 'prompt' | 'creative' | 'think'>('normal');
-  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher'>('creative');
+  const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher' | 'atom'>('atom');
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
   const [feedCursor, setFeedCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
@@ -2017,7 +2017,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               police: "You are a professional law enforcement expert. Analyze images/documents from a security and legal perspective, noting any relevant details for public safety or legal procedures.",
               lawyer: "You are a professional legal expert. Analyze images/documents for legal relevance, potential evidence, or legal implications. Always emphasize consulting qualified legal professionals.",
               accountant: "You are a professional financial and accounting expert. Analyze images/documents for financial data, accounting records, or business-related information.",
-              teacher: "You are an experienced educator. Analyze images/documents from an educational perspective, explaining what you see and providing learning opportunities."
+              teacher: "You are an experienced educator. Analyze images/documents from an educational perspective, explaining what you see and providing learning opportunities.",
+              atom: "You are ATOM, an advanced AI assistant focused on providing intelligent, helpful, and innovative solutions. You combine creativity with analytical thinking to deliver comprehensive and insightful responses."
             };
 
             // Create enhanced message with personality context
@@ -2061,7 +2062,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               police: "You are a professional law enforcement expert. Provide responses related to legal procedures, public safety, criminal justice, and law enforcement best practices. Always emphasize legal and ethical conduct.",
               lawyer: "You are a professional legal expert. Provide responses about legal matters, procedures, and advice. Always emphasize the importance of consulting with qualified legal professionals for specific legal issues.",
               accountant: "You are a professional financial and accounting expert. Focus on financial planning, accounting principles, tax matters, and business finance. Always recommend consulting certified professionals for specific financial advice.",
-              teacher: "You are an experienced educator. Provide clear, educational responses that help users learn and understand concepts. Break down complex topics into digestible parts and encourage learning."
+              teacher: "You are an experienced educator. Provide clear, educational responses that help users learn and understand concepts. Break down complex topics into digestible parts and encourage learning.",
+              atom: "You are ATOM, an advanced AI assistant focused on providing intelligent, helpful, and innovative solutions. You combine creativity with analytical thinking to deliver comprehensive and insightful responses."
             };
 
             // Prepend personality system message to conversation history
@@ -2505,7 +2507,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 bg-blue-500`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 bg-gray-800`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           {/* Mobile: Hamburger menu on the left */}
           {isMobile && (
             <button
@@ -2774,7 +2776,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 ? 'max-w-[75%] text-sm'
                                 : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
                                     isUser
-                                      ? (darkMode ? 'bg-gray-600 text-white border-gray-500' : 'bg-gray-600 text-white border-gray-600')
+                                      ? (darkMode ? 'bg-gradient-to-r from-cyan-600/80 to-teal-600/80 text-white border-cyan-500/60' : 'bg-gradient-to-r from-cyan-500/80 to-teal-500/80 text-white border-cyan-500/60')
                                       : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
                                   }`
                             }
@@ -2795,6 +2797,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     {aiPersonality === 'lawyer' && '⚖️'}
                                     {aiPersonality === 'accountant' && '📊'}
                                     {aiPersonality === 'teacher' && '🎓'}
+                                    {aiPersonality === 'atom' && '⚛️'}
                                   </span>
                                 )}
                               </div>
