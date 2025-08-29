@@ -679,8 +679,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       return '';
     }
   }
-  // Reveal bottom composer only after user starts typing in center box (empty state)
-  const [composerShown, setComposerShown] = useState<boolean>(false);
+  const [showLibraryModal, setShowLibraryModal] = useState<boolean>(false);
   const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
   
   // Linking preview state for canvas connections
@@ -3982,8 +3981,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     disabled={isGeneratingBatch}
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-2">
-                    {/* Top row: Send + Upload */}
+                  <div className="grid grid-cols-3 gap-1.5 mt-2">
+                    {/* Top row: Send + Upload + Library */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
@@ -4089,6 +4088,20 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
+                    
+                    {/* Library button */}
+                    <button
+                      onClick={() => setShowLibraryModal(true)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="View Library"
+                      aria-label="Open Library"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
+                        <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor"/>
+                      </svg>
+                    </button>
                     
                     {/* Bottom row: Atom AI Toggle + Generated Bin Button */}
                     <button 
@@ -7411,6 +7424,175 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Library Modal */}
+      {showLibraryModal && (
+        <div className="fixed inset-0 z-[10050] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLibraryModal(false)}>
+          <div className="w-full max-w-6xl h-[80vh] bg-neutral-900 rounded-xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-700">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor" fill="none"/>
+                    <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor" fill="none"/>
+                    <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor" fill="none"/>
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">My Library</h2>
+                  <p className="text-sm text-neutral-400">All your generated content in one place</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-neutral-400">
+                  {binItems.length} generations
+                </div>
+                <button
+                  onClick={() => setShowLibraryModal(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {binItems.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
+                    const url = it.display_url || it.result_url;
+                    const isVideo = it.type === 'video';
+
+                    return (
+                      <div
+                        key={it.id}
+                        className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
+                        onClick={() => {
+                          setViewerItem(it);
+                          setViewerOpen(true);
+                          setShowLibraryModal(false);
+                        }}
+                      >
+                        {/* Content */}
+                        <div className="aspect-square">
+                          {isVideo ? (
+                            url ? (
+                              (!lowDataMode || mediaAllowed.has(it.id)) ? (
+                                <video
+                                  src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)}
+                                  className="h-full w-full object-cover"
+                                  preload="metadata"
+                                  muted
+                                  onMouseEnter={(e) => {
+                                    const video = e.currentTarget;
+                                    video.play().catch(() => {});
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    const video = e.currentTarget;
+                                    video.pause();
+                                    video.currentTime = 0;
+                                  }}
+                                />
+                              ) : (
+                                <div
+                                  className="w-full h-full flex items-center justify-center text-2xl bg-neutral-700 hover:bg-neutral-600 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMediaAllowed(prev=>{ const n = new Set(prev); n.add(it.id); return n; });
+                                  }}
+                                >
+                                  📹
+                                </div>
+                              )
+                            ) : (
+                              <div className="h-full w-full bg-neutral-700 flex items-center justify-center text-2xl opacity-70">
+                                ⏳
+                              </div>
+                            )
+                          ) : (
+                            url ? (
+                              <img
+                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                alt="Generated content"
+                                onError={(e) => {
+                                  const status = it.status || 'completed';
+                                  const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
+                                  const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);
+
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent && !parent.querySelector('.fallback-placeholder')) {
+                                    const placeholder = document.createElement('div');
+                                    placeholder.className = 'fallback-placeholder h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white';
+                                    placeholder.innerHTML = `
+                                      <div class="text-2xl mb-1">${statusEmoji}</div>
+                                      <div class="text-xs opacity-70">${statusText}</div>
+                                      ${status === 'completed' ? '<div class="text-xs opacity-50 mt-1">URL expired</div>' : ''}
+                                    `;
+                                    parent.appendChild(placeholder);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <div className="h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white">
+                                <div className="text-2xl mb-1">{it.status === 'pending' ? '⏳' : it.status === 'processing' ? '⚙️' : it.status === 'failed' ? '❌' : '🎨'}</div>
+                                <div className="text-xs opacity-70">{it.status ? it.status.charAt(0).toUpperCase() + it.status.slice(1) : 'Generated'}</div>
+                                {it.status === 'completed' && <div className="text-xs opacity-50 mt-1">No preview</div>}
+                              </div>
+                            )
+                          )}
+                        </div>
+
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-300 flex items-center justify-center">
+                          <div className="opacity-0 group-hover:opacity-100 text-white text-center">
+                            <div className="text-lg mb-1">{isVideo ? '🎥' : '🖼️'}</div>
+                            <div className="text-xs">Click to view</div>
+                          </div>
+                        </div>
+
+                        {/* Info overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                          <div className="text-white text-xs truncate">
+                            {new Date(it.created_at || it.createdAt || 0).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-24 h-24 bg-neutral-800 rounded-lg mx-auto mb-6 flex items-center justify-center">
+                      <svg className="w-12 h-12 text-neutral-600" fill="currentColor" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor" fill="none"/>
+                        <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor" fill="none"/>
+                        <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor" fill="none"/>
+                      </svg>
+                    </div>
+                    <h3 className="text-xl text-white mb-2">Your Library is Empty</h3>
+                    <p className="text-neutral-400 mb-4">Generate some images or videos to see them here</p>
+                    <button
+                      onClick={() => setShowLibraryModal(false)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
+                    >
+                      Start Creating
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
