@@ -149,6 +149,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
   const [currentTopic, setCurrentTopic] = useState<{ id: string; title: string } | null>(null);
 
+  // Mode selection state for new UI behavior
+  const [modeSelected, setModeSelected] = useState<boolean>(false);
+  const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
+
+  // Mode selection handlers
+  const handleModeSelect = (newMode: Mode) => {
+    setMode(newMode);
+    setModeSelected(true);
+    setSelectedMode(newMode);
+  };
+
+  const handleModeBack = () => {
+    setModeSelected(false);
+    setSelectedMode(null);
+    // Keep the current mode but allow switching
+  };
+
   // Canvas/grid
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -5866,42 +5883,134 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </button>
             </div>
 
-            {/* Mode Selection (segmented icons) */}
+            {/* Mode Selection (enhanced with fade/transition behavior) */}
             <div className="mb-3">
               <div className="text-xs font-medium mb-1 opacity-80">Mode</div>
-              <div className="inline-flex items-center gap-1 rounded-lg border p-1 border-neutral-200">
-                <button
-                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='text' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
-                  onClick={()=> setMode('text')}
-                  title="Text"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6h12M6 12h10M6 18h8" stroke="#111" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>Text</span>
-                </button>
-                <button
-                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='image' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
-                  onClick={()=> setMode('image')}
-                  title="Image"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="#111" strokeWidth="1.4"/><path d="M7 13l3-3 5 5" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>Image</span>
-                </button>
-                <button
-                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='image-modify' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
-                  onClick={()=> setMode('image-modify')}
-                  title="Modify"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 21l3-1 10-10a2.5 2.5 0 013.5 0l1.5 1.5a2.5 2.5 0 010 3.5L17.5 21 3 21z" stroke="#111" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>Modify</span>
-                </button>
-                <button
-                  className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 ${mode==='video' ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100') : ''}`}
-                  onClick={()=> setMode('video')}
-                  title="Video"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="14" height="12" rx="2" stroke="#111" strokeWidth="1.4"/><path d="M22 8v8l-4-4 4-4z" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span>Video</span>
-                </button>
+              <div className="relative">
+                {/* Mode Selection Buttons */}
+                <div className="inline-flex items-center gap-1 rounded-lg border p-1 border-neutral-200 relative overflow-hidden">
+                  {/* Text Mode */}
+                  <button
+                    className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 transition-all duration-300 ${
+                      modeSelected && selectedMode !== 'text' 
+                        ? 'opacity-0 scale-95 pointer-events-none' 
+                        : modeSelected && selectedMode === 'text'
+                        ? 'bg-neutral-100 scale-105'
+                        : mode === 'text' && !modeSelected
+                        ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100')
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (modeSelected && selectedMode === 'text') {
+                        handleModeBack();
+                      } else {
+                        handleModeSelect('text');
+                      }
+                    }}
+                    title={modeSelected && selectedMode === 'text' ? "Back to mode selection" : "Text"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 6h12M6 12h10M6 18h8" stroke="#111" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Text</span>
+                  </button>
+
+                  {/* Image Mode */}
+                  <button
+                    className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 transition-all duration-300 ${
+                      modeSelected && selectedMode !== 'image' 
+                        ? 'opacity-0 scale-95 pointer-events-none' 
+                        : modeSelected && selectedMode === 'image'
+                        ? 'bg-neutral-100 scale-105'
+                        : mode === 'image' && !modeSelected
+                        ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100')
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (modeSelected && selectedMode === 'image') {
+                        handleModeBack();
+                      } else {
+                        handleModeSelect('image');
+                      }
+                    }}
+                    title={modeSelected && selectedMode === 'image' ? "Back to mode selection" : "Image"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="14" rx="2" stroke="#111" strokeWidth="1.4"/>
+                      <path d="M7 13l3-3 5 5" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Image</span>
+                  </button>
+
+                  {/* Modify Mode */}
+                  <button
+                    className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 transition-all duration-300 ${
+                      modeSelected && selectedMode !== 'image-modify' 
+                        ? 'opacity-0 scale-95 pointer-events-none' 
+                        : modeSelected && selectedMode === 'image-modify'
+                        ? 'bg-neutral-100 scale-105'
+                        : mode === 'image-modify' && !modeSelected
+                        ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100')
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (modeSelected && selectedMode === 'image-modify') {
+                        handleModeBack();
+                      } else {
+                        handleModeSelect('image-modify');
+                      }
+                    }}
+                    title={modeSelected && selectedMode === 'image-modify' ? "Back to mode selection" : "Modify"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M3 21l3-1 10-10a2.5 2.5 0 013.5 0l1.5 1.5a2.5 2.5 0 010 3.5L17.5 21 3 21z" stroke="#111" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Modify</span>
+                  </button>
+
+                  {/* Video Mode */}
+                  <button
+                    className={`rounded-md px-2 py-1 text-xs flex items-center gap-1 transition-all duration-300 ${
+                      modeSelected && selectedMode !== 'video' 
+                        ? 'opacity-0 scale-95 pointer-events-none' 
+                        : modeSelected && selectedMode === 'video'
+                        ? 'bg-neutral-100 scale-105'
+                        : mode === 'video' && !modeSelected
+                        ? (darkMode ? 'bg-neutral-800' : 'bg-neutral-100')
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (modeSelected && selectedMode === 'video') {
+                        handleModeBack();
+                      } else {
+                        handleModeSelect('video');
+                      }
+                    }}
+                    title={modeSelected && selectedMode === 'video' ? "Back to mode selection" : "Video"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <rect x="2" y="6" width="14" height="12" rx="2" stroke="#111" strokeWidth="1.4"/>
+                      <path d="M22 8v8l-4-4 4-4z" stroke="#111" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Video</span>
+                  </button>
+                </div>
+
+                {/* Back Button Overlay (appears when mode is selected) */}
+                {modeSelected && (
+                  <div className="absolute left-0 top-0 flex items-center transition-all duration-300">
+                    <button
+                      onClick={handleModeBack}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-neutral-600 hover:text-neutral-800 transition-colors"
+                      title="Back to mode selection"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="rotate-180">
+                        <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <span>Back</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
