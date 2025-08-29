@@ -718,7 +718,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     return () => clearInterval(interval);
   }, [activeTab, newsCategory]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-  const [modeRowExpanded, setModeRowExpanded] = useState(false);
   // Helper: format relative time like "3h ago"
   function formatRelativeTime(dateInput: string | number | Date | null | undefined): string {
     try {
@@ -3937,393 +3936,184 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Collapsible Mode buttons row with Save Project on right - DIFFERENT FOR MOBILE AND DESKTOP */}
-                {modeRowExpanded && (
-                  <div className={`mb-2 flex items-center ${isMobile ? 'gap-1 justify-between overflow-x-auto' : 'gap-2 justify-between'} transition-all duration-300 animate-in slide-in-from-top-2`}>
-                  <div className={`flex items-center ${isMobile ? 'gap-1 flex-nowrap min-w-0' : 'gap-1 flex-wrap'}`}>
-                    {/* Mode buttons - SVG icons for mobile, text for desktop */}
-                    {isMobile ? (
-                      <>
-                        {/* Mobile: SVG icon buttons (no background) */}
-                        <button 
-                          title="Text mode" 
-                          onClick={() => setMode('text')}
-                          className={`p-2 transition-all ${
-                            mode === 'text'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Image mode" 
-                          onClick={() => setMode('image')}
-                          className={`p-2 transition-all ${
-                            mode === 'image'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Modify image" 
-                          onClick={() => setMode('image-modify')}
-                          className={`p-2 transition-all ${
-                            mode === 'image-modify'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Video mode" 
-                          onClick={() => setMode('video')}
-                          className={`p-2 transition-all ${
-                            mode === 'video'
-                              ? 'opacity-100 scale-110'
-                              : 'opacity-60 hover:opacity-90 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
-                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {/* Desktop: SVG icon buttons (same as mobile) */}
-                        <button 
-                          title="Text mode" 
-                          onClick={() => setMode('text')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'text'
-                              ? 'bg-gray-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'text' ? 'stroke-gray-500' : 'stroke-current'}`}>
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="14,2 14,8 20,8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="13" x2="8" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <line x1="16" y1="17" x2="8" y2="17" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Image mode" 
-                          onClick={() => setMode('image')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'image'
-                              ? 'bg-green-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image' ? 'stroke-green-500' : 'stroke-current'}`}>
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <polyline points="21,15 16,10 5,21" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Modify image" 
-                          onClick={() => setMode('image-modify')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'image-modify'
-                              ? 'bg-purple-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'image-modify' ? 'stroke-purple-500' : 'stroke-current'}`}>
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                        <button 
-                          title="Video mode" 
-                          onClick={() => setMode('video')}
-                          className={`p-2 rounded-lg transition-all ${
-                            mode === 'video'
-                              ? 'bg-red-500/20 scale-110'
-                              : 'hover:bg-neutral-800/50 hover:scale-105'
-                          }`}
-                        > 
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className={`transition-colors ${mode === 'video' ? 'stroke-red-500' : 'stroke-current'}`}>
-                            <polygon points="23 7 16 12 23 17 23 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                    
-                    {/* Mode-specific controls - same layout for both */}
-                    {mode === 'text' && (
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={chatMode}
-                          onChange={(e)=> setChatMode(e.target.value as any)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="AI Mode"
-                        >
-                          <option value="normal">General</option>
-                          <option value="prompt">Prompt</option>
-                          <option value="creative">Creative</option>
-                          <option value="think">Think</option>
-                        </select>
-                      </div>
-                    )}
-                    
-                    {(mode === 'image' || mode === 'image-modify') && (
-                      <>
-                        {/* Advanced Controls Toggle */}
-                        <button
-                          onClick={() => setShowAdvancedControls(!showAdvancedControls)}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-500 border-gray-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
-                          title="Advanced Controls"
-                        >
-                          <div className="flex items-center gap-1">
-                            <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            {!isMobile && <span>Style</span>}
-                          </div>
-                        </button>
-
-                        {showAdvancedControls && (
-                          <>
-                            {/* Effects LoRA (Power Loader) */}
-                            <select
-                              value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setEffectLora('');
-                                else if (v === 'Custom...') setEffectLora(effectLora || '');
-                                else setEffectLora(v);
-                              }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                              title="Effects LoRA"
-                            >
-                              {(['None','Custom...'] as const).map((opt) => (
-                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                                </option>
-                              ))}
-                            </select>
-
-                            {/* Character LoRA */}
-                            <select
-                              value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                if (v === 'None') setLoraName('');
-                                else if (v === 'Custom...') setLoraName(loraName || '');
-                                else setLoraName(v);
-                              }}
-                              className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                              title="Character LoRA"
-                            >
-                              {(['None','Custom...'] as const).map((opt) => (
-                                <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                              ))}
-                              {availableLoras.map((lora) => (
-                                <option key={lora.filename} value={lora.filename}>
-                                  {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                                </option>
-                              ))}
-                            </select>
-                          </>
-                        )}
-
-                        {/* Batch size */}
-                        <select
-                          value={batchSize === '' ? '1' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Quantity"
-                        >
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}</option>
-                          ))}
-                        </select>
-
-                        {/* Aspect ratio */}
-                        <select
-                          value={aspectRatio}
-                          onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Aspect Ratio"
-                        >
-                          <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
-                          {AR_CHOICES.map((ar) => (
-                            <option key={ar} value={ar}>{ar}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-
-                    {mode === 'video' && (
-                      <>
-                        <select
-                          value={videoModel}
-                          onChange={(e) => setVideoModel(e.target.value as any)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Video model"
-                        >
-                          <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
-                          <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
-                        </select>
-
-                        <select
-                          value={batchSize === '' ? '1' : String(batchSize)}
-                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Quantity"
-                        >
-                          {BATCH_CHOICES.map((n) => (
-                            <option key={n} value={n}>{n}</option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={aspectRatio}
-                          onChange={(e) => setAspectRatio(e.target.value)}
-                          className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="Aspect Ratio"
-                        >
-                          <option value="">16:9</option>
-                          {AR_CHOICES.map((ar) => (
-                            <option key={ar} value={ar}>{ar}</option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-
-                    {mode === 'image' && (
-                      <>
-                        <button
-                          onClick={() => setImgTab('character')}
-                          className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
-                        >
-                          {isMobile ? 'Char' : 'Character'}
-                        </button>
-                        {loraName && (
-                          <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
-                            {isMobile ? loraName.slice(0, 8) : loraName}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
+                {/* Mode selector and controls - always visible above text input */}
+                <div className={`mb-2 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
+                  {/* Mode Selector Dropdown */}
                   <div className="flex items-center gap-2">
-                    {/* Project Management - Always visible */}
-                    <div className="relative flex items-center gap-2" data-project-dropdown>
-                      {/* Save Project Icon */}
-                      <button
-                        className={`rounded-lg p-1.5 shadow-lg transition-all duration-200 hover:scale-105 ${darkMode ? 'bg-gray-600 hover:bg-gray-700 border border-gray-500 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white shadow-gray-200'}`}
-                        onClick={()=> setProjectModalOpen(true)}
-                        title="Save Project"
+                    <label className="text-sm font-medium opacity-70">Mode:</label>
+                    <select
+                      value={mode}
+                      onChange={(e) => setMode(e.target.value as any)}
+                      className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1.5 text-sm'} border rounded transition-all ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                    >
+                      <option value="text">💬 Text</option>
+                      <option value="image">🖼️ Image</option>
+                      <option value="image-modify">✏️ Modify</option>
+                      <option value="video">🎥 Video</option>
+                    </select>
+                  </div>
+
+                  {/* Mode-specific controls */}
+                  {mode === 'text' && (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={chatMode}
+                        onChange={(e)=> setChatMode(e.target.value as any)}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="AI Mode"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="shrink-0">
-                          <path d="M4 7a2 2 0 012-2h8l4 4v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.6" fill="none"/>
-                          <path d="M8 7h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                          <rect x="8" y="12" width="8" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.6"/>
-                        </svg>
+                        <option value="normal">General</option>
+                        <option value="prompt">Prompt</option>
+                        <option value="creative">Creative</option>
+                        <option value="think">Think</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {(mode === 'image' || mode === 'image-modify') && (
+                    <>
+                      {/* Batch size */}
+                      <select
+                        value={batchSize === '' ? '1' : String(batchSize)}
+                        onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="Quantity"
+                      >
+                        {BATCH_CHOICES.map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+
+                      {/* Aspect ratio */}
+                      <select
+                        value={aspectRatio}
+                        onChange={(e) => setAspectRatio(e.target.value)}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="Aspect Ratio"
+                      >
+                        <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                        {AR_CHOICES.map((ar) => (
+                          <option key={ar} value={ar}>{ar}</option>
+                        ))}
+                      </select>
+
+                      {/* Advanced Controls Toggle */}
+                      <button
+                        onClick={() => setShowAdvancedControls(!showAdvancedControls)}
+                        className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-500 border-gray-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
+                        title="Advanced Controls"
+                      >
+                        <div className="flex items-center gap-1">
+                          <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          {!isMobile && <span>Style</span>}
+                        </div>
                       </button>
 
-                      {/* Project Dropdown - Always visible on desktop */}
-                      {!isMobile && (
+                      {showAdvancedControls && (
+                        <>
+                          {/* Effects LoRA */}
+                          <select
+                            value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === 'None') setEffectLora('');
+                              else if (v === 'Custom...') setEffectLora(effectLora || '');
+                              else setEffectLora(v);
+                            }}
+                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Effects LoRA"
+                          >
+                            {(['None','Custom...'] as const).map((opt) => (
+                              <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                            ))}
+                            {availableLoras.map((lora) => (
+                              <option key={lora.filename} value={lora.filename}>
+                                {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Character LoRA */}
+                          <select
+                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === 'None') setLoraName('');
+                              else if (v === 'Custom...') setLoraName(loraName || '');
+                              else setLoraName(v);
+                            }}
+                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Character LoRA"
+                          >
+                            {(['None','Custom...'] as const).map((opt) => (
+                              <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
+                            ))}
+                            {availableLoras.map((lora) => (
+                              <option key={lora.filename} value={lora.filename}>
+                                {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      )}
+
+                      {mode === 'image' && (
                         <>
                           <button
-                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs shadow-lg transition-all duration-200 hover:scale-105 min-w-[120px] ${darkMode ? 'bg-neutral-800 hover:bg-neutral-700 border border-neutral-600 text-white' : 'bg-white hover:bg-neutral-50 text-neutral-800 shadow-neutral-200 border border-neutral-200'}`}
-                            onClick={() => {
-                              setProjectDropdownOpen(!projectDropdownOpen);
-                              if (!projectDropdownOpen) loadProjects();
-                            }}
-                            title="Switch Project"
+                            onClick={() => setImgTab('character')}
+                            className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
                           >
-                            <span className="truncate flex-1 text-left">
-                              {currentProjectTitle || 'New Project'}
-                            </span>
-                            <svg 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              viewBox="0 0 24 24" 
-                              width="12" 
-                              height="12" 
-                              fill="none"
-                              className={`shrink-0 transition-transform duration-200 ${projectDropdownOpen ? 'rotate-180' : ''}`}
-                            >
-                              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                            {isMobile ? 'Char' : 'Character'}
                           </button>
-
-                          {/* Dropdown Menu */}
-                          {projectDropdownOpen && (
-                            <div className={`absolute top-full right-0 mt-1 w-72 rounded-xl border shadow-xl z-[10002] max-h-80 overflow-y-auto ${darkMode ? 'bg-neutral-800 border-neutral-600 text-white' : 'bg-white border-neutral-200'}`}>
-                              {/* New Project Option */}
-                              <button
-                                className={`w-full px-4 py-3 text-left text-sm transition-colors border-b ${darkMode ? 'hover:bg-neutral-700 border-neutral-600' : 'hover:bg-neutral-50 border-neutral-200'}`}
-                                onClick={() => {
-                                  setCurrentProjectId(null);
-                                  setCurrentProjectTitle(null);
-                                  setMessages([]);
-                                  setCanvasItems([]);
-                                  setProjectDropdownOpen(false);
-                                }}
-                              >
-                                <div className="font-medium">✨ New Project</div>
-                                <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                  Start fresh with empty chat and canvas
-                                </div>
-                              </button>
-
-                              {/* Existing Projects */}
-                              {projectsLoading ? (
-                                <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                  Loading projects...
-                                </div>
-                              ) : projects.length > 0 ? (
-                                projects.map((project) => (
-                                  <button
-                                    key={project.id}
-                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${currentProjectId === project.id ? (darkMode ? 'bg-gray-900/50' : 'bg-gray-50') : (darkMode ? 'hover:bg-neutral-700' : 'hover:bg-neutral-50')}`}
-                                    onClick={() => switchToProject(project.id, project.title)}
-                                  >
-                                    <div className="font-medium truncate">{project.title}</div>
-                                    <div className={`text-xs mt-1 ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                      {new Date(project.updated_at).toLocaleDateString()}
-                                    </div>
-                                  </button>
-                                ))
-                              ) : (
-                                <div className={`px-4 py-6 text-center text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                                  No saved projects yet
-                                </div>
-                              )}
-                            </div>
+                          {loraName && (
+                            <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
+                              {isMobile ? loraName.slice(0, 8) : loraName}
+                            </span>
                           )}
                         </>
                       )}
-                    </div>
-                  </div>
+                    </>
+                  )}
+
+                  {mode === 'video' && (
+                    <>
+                      <select
+                        value={videoModel}
+                        onChange={(e) => setVideoModel(e.target.value as any)}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="Video model"
+                      >
+                        <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
+                        <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
+                      </select>
+
+                      <select
+                        value={batchSize === '' ? '1' : String(batchSize)}
+                        onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="Quantity"
+                      >
+                        {BATCH_CHOICES.map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={aspectRatio}
+                        onChange={(e) => setAspectRatio(e.target.value)}
+                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                        title="Aspect Ratio"
+                      >
+                        <option value="">16:9</option>
+                        {AR_CHOICES.map((ar) => (
+                          <option key={ar} value={ar}>{ar}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
-                )}
 
                 {/* Prompt input area with underglow effect */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
@@ -4341,7 +4131,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
                   <div className="grid grid-cols-2 gap-1.5 mt-3" style={{ marginTop: '22px' }}>
-                    {/* Top row: Send + AI Toggle */}
+                    {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
@@ -4372,34 +4162,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </svg>
                     </button>
 
-                    {/* AI Toggle button - moved to top row */}
-                    <button
-                      title="Toggle AI Controls"
-                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
-                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
-                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
-                      }`}
-                    >
-                      {/* Enhanced AI SVG Icon - More Descriptive */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
-                        {/* Central nucleus with gradient effect */}
-                        <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} opacity="0.6" className="transition-colors"/>
-
-                        {/* Electron orbits - more visible and descriptive */}
-                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
-                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
-                        <ellipse cx="12" cy="12" rx="5.5" ry="5.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" transform="rotate(45 12 12)" className="transition-colors" opacity="0.8"/>
-
-                        {/* Electrons with enhanced visibility */}
-                        <circle cx="20" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                      </svg>
-                    </button>
-
-                    {/* Bottom row: Upload + Library */}
+                    {/* Upload button */}
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -4477,7 +4240,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
 
-                    {/* Library button - moved to bottom row */}
+                    {/* Bottom row: Library + Settings */}
                     <button
                       onClick={() => setShowLibraryModal(true)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
@@ -4488,6 +4251,19 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
                         <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor"/>
                         <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor"/>
+                      </svg>
+                    </button>
+
+                    {/* Settings button */}
+                    <button
+                      onClick={() => setSettingsOpen(true)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
+                      title="Settings"
+                      aria-label="Open Settings"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#fff" strokeWidth="1.6"/>
+                        <path d="M19.4 13.5a7.43 7.43 0 0 0 .06-1.5c0-.5-.02-1-.06-1.5l2.03-1.59a.7.7 0 0 0 .16-.9l-1.93-3.34a.7.7 0 0 0-.86-.31l-2.39.96A7.69 7.69 0 0 0 14.4 3l-.36-2.5a.7.7 0 0 0-.69-.58h-3.7a.7.7 0 0 0-.69.58L8.6 3a7.69 7.69 0 0 0-1.99.82l-2.39-.96a.7.7 0 0 0-.86.31L1.43 6.5a.7.7 0 0 0 .16.9L3.62 9c-.04.5-.06 1-.06 1.5s.02 1 .06 1.5l-2.03 1.59a.7.7 0 0 0-.16.9l1.93 3.34c.18.32.57.45.9.31l2.39-.96c.62.36 1.29.64 1.99.82l.36 2.5c.06.34.35.58.69.58h3.7c.34 0 .63-.24.69-.58l.36-2.5c.7-.18 1.37-.46 1.99-.82l2.39.96c.33.14.72.01.9-.31l1.93-3.34a.7.7 0 0 0-.16-.9L19.4 13.5Z" stroke="#fff" strokeWidth="1.6"/>
                       </svg>
                     </button>
                   </div>
