@@ -18,16 +18,30 @@ function getLocationOrigin(): string {
 // Utility function to handle URL display logic for media content
 function getDisplayUrl(raw?: string | null): string | undefined {
   if (!raw) return undefined;
+  
+  // Handle data URLs (base64 encoded images)
+  if (raw.startsWith('data:')) {
+    return raw;
+  }
+  
   try {
     // R2 URLs are already public and don't need proxying
     if (raw.includes('r2.cloudflarestorage.com') || raw.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '')) {
       return raw;
     }
+    
+    // Supabase storage URLs
+    if (raw.includes('supabase') && raw.includes('.storage.')) {
+      return raw;
+    }
+    
     // Only proxy external URLs that are not from our domain
     if (typeof window !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(getLocationOrigin())) {
       return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
     }
-  } catch {}
+  } catch (error) {
+    console.warn('Error processing URL in getDisplayUrl:', error, 'URL:', raw);
+  }
   return raw;
 }
 
@@ -2628,7 +2642,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 bg-gray-800`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${isMobile ? 'bg-transparent' : 'bg-gray-800'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           {/* Mobile: Hamburger menu on the left */}
           {isMobile && (
             <button
@@ -2655,8 +2669,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Desktop: Empty div for spacing, Mobile: Hidden */}
           {!isMobile && <div></div>}
           
-          {/* Center: Atom title for all tabs */}
-          <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
+          {/* Center: Atom title for desktop only */}
+          <h1 className="hidden md:block text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
             Atom
           </h1>
           
@@ -7702,8 +7716,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               ) : libraryItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {[...libraryItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
-                    const url = it.display_url || it.result_url;
+                    // Try multiple URL sources in order of preference
+                    const url = it.display_url || it.thumbnail_url || it.result_url || it.media_url;
                     const isVideo = it.type === 'video' || it.generation_type === 'video';
+                    
+                    // Log URL details for debugging thumbnails
+                    if (!url) {
+                      console.warn('Library item missing URL:', it.id, it);
+                    }
 
                     return (
                       <div
@@ -7758,7 +7778,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 className="h-full w-full object-cover"
                                 loading="lazy"
                                 alt="Generated content"
+                                onLoad={() => {
+                                  // Successfully loaded, no action needed
+                                }}
                                 onError={(e) => {
+                                  console.warn('Library image failed to load:', url, 'Processed:', getDisplayUrl(url));
                                   const status = it.status || 'completed';
                                   const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
                                   const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);
