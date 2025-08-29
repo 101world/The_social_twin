@@ -7901,30 +7901,35 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {binItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
-                    // Use display_url directly if available (already processed by history API), otherwise try other sources
-                    const url = it.display_url || it.thumbnail_url || it.result_url || it.media_url;
-                    const isVideo = it.type === 'video' || it.generation_type === 'video';
+                    // Get the best available URL for display - prioritize R2 URLs
+                    const displayUrl = it.display_url || it.result_url || it.thumbnail_url || it.media_url;
+
+                    // Determine if this is a video
+                    const isVideo = it.type === 'video' || it.generation_type === 'video' ||
+                                   (displayUrl && /\.(mp4|webm|mov)(\?|$)/i.test(displayUrl));
 
                     return (
                       <div
                         key={it.id}
                         className="group relative bg-neutral-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all cursor-pointer"
                         onClick={() => {
+                          // Open full-screen viewer modal
                           setViewerItem(it);
                           setViewerOpen(true);
                           setShowLibraryModal(false);
                         }}
                       >
-                        {/* Content */}
-                        <div className="aspect-square">
+                        {/* Media Content */}
+                        <div className="aspect-square relative">
                           {isVideo ? (
-                            url ? (
+                            displayUrl ? (
                               (!lowDataMode || mediaAllowed.has(it.id)) ? (
                                 <video
-                                  src={url}
+                                  src={displayUrl}
                                   className="h-full w-full object-cover"
                                   preload="metadata"
                                   muted
+                                  playsInline
                                   onMouseEnter={(e) => {
                                     const video = e.currentTarget;
                                     video.play().catch(() => {});
@@ -7934,58 +7939,70 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     video.pause();
                                     video.currentTime = 0;
                                   }}
+                                  onError={(e) => {
+                                    console.warn('Video failed to load:', displayUrl);
+                                    // Show fallback
+                                    e.currentTarget.style.display = 'none';
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent && !parent.querySelector('.video-fallback')) {
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'video-fallback h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white';
+                                      fallback.innerHTML = `
+                                        <div class="text-2xl mb-1">🎥</div>
+                                        <div class="text-xs opacity-70">Video</div>
+                                        <div class="text-xs opacity-50 mt-1">Click to view</div>
+                                      `;
+                                      parent.appendChild(fallback);
+                                    }
+                                  }}
                                 />
                               ) : (
                                 <div
                                   className="w-full h-full flex items-center justify-center text-2xl bg-neutral-700 hover:bg-neutral-600 transition-colors"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setMediaAllowed(prev=>{ const n = new Set(prev); n.add(it.id); return n; });
+                                    setMediaAllowed(prev => new Set(prev).add(it.id));
                                   }}
                                 >
                                   📹
                                 </div>
                               )
                             ) : (
-                              <div className="h-full w-full bg-neutral-700 flex items-center justify-center text-2xl opacity-70">
-                                ⏳
+                              <div className="h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white">
+                                <div className="text-2xl mb-1">🎥</div>
+                                <div className="text-xs opacity-70">Video</div>
+                                <div className="text-xs opacity-50 mt-1">No preview</div>
                               </div>
                             )
                           ) : (
-                            url ? (
+                            displayUrl ? (
                               <img
-                                src={url}
+                                src={displayUrl}
                                 className="h-full w-full object-cover"
                                 loading="lazy"
-                                alt="Generated content"
-                                onLoad={() => {
-                                  // Successfully loaded, no action needed
-                                }}
+                                alt={it.prompt || "Generated image"}
                                 onError={(e) => {
-                                  console.warn('Library image failed to load:', url);
-                                  const status = it.status || 'completed';
-                                  const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
-                                  const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);
-
+                                  console.warn('Image failed to load:', displayUrl);
+                                  // Show fallback with prompt
                                   e.currentTarget.style.display = 'none';
                                   const parent = e.currentTarget.parentElement;
-                                  if (parent && !parent.querySelector('.fallback-placeholder')) {
-                                    const placeholder = document.createElement('div');
-                                    placeholder.className = 'fallback-placeholder h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white';
-                                    placeholder.innerHTML = `
-                                      <div class="text-2xl mb-1">${statusEmoji}</div>
-                                      <div class="text-xs opacity-70">${statusText}</div>
-                                      ${status === 'completed' ? '<div class="text-xs opacity-50 mt-1">URL expired</div>' : ''}
+                                  if (parent && !parent.querySelector('.image-fallback')) {
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'image-fallback h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white p-2';
+                                    fallback.innerHTML = `
+                                      <div class="text-2xl mb-1">🖼️</div>
+                                      <div class="text-xs opacity-70 line-clamp-3">${it.prompt || 'Generated image'}</div>
+                                      <div class="text-xs opacity-50 mt-1">Click to view</div>
                                     `;
-                                    parent.appendChild(placeholder);
+                                    parent.appendChild(fallback);
                                   }
                                 }}
                               />
                             ) : (
-                              <div className="h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white">
-                                <div className="text-2xl mb-1">{it.status === 'pending' ? '⏳' : it.status === 'processing' ? '⚙️' : it.status === 'failed' ? '❌' : '🎨'}</div>
-                                <div className="text-xs opacity-70">{it.status ? it.status.charAt(0).toUpperCase() + it.status.slice(1) : 'Generated'}</div>
-                                {it.status === 'completed' && <div className="text-xs opacity-50 mt-1">No preview</div>}
+                              <div className="h-full w-full flex flex-col items-center justify-center text-center bg-neutral-700 text-white p-2">
+                                <div className="text-2xl mb-1">🖼️</div>
+                                <div className="text-xs opacity-70 line-clamp-3">{it.prompt || 'Generated image'}</div>
+                                <div className="text-xs opacity-50 mt-1">No image available</div>
                               </div>
                             )
                           )}
@@ -8054,6 +8071,157 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Viewer Modal */}
+      {viewerOpen && viewerItem && (
+        <div className="fixed inset-0 z-[10060] bg-black flex items-center justify-center p-4" onClick={() => setViewerOpen(false)}>
+          <div className="w-full h-full max-w-7xl max-h-screen bg-neutral-900 rounded-xl shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-neutral-700">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold text-white truncate">
+                  {viewerItem.prompt || 'Generated Content'}
+                </h2>
+                <p className="text-sm text-neutral-400 mt-1">
+                  {new Date(viewerItem.created_at || viewerItem.createdAt || 0).toLocaleString()}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {/* Download Button */}
+                <button
+                  onClick={() => {
+                    const displayUrl = viewerItem.display_url || viewerItem.result_url || viewerItem.thumbnail_url;
+                    if (displayUrl) {
+                      // Create download link
+                      const link = document.createElement('a');
+                      link.href = displayUrl;
+                      link.download = `generated-${viewerItem.id}.${viewerItem.type === 'video' ? 'mp4' : 'jpg'}`;
+                      link.target = '_blank';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                  </svg>
+                  Download
+                </button>
+
+                {/* Share Button */}
+                <button
+                  onClick={() => {
+                    const displayUrl = viewerItem.display_url || viewerItem.result_url || viewerItem.thumbnail_url;
+                    if (displayUrl && navigator.share) {
+                      navigator.share({
+                        title: viewerItem.prompt || 'Generated Content',
+                        url: displayUrl
+                      });
+                    } else if (displayUrl) {
+                      // Fallback: copy to clipboard
+                      navigator.clipboard.writeText(displayUrl);
+                      // Could show a toast notification here
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>
+                  </svg>
+                  Share
+                </button>
+
+                <button
+                  onClick={() => setViewerOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 flex items-center justify-center p-6 overflow-hidden">
+              <div className="w-full h-full max-w-5xl max-h-full flex items-center justify-center">
+                {(() => {
+                  const displayUrl = viewerItem.display_url || viewerItem.result_url || viewerItem.thumbnail_url;
+                  const isVideo = viewerItem.type === 'video' || viewerItem.generation_type === 'video' ||
+                                 (displayUrl && /\.(mp4|webm|mov)(\?|$)/i.test(displayUrl));
+
+                  if (isVideo && displayUrl) {
+                    return (
+                      <video
+                        src={displayUrl}
+                        controls
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          console.warn('Viewer video failed to load:', displayUrl);
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent && !parent.querySelector('.viewer-fallback')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'viewer-fallback flex flex-col items-center justify-center text-center text-white p-8';
+                            fallback.innerHTML = `
+                              <div class="text-6xl mb-4">🎥</div>
+                              <div class="text-xl mb-2">Video Unavailable</div>
+                              <div class="text-neutral-400">This video may have expired or been deleted</div>
+                            `;
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    );
+                  } else if (displayUrl) {
+                    return (
+                      <img
+                        src={displayUrl}
+                        className="max-w-full max-h-full object-contain"
+                        alt={viewerItem.prompt || "Generated image"}
+                        onError={(e) => {
+                          console.warn('Viewer image failed to load:', displayUrl);
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          if (parent && !parent.querySelector('.viewer-fallback')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'viewer-fallback flex flex-col items-center justify-center text-center text-white p-8';
+                            fallback.innerHTML = `
+                              <div class="text-6xl mb-4">🖼️</div>
+                              <div class="text-xl mb-2">Image Unavailable</div>
+                              <div class="text-neutral-400 mb-4">This image may have expired or been deleted</div>
+                              <div class="text-sm bg-neutral-800 p-4 rounded-lg max-w-md">
+                                <strong>Prompt:</strong><br/>
+                                ${viewerItem.prompt || 'No prompt available'}
+                              </div>
+                            `;
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    );
+                  } else {
+                    return (
+                      <div className="flex flex-col items-center justify-center text-center text-white p-8">
+                        <div className="text-6xl mb-4">🖼️</div>
+                        <div className="text-xl mb-2">Content Unavailable</div>
+                        <div className="text-neutral-400 mb-4">This content may have expired or been deleted</div>
+                        <div className="text-sm bg-neutral-800 p-4 rounded-lg max-w-md">
+                          <strong>Prompt:</strong><br/>
+                          {viewerItem.prompt || 'No prompt available'}
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
             </div>
           </div>
         </div>
