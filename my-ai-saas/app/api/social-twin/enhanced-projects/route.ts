@@ -117,17 +117,22 @@ export async function GET(req: NextRequest) {
       
       let thumbnailUrl = p.thumbnail_url;
       
-      // Resolve storage URLs to signed URLs
-      if (typeof thumbnailUrl === 'string' && thumbnailUrl.startsWith('storage:')) {
-        try {
-          const parts = thumbnailUrl.replace('storage:', '').split('/');
-          const bucket = parts.shift() as string;
-          const path = parts.join('/');
-          const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
-          if (!signed.error) {
-            thumbnailUrl = signed.data.signedUrl;
-          }
-        } catch {}
+      // Resolve storage URLs to signed URLs or handle R2 URLs
+      if (typeof thumbnailUrl === 'string') {
+        if (thumbnailUrl.startsWith('storage:')) {
+          try {
+            const parts = thumbnailUrl.replace('storage:', '').split('/');
+            const bucket = parts.shift() as string;
+            const path = parts.join('/');
+            const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+            if (!signed.error) {
+              thumbnailUrl = signed.data.signedUrl;
+            }
+          } catch {}
+        } else if (thumbnailUrl.includes('r2.cloudflarestorage.com') || thumbnailUrl.includes(process.env.R2_PUBLIC_URL || '')) {
+          // R2 URLs are already public, no need to sign
+          // Keep the URL as-is
+        }
       }
 
       // If no thumbnail and it's enhanced, try to get from grid data
@@ -137,7 +142,21 @@ export async function GET(req: NextRequest) {
             item.type === 'image' && item.url
           );
           if (firstImage) {
-            thumbnailUrl = firstImage.url;
+            let imageUrl = firstImage.url;
+            // Handle R2 URLs or storage URLs
+            if (imageUrl.includes('r2.cloudflarestorage.com') || imageUrl.includes(process.env.R2_PUBLIC_URL || '')) {
+              thumbnailUrl = imageUrl; // R2 URLs are already public
+            } else if (imageUrl.startsWith('storage:')) {
+              const parts = imageUrl.replace('storage:', '').split('/');
+              const bucket = parts.shift() as string;
+              const path = parts.join('/');
+              const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+              if (!signed.error) {
+                thumbnailUrl = signed.data.signedUrl;
+              }
+            } else {
+              thumbnailUrl = imageUrl; // Assume it's already a valid URL
+            }
           }
         } catch {}
       }
@@ -253,12 +272,52 @@ export async function PATCH(req: NextRequest) {
     // Check if enhanced project
     const isEnhanced = project.data?.version === '2.0';
     
+    // Resolve URLs in grid data for robust restoration
+    let resolvedGridData = project.data?.grid || project.data;
+    if (isEnhanced && resolvedGridData?.canvasItems) {
+      resolvedGridData = {
+        ...resolvedGridData,
+        canvasItems: await Promise.all(resolvedGridData.canvasItems.map(async (item: any) => {
+          if (item.type === 'image' && item.url) {
+            let resolvedUrl = item.url;
+            
+            // Handle R2 URLs (already public)
+            if (resolvedUrl.includes('r2.cloudflarestorage.com') || resolvedUrl.includes(process.env.R2_PUBLIC_URL || '')) {
+              // Keep R2 URL as-is
+            } else if (resolvedUrl.startsWith('storage:')) {
+              // Convert Supabase storage URLs to signed URLs
+              try {
+                const parts = resolvedUrl.replace('storage:', '').split('/');
+                const bucket = parts.shift() as string;
+                const path = parts.join('/');
+                const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+                if (!signed.error) {
+                  resolvedUrl = signed.data.signedUrl;
+                }
+              } catch (e) {
+                console.warn('Failed to sign storage URL:', e);
+              }
+            } else if (resolvedUrl.includes('runpod.io') || resolvedUrl.includes('runpod.net')) {
+              // Handle legacy RunPod URLs - these should have been migrated to R2
+              console.warn('Found legacy RunPod URL in project, may not be accessible:', resolvedUrl);
+            }
+            
+            return {
+              ...item,
+              url: resolvedUrl
+            };
+          }
+          return item;
+        }))
+      };
+    }
+    
     return NextResponse.json({
       project: {
         id: project.id,
         title: project.title,
         enhanced: isEnhanced,
-        gridData: project.data?.grid || project.data, // Fallback for legacy
+        gridData: resolvedGridData,
         chatData: project.data?.chat || null,
         topicId: project.data?.topicId || null,
         createdAt: project.created_at,

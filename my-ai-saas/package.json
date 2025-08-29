@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.876.0",
+    "@aws-sdk/client-s3": "^3.878.0",
     "@clerk/backend": "^1.33.1",
     "@clerk/nextjs": "^6.20.0",
     "@heroicons/react": "^2.2.0",

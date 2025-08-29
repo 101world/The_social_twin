@@ -2,8 +2,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
-import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
-import { getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
+import { uploadUrlToR2 } from '@/lib/r2-upload';
 
 const CREDIT_COSTS = {
   text: 1,
@@ -251,7 +250,7 @@ export async function POST(req: NextRequest) {
         p.then(v => { clearTimeout(t); resolve(v); }).catch(e => { clearTimeout(t); reject(e); });
       });
       const apiKey = process.env.RUNPOD_API_KEY || undefined;
-  const out = await withTimeout(runSocialTwinGeneration({
+  const out: { images: string[]; videos: string[]; urls: string[]; runpod: any; } = await withTimeout(runSocialTwinGeneration({
         mode: mode as any,
         prompt,
         negative: typeof otherParams?.negative === 'string' ? otherParams.negative : undefined,
@@ -294,48 +293,25 @@ export async function POST(req: NextRequest) {
   const mediaType = aiVideo || firstVideo ? 'video' : (aiImage ? 'image' : null);
   const mediaUrl = resultUrl;
 
-    // Auto-save to Supabase Storage for permanent access
+    // Auto-save to Cloudflare R2 for permanent access
     let permanentUrl = resultUrl;
     if (resultUrl && saveToLibrary) {
       try {
-        console.log('💾 Auto-saving to Supabase Storage:', resultUrl);
+        console.log('💾 Auto-saving to Cloudflare R2:', resultUrl);
         
-        // Determine bucket and content type
-        const bucket = mediaType === 'video' ? 'generated-videos' : 'generated-images';
+        // Determine file extension and type
+        const isVideo = /\.(mp4|webm)(\?|$)/i.test(resultUrl);
+        const extension = isVideo ? 'mp4' : 'png';
+        const mediaType = isVideo ? 'video' : 'image';
         
-        // Create bucket if it doesn't exist
-        try { 
-          await supabase.storage.createBucket(bucket, { public: false }).catch(() => {}); 
-        } catch {}
+        // Upload to R2
+        const r2Url = await uploadUrlToR2(resultUrl, userId, 'generations', extension);
+        permanentUrl = r2Url;
         
-        // Download from RunPod
-        const response = await fetch(resultUrl);
-        if (response.ok) {
-          const arrayBuffer = await response.arrayBuffer();
-          const data = new Uint8Array(arrayBuffer);
-          const contentType = response.headers.get('content-type') || 
-            (mediaType === 'video' ? 'video/mp4' : 'image/png');
-          
-          // Generate unique filename
-          const ext = mediaType === 'video' ? '.mp4' : '.png';
-          const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-          const storagePath = `${userId}/${fileName}`;
-          
-          // Upload to Supabase Storage
-          const uploadResult = await supabase.storage
-            .from(bucket)
-            .upload(storagePath, data, { contentType, upsert: false });
-          
-          if (!uploadResult.error) {
-            permanentUrl = `storage:${bucket}/${storagePath}`;
-            console.log('✅ Successfully saved to Supabase Storage:', permanentUrl);
-          } else {
-            console.error('❌ Failed to upload to Supabase Storage:', uploadResult.error);
-          }
-        }
+        console.log('✅ Successfully saved to R2:', permanentUrl);
       } catch (storageError) {
-        console.error('💥 Storage save error:', storageError);
-        // Continue with original URL if storage fails
+        console.error('💥 R2 save error:', storageError);
+        // Continue with original URL if R2 upload fails
       }
     }
 
@@ -351,8 +327,9 @@ export async function POST(req: NextRequest) {
           generation_params: {
             ...generationRecord.generation_params,
             status: 'completed',
-            saved_to_storage: permanentUrl?.startsWith('storage:') || false,
+            saved_to_r2: permanentUrl !== resultUrl, // True if we successfully uploaded to R2
             original_runpod_url: resultUrl, // Keep original for reference
+            r2_url: permanentUrl !== resultUrl ? permanentUrl : null, // Store R2 URL if different
             batch_results: {
               images: batchImages,
               videos: batchVideos,
