@@ -728,8 +728,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
   // Library Modal state and functions
   const [showLibraryModal, setShowLibraryModal] = useState<boolean>(false);
-  const [libraryItems, setLibraryItems] = useState<any[]>([]);
-  const [libraryLoading, setLibraryLoading] = useState<boolean>(false);
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
@@ -752,16 +750,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const result = await response.json();
       console.log('Delete result:', result);
       
-      // Remove from local state
-      setLibraryItems(prev => prev.filter(item => item.id !== itemId));
+      // Remove from binItems (which is what we show in library)
       setBinItems(prev => prev.filter(item => item.id !== itemId));
       
-      // Show success feedback (you could add a toast notification here)
+      // Show success feedback
       console.log(`Successfully deleted generation and ${result.filesDeleted || 0} associated files`);
       
     } catch (error) {
       console.error('Error deleting library item:', error);
-      // Show error feedback (you could add a toast notification here)
       alert(`Failed to delete item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setDeletingItems(prev => {
@@ -773,61 +769,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }
   };
 
-  // Function to load user's library items
-  const loadUserLibrary = async () => {
-    if (!userId) return;
-    
-    setLibraryLoading(true);
-    try {
-      // Use the history endpoint which now supports R2/Cloudflare storage and signed URLs
-      const r = await fetch(`/api/social-twin/history?limit=100`, { 
-        headers: { 'X-User-Id': userId || '' } 
-      });
-      if (!r.ok) {
-        console.error('Failed to load library:', r.status);
-        return;
-      }
-      const j = await r.json().catch(() => ({ items: [] }));
-      const items = Array.isArray(j.items) ? j.items : [];
-      
-      // Enhanced filtering and processing for R2/Cloudflare storage
-      const processedItems = items.map((item: any) => {
-        // Ensure we have proper URLs for display
-        const displayUrl = item.display_url || item.result_url || item.media_url;
-        const thumbnailUrl = item.thumbnail_url || displayUrl;
-        
-        return {
-          ...item,
-          display_url: displayUrl,
-          thumbnail_url: thumbnailUrl,
-          // Add storage type indicator for better UX
-          storage_type: displayUrl?.includes('r2.cloudflarestorage.com') ? 'r2' : 
-                       displayUrl?.includes('supabase') ? 'supabase' : 
-                       displayUrl?.startsWith('storage:') ? 'storage' : 'external',
-          // Add file size and other metadata if available
-          is_permanent: displayUrl?.includes('r2.cloudflarestorage.com') || 
-                       displayUrl?.includes('supabase') || 
-                       displayUrl?.startsWith('storage:')
-        };
-      });
-      
-      setLibraryItems(processedItems);
-      // Also update binItems for consistency with Generated tab
-      setBinItems(processedItems);
-      setBinCursor(j.nextCursor || null);
-      
-      console.log(`Loaded ${processedItems.length} library items with enhanced R2/Supabase support`);
-    } catch (error) {
-      console.error('Error loading user library:', error);
-    } finally {
-      setLibraryLoading(false);
-    }
-  };
-
   // Load library when modal opens
   useEffect(() => {
-    if (showLibraryModal && userId) {
-      loadUserLibrary();
+    if (showLibraryModal && userId && binItems.length === 0) {
+      // If no items are loaded, refresh the Generated tab data
+      refreshGeneratedHistory();
     }
   }, [showLibraryModal, userId]);
   const [composerShown, setComposerShown] = useState<boolean>(false);
@@ -7666,34 +7612,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="text-sm text-neutral-400 flex items-center gap-2">
-                  <span>{libraryItems.length} generations</span>
-                  {libraryItems.length > 0 && (
-                    <span className="text-xs bg-neutral-700 px-2 py-1 rounded-full">
-                      {libraryItems.filter(item => item.storage_type === 'r2').length} R2 • 
-                      {libraryItems.filter(item => item.storage_type === 'supabase').length} Supabase • 
-                      {libraryItems.filter(item => item.storage_type === 'external').length} External
-                    </span>
-                  )}
+                <div className="text-sm text-neutral-400">
+                  {binItems.length} generations
                 </div>
                 <button
-                  onClick={loadUserLibrary}
-                  disabled={libraryLoading}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+                  onClick={refreshGeneratedHistory}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
                 >
-                  {libraryLoading ? (
-                    <>
-                      <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                      </svg>
-                      Refresh
-                    </>
-                  )}
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  Refresh
                 </button>
                 <button
                   onClick={() => setShowLibraryModal(false)}
@@ -7708,22 +7637,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {libraryLoading ? (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <span className="ml-2 text-white">Loading your library...</span>
-                </div>
-              ) : libraryItems.length > 0 ? (
+              {binItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {[...libraryItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
+                  {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
                     // Try multiple URL sources in order of preference
                     const url = it.display_url || it.thumbnail_url || it.result_url || it.media_url;
                     const isVideo = it.type === 'video' || it.generation_type === 'video';
-                    
-                    // Log URL details for debugging thumbnails
-                    if (!url) {
-                      console.warn('Library item missing URL:', it.id, it);
-                    }
 
                     return (
                       <div
@@ -7841,33 +7760,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </div>
                         </div>
 
-                        {/* Storage type badge */}
-                        <div className="absolute top-2 right-2">
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            it.storage_type === 'r2' ? 'bg-blue-600/80 text-blue-100' :
-                            it.storage_type === 'supabase' ? 'bg-green-600/80 text-green-100' :
-                            it.storage_type === 'storage' ? 'bg-purple-600/80 text-purple-100' :
-                            'bg-orange-600/80 text-orange-100'
-                          }`}>
-                            {it.storage_type === 'r2' ? 'R2' :
-                             it.storage_type === 'supabase' ? 'SB' :
-                             it.storage_type === 'storage' ? 'ST' : 'EXT'}
-                          </div>
-                        </div>
-
                         {/* Info overlay */}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                          <div className="flex justify-between items-center">
-                            <div className="text-white text-xs truncate flex-1">
-                              {new Date(it.created_at || it.createdAt || 0).toLocaleDateString()}
-                            </div>
-                            {it.is_permanent && (
-                              <div className="text-green-400 text-xs ml-2" title="Permanently stored">
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                              </div>
-                            )}
+                          <div className="text-white text-xs truncate">
+                            {new Date(it.created_at || it.createdAt || 0).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -7886,19 +7782,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                     <h3 className="text-xl text-white mb-2">Your Library is Empty</h3>
                     <p className="text-neutral-400 mb-4">
-                      Generate some images or videos to see them here. 
-                      Your content will be securely stored with R2 Cloudflare and Supabase.
+                      Generate some images or videos to see them here.
                     </p>
-                    <div className="text-xs text-neutral-500 mb-4 space-y-1">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="bg-blue-600/20 text-blue-400 px-2 py-1 rounded">R2</span>
-                        <span>Cloudflare R2 Storage</span>
-                      </div>
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="bg-green-600/20 text-green-400 px-2 py-1 rounded">SB</span>
-                        <span>Supabase Storage</span>
-                      </div>
-                    </div>
                     <button
                       onClick={() => setShowLibraryModal(false)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-all"
