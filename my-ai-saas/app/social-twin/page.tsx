@@ -3937,7 +3937,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
                 {/* Mode selector and controls - always visible above text input */}
-                <div className={`mb-2 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
+                <div className={`mb-1 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
                   {/* Mode Selector Dropdown */}
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium opacity-70">Mode:</label>
@@ -4116,7 +4116,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
 
                 {/* Prompt input area with underglow effect */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-2' : 'p-2'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-1.5' : 'p-1.5'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -4130,7 +4130,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     disabled={isGeneratingBatch}
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-3" style={{ marginTop: '22px' }}>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2" style={{ marginTop: '16px' }}>
                     {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
