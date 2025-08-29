@@ -2630,13 +2630,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
               }`}
             >
-              <option value="atom">⚛️ Atom AI</option>
-              <option value="creative">🎨 Creative AI</option>
-              <option value="news">📰 News AI</option>
-              <option value="police">👮 Police AI</option>
-              <option value="lawyer">⚖️ Lawyer AI</option>
-              <option value="accountant">📊 Accountant AI</option>
-              <option value="teacher">🎓 Teacher AI</option>
+              <option value="atom">Atom AI</option>
+              <option value="creative">Creative AI</option>
+              <option value="news">News AI</option>
+              <option value="police">Police AI</option>
+              <option value="lawyer">Lawyer AI</option>
+              <option value="accountant">Accounts AI</option>
+              <option value="teacher">Teacher AI</option>
             </select>
           </div>
           
