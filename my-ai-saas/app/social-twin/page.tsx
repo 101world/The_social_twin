@@ -4114,53 +4114,118 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   )}
                 </div>
 
-                {/* Prompt input area with underglow effect */}
+                {/* Prompt input area with improved mobile aesthetics */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'p-0' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder=""
-                    className={`${isMobile ? 'min-h-[32px] max-h-[80px] text-sm' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-[0.1px]' : 'p-2'} pr-10 transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
-                    ref={bottomInputRef}
-                    style={{ 
-                      fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
-                    }}
-                    disabled={isGeneratingBatch}
-                  />
-                    {/* Action buttons - project on top, send/upload on bottom */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-2" style={{ marginTop: '16px' }}>
-                    {/* Top row: Project button (smaller, single column) */}
-                    <div className="col-span-2 mb-1">
-                      <button
-                        onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                        className={`${isMobile ? 'h-7 w-32' : 'h-7 w-32'} rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'} ${darkMode ? 'bg-neutral-800/30' : 'bg-gray-100/50'}`}
-                        title="Project Management"
-                        aria-label="Open Project Menu"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" className="transition-colors">
-                          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
-                        </svg>
-                        <span className="text-xs font-medium">Projects</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
-                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
+                  <div className="flex-1 relative">
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      placeholder=""
+                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-20' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                      ref={bottomInputRef}
+                      style={{
+                        fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
+                      }}
+                      disabled={isGeneratingBatch}
+                    />
 
-                    {/* Bottom row: Send + Upload */}
+                    {/* Upload button inside text box (mobile only) */}
+                    {isMobile && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <label className={`group cursor-pointer rounded-lg p-2 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                            <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          <input
+                            type="file"
+                            accept="image/*,video/*,application/pdf"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+
+                              // Process image files for better AI compatibility
+                              if (f.type.startsWith('image/')) {
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                const img = new Image();
+
+                                img.onload = () => {
+                                  // Resize if too large (max 1024px on longest side for efficiency)
+                                  const maxSize = 1024;
+                                  let { width, height } = img;
+
+                                  if (width > maxSize || height > maxSize) {
+                                    if (width > height) {
+                                      height = (height * maxSize) / width;
+                                      width = maxSize;
+                                    } else {
+                                      width = (width * maxSize) / height;
+                                      height = maxSize;
+                                    }
+                                  }
+
+                                  canvas.width = width;
+                                  canvas.height = height;
+                                  ctx?.drawImage(img, 0, 0, width, height);
+
+                                  // Convert to JPEG for better compatibility and smaller size
+                                  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                                  setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
+                                };
+
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  img.src = String(reader.result || '');
+                                };
+                                reader.readAsDataURL(f);
+                              } else if (f.type === 'application/pdf') {
+                                // For PDF files, convert first page to image for vision processing
+                                const reader = new FileReader();
+                                reader.onload = async () => {
+                                  try {
+                                    // For now, store PDF as-is and we'll handle conversion in the API
+                                    // In the future, we can implement client-side PDF-to-image conversion
+                                    const dataUrl = String(reader.result || '');
+                                    setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                                  } catch (error) {
+                                    console.error('PDF processing error:', error);
+                                    // Fallback: just store the PDF
+                                    const dataUrl = String(reader.result || '');
+                                    setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                                  }
+                                };
+                                reader.readAsDataURL(f);
+                              } else {
+                                // For other files, use direct FileReader
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  const dataUrl = String(reader.result || '');
+                                  setAttached({ name: f.name, type: f.type, dataUrl });
+                                };
+                                reader.readAsDataURL(f);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Send button in right corner (mobile only) */}
+                  {isMobile && (
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
-                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
-                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
+                      className={`group relative flex-shrink-0 ${isMobile ? 'h-12 w-12' : 'h-8 w-8'} cursor-pointer rounded-xl flex items-center justify-center transition-all hover:scale-110 ${
+                        darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-white'
+                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''} shadow-lg`}
                       title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                       aria-label="Send"
                     >
                       {/* Clean Send Arrow SVG Icon */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "20" : "16"} height={isMobile ? "20" : "16"} fill="none" className="transition-all">
                         <path
                           d="M22 2L11 13"
                           stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
@@ -4179,7 +4244,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         />
                       </svg>
                     </button>
+                  )}
+                </div>
 
+                {/* Desktop buttons (unchanged) */}
+                {!isMobile && (
+                  <div className="flex gap-2 items-end">
                     {/* Upload button */}
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
@@ -4258,102 +4328,156 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
 
-                    {/* Project dropdown menu (moved below) */}
-                    {projectDropdownOpen && (
-                      <div className={`absolute bottom-full left-0 mb-2 w-64 rounded-lg border shadow-lg z-50 ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
-                        {/* Save Current Project */}
-                        <button
-                          onClick={async () => {
-                            if (currentProjectId) {
-                              await updateExistingProject();
-                            } else {
-                              const title = prompt('Enter project name:') || 'Untitled Project';
-                              await saveCurrentProject(title);
-                            }
-                            setProjectDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-t-lg transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
-                            <polyline points="17,8 12,3 7,8" stroke="currentColor" strokeWidth="2"/>
-                            <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2"/>
-                          </svg>
-                          <div className="text-left">
-                            <div className="font-medium">
-                              {currentProjectId ? 'Save Changes' : 'Save as New Project'}
-                            </div>
-                            <div className="text-xs opacity-70">
-                              {currentProjectId ? 'Update existing project' : 'Create new project'}
-                            </div>
-                          </div>
-                        </button>
+                    {/* Send button */}
+                    <button
+                      onClick={handleSend}
+                      disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
+                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
+                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
+                      aria-label="Send"
+                    >
+                      {/* Clean Send Arrow SVG Icon */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
+                        <path
+                          d="M22 2L11 13"
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
+                        <path
+                          d="M22 2L15 22L11 13L2 9L22 2Z"
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-colors"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                )}
 
-                        <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+                {/* Mobile project button (separate from input area) */}
+                {isMobile && (
+                  <div className="flex justify-center mt-3">
+                    <div className="relative">
+                      <button
+                        onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                        className={`${isMobile ? 'h-9 w-36' : 'h-7 w-32'} rounded-xl transition-all flex items-center justify-center gap-2 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-md`}
+                        title="Project Management"
+                        aria-label="Open Project Menu"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                          <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                        <span className="text-sm font-medium">Projects</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
+                          <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
 
-                        {/* Current Project Info */}
-                        {currentProjectId && currentProjectTitle && (
-                          <>
-                            <div className={`px-4 py-2 text-xs font-medium ${darkMode ? 'text-neutral-400 bg-neutral-800/50' : 'text-gray-500 bg-gray-50'}`}>
-                              Current: {currentProjectTitle}
+                      {/* Project dropdown menu */}
+                      {projectDropdownOpen && (
+                        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 rounded-xl border shadow-xl z-50 ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+                          {/* Save Current Project */}
+                          <button
+                            onClick={async () => {
+                              if (currentProjectId) {
+                                await updateExistingProject();
+                              } else {
+                                const title = prompt('Enter project name:') || 'Untitled Project';
+                                await saveCurrentProject(title);
+                              }
+                              setProjectDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-t-xl transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
+                              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor" strokeWidth="2"/>
+                              <polyline points="17,8 12,3 7,8" stroke="currentColor" strokeWidth="2"/>
+                              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2"/>
+                            </svg>
+                            <div className="text-left">
+                              <div className="font-medium">
+                                {currentProjectId ? 'Save Changes' : 'Save as New Project'}
+                              </div>
+                              <div className="text-xs opacity-70">
+                                {currentProjectId ? 'Update existing project' : 'Create new project'}
+                              </div>
                             </div>
-                            <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
-                          </>
-                        )}
+                          </button>
 
-                        {/* Recent Projects */}
-                        <div className="max-h-48 overflow-y-auto">
-                          {projectsLoading ? (
-                            <div className="px-4 py-3 text-sm text-center opacity-70">Loading projects...</div>
-                          ) : projects.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-center opacity-70">No saved projects</div>
-                          ) : (
-                            projects.slice(0, 5).map((project) => (
-                              <button
-                                key={project.id}
-                                onClick={() => switchToProject(project.id, project.title)}
-                                className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none">
-                                  <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
-                                  <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
-                                </svg>
-                                <div className="text-left flex-1 min-w-0">
-                                  <div className="font-medium truncate">{project.title || 'Untitled'}</div>
-                                  <div className="text-xs opacity-70">
-                                    {formatRelativeTime(project.updated_at || project.created_at)}
+                          <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+
+                          {/* Current Project Info */}
+                          {currentProjectId && currentProjectTitle && (
+                            <>
+                              <div className={`px-4 py-2 text-xs font-medium ${darkMode ? 'text-neutral-400 bg-neutral-800/50' : 'text-gray-500 bg-gray-50'}`}>
+                                Current: {currentProjectTitle}
+                              </div>
+                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+                            </>
+                          )}
+
+                          {/* Recent Projects */}
+                          <div className="max-h-48 overflow-y-auto">
+                            {projectsLoading ? (
+                              <div className="px-4 py-3 text-sm text-center opacity-70">Loading projects...</div>
+                            ) : projects.length === 0 ? (
+                              <div className="px-4 py-3 text-sm text-center opacity-70">No saved projects</div>
+                            ) : (
+                              projects.slice(0, 5).map((project) => (
+                                <button
+                                  key={project.id}
+                                  onClick={() => switchToProject(project.id, project.title)}
+                                  className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none">
+                                    <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
+                                    <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
+                                  </svg>
+                                  <div className="text-left flex-1 min-w-0">
+                                    <div className="font-medium truncate">{project.title || 'Untitled'}</div>
+                                    <div className="text-xs opacity-70">
+                                      {formatRelativeTime(project.updated_at || project.created_at)}
+                                    </div>
                                   </div>
-                                </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+
+                          {/* View All Projects */}
+                          {projects.length > 0 && (
+                            <>
+                              <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
+                              <button
+                                onClick={() => {
+                                  setProjectDropdownOpen(false);
+                                  setActiveTab('dashboard');
+                                  setDashProjectsOpen(true);
+                                }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-b-xl transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
+                                  <path d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" strokeWidth="2"/>
+                                  <path d="M9 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H9V5z" stroke="currentColor" strokeWidth="2"/>
+                                  <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                                <span>View All Projects</span>
                               </button>
-                            ))
+                            </>
                           )}
                         </div>
-
-                        {/* View All Projects */}
-                        {projects.length > 0 && (
-                          <>
-                            <div className={`border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`} />
-                            <button
-                              onClick={() => {
-                                setProjectDropdownOpen(false);
-                                setActiveTab('dashboard');
-                                setDashProjectsOpen(true);
-                              }}
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-b-lg transition-colors ${darkMode ? 'hover:bg-neutral-800 text-neutral-100' : 'hover:bg-gray-50 text-gray-900'}`}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none">
-                                <path d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" strokeWidth="2"/>
-                                <path d="M9 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H9V5z" stroke="currentColor" strokeWidth="2"/>
-                                <line x1="9" y1="12" x2="15" y2="12" stroke="currentColor" strokeWidth="2"/>
-                              </svg>
-                              <span>View All Projects</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 {attached ? (
                   <div className={`${isMobile ? 'mx-3 mb-2' : 'mt-2'} flex items-center gap-2 ${isMobile ? '' : ''}`}>
                     <div className={`flex items-center gap-2 rounded-lg border ${isMobile ? 'p-2 flex-1' : 'p-3 w-full'} ${darkMode ? 'border-neutral-700 bg-neutral-800/50' : 'border-gray-200 bg-gray-50'}`}>
