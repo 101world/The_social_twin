@@ -679,8 +679,43 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       return '';
     }
   }
+  // Library Modal state and functions
   const [showLibraryModal, setShowLibraryModal] = useState<boolean>(false);
-  const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [libraryItems, setLibraryItems] = useState<any[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState<boolean>(false);
+
+  // Function to load user's library items
+  const loadUserLibrary = async () => {
+    if (!userId) return;
+    
+    setLibraryLoading(true);
+    try {
+      const r = await fetch(`/api/social-twin/history?limit=48`, { 
+        headers: { 'X-User-Id': userId || '' } 
+      });
+      if (!r.ok) {
+        console.error('Failed to load library:', r.status);
+        return;
+      }
+      const j = await r.json().catch(() => ({ items: [] }));
+      const items = Array.isArray(j.items) ? j.items : [];
+      setLibraryItems(items);
+      // Also update binItems for consistency
+      setBinItems(items);
+      setBinCursor(j.nextCursor || null);
+    } catch (error) {
+      console.error('Error loading user library:', error);
+    } finally {
+      setLibraryLoading(false);
+    }
+  };
+
+  // Load library when modal opens
+  useEffect(() => {
+    if (showLibraryModal && userId) {
+      loadUserLibrary();
+    }
+  }, [showLibraryModal, userId]);
   const [composerShown, setComposerShown] = useState<boolean>(false);
   
   // Linking preview state for canvas connections
@@ -7438,7 +7473,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
               <div className="flex items-center gap-4">
                 <div className="text-sm text-neutral-400">
-                  {binItems.length} generations
+                  {libraryItems.length} generations
                 </div>
                 <button
                   onClick={() => setShowLibraryModal(false)}
@@ -7453,9 +7488,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {binItems.length > 0 ? (
+              {libraryLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <span className="ml-2 text-white">Loading your library...</span>
+                </div>
+              ) : libraryItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
+                  {[...libraryItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
                     const url = it.display_url || it.result_url;
                     const isVideo = it.type === 'video';
 
