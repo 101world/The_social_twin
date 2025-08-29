@@ -681,6 +681,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }
   const [showLibraryModal, setShowLibraryModal] = useState<boolean>(false);
   const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [composerShown, setComposerShown] = useState<boolean>(false);
   
   // Linking preview state for canvas connections
   const [linking, setLinking] = useState<{ id: string; port: 'male'|'female' } | null>(null);
@@ -2955,7 +2956,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       rel="noopener noreferrer"
                                       className={`px-3 py-1 rounded text-sm border ${darkMode ? 'border-neutral-600 hover:bg-neutral-800 text-green-400' : 'border-gray-400 hover:bg-gray-100 text-green-600'} transition-colors`}
                                     >
-                                      � Open in New Tab
+                                      Open in New Tab
                                     </a>
                                   </div>
                                 </div>
