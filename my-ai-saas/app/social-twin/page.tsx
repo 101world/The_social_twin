@@ -3049,9 +3049,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               />
 
   {/* Composer container - removed dark grey background/border, transparent */}
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 p-1' : 'absolute bottom-0 left-0 right-0 p-1'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-1 pb-1' : 'absolute bottom-0 left-0 right-0 p-1'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
           style={{ 
-            bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 8px)' : '0px'
+            bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 8px)' : '0px',
+            paddingTop: isMobile ? '1px' : undefined
           }}>
                 
                 {/* Character input row (only when needed) - same for mobile and desktop */}
