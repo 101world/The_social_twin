@@ -865,6 +865,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLDivElement | null>(null);
+  const bottomInputRef = useRef<HTMLTextAreaElement | null>(null);
   async function saveCurrentProject(title?: string) {
     try {
       // Validation: Make sure there's something to save
@@ -4017,8 +4018,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     disabled={isGeneratingBatch}
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-2">
-                    {/* Top row: Send + Upload */}
+                  <div className="grid grid-cols-2 gap-1.5 mt-3">
+                    {/* Top row: Send + Atom AI Toggle */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
@@ -4030,24 +4031,56 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     >
                       {/* Clean Send Arrow SVG Icon */}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
-                        <path 
-                          d="M22 2L11 13" 
-                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
-                          strokeWidth="2.5" 
-                          strokeLinecap="round" 
+                        <path
+                          d="M22 2L11 13"
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
                           strokeLinejoin="round"
                           className="transition-colors"
                         />
-                        <path 
-                          d="M22 2L15 22L11 13L2 9L22 2Z" 
-                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")} 
-                          strokeWidth="2.5" 
-                          strokeLinecap="round" 
+                        <path
+                          d="M22 2L15 22L11 13L2 9L22 2Z"
+                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
                           strokeLinejoin="round"
                           className="transition-colors"
                         />
                       </svg>
                     </button>
+
+                    {/* Atom AI Toggle button - moved to top row */}
+                    <button
+                      title="Toggle AI Controls"
+                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
+                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
+                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                      }`}
+                    >
+                      {/* Enhanced Atom SVG Icon - More Descriptive */}
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
+                        {/* Central nucleus with gradient effect */}
+                        <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} opacity="0.6" className="transition-colors"/>
+
+                        {/* Electron orbits - more visible and descriptive */}
+                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
+                        <ellipse cx="12" cy="12" rx="5.5" ry="5.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" transform="rotate(45 12 12)" className="transition-colors" opacity="0.8"/>
+
+                        {/* Electrons with enhanced visibility */}
+                        <circle cx="20" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+                        <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
+
+                        {/* Atomic symbol "A" hint in center */}
+                        <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
+                      </svg>
+                    </button>
+
+                    {/* Bottom row: Upload + Library */}
                     <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
                         <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -4059,18 +4092,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         onChange={async (e) => {
                           const f = e.target.files?.[0];
                           if (!f) return;
-                          
+
                           // Process image files for better AI compatibility
                           if (f.type.startsWith('image/')) {
                             const canvas = document.createElement('canvas');
                             const ctx = canvas.getContext('2d');
                             const img = new Image();
-                            
+
                             img.onload = () => {
                               // Resize if too large (max 1024px on longest side for efficiency)
                               const maxSize = 1024;
                               let { width, height } = img;
-                              
+
                               if (width > maxSize || height > maxSize) {
                                 if (width > height) {
                                   height = (height * maxSize) / width;
@@ -4080,16 +4113,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   height = maxSize;
                                 }
                               }
-                              
+
                               canvas.width = width;
                               canvas.height = height;
                               ctx?.drawImage(img, 0, 0, width, height);
-                              
+
                               // Convert to JPEG for better compatibility and smaller size
                               const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
                               setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
                             };
-                            
+
                             const reader = new FileReader();
                             reader.onload = () => {
                               img.src = String(reader.result || '');
@@ -4124,37 +4157,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }}
                       />
                     </label>
-                    
-                    {/* Bottom row: Atom AI Toggle + Library */}
-                    <button 
-                      title="Toggle AI Controls" 
-                      onClick={() => setModeRowExpanded(!modeRowExpanded)}
-                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all duration-300 flex items-center justify-center hover:scale-105 ${
-                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
-                      }`}
-                    >
-                      {/* Enhanced Atom SVG Icon - More Descriptive */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
-                        {/* Central nucleus with gradient effect */}
-                        <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} opacity="0.6" className="transition-colors"/>
-                        
-                        {/* Electron orbits - more visible and descriptive */}
-                        <ellipse cx="12" cy="12" rx="8" ry="3" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
-                        <ellipse cx="12" cy="12" rx="3" ry="8" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" className="transition-colors" opacity="0.8"/>
-                        <ellipse cx="12" cy="12" rx="5.5" ry="5.5" stroke={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} strokeWidth="1.5" fill="none" transform="rotate(45 12 12)" className="transition-colors" opacity="0.8"/>
-                        
-                        {/* Electrons with enhanced visibility */}
-                        <circle cx="20" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-                        
-                        {/* Atomic symbol "A" hint in center */}
-                        <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
-                      </svg>
-                    </button>
-                    
+
                     {/* Library button - moved to bottom row */}
                     <button
                       onClick={() => setShowLibraryModal(true)}
