@@ -2992,9 +2992,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   <img
                                   alt="generated"
                                   src={getDisplayUrl(m.imageUrl) || m.imageUrl}
-                                  className="max-h-80 w-full rounded-lg border"
+                                  className="max-h-80 w-full rounded-lg border cursor-pointer hover:opacity-95 transition-opacity"
                                   loading="lazy"
                                   draggable
+                                  onClick={() => {
+                                    setViewer({ open: true, src: m.imageUrl!, ref: m.sourceImageUrl!, gallery: m.images || [] });
+                                  }}
                                   onDragStart={(e)=>{
                                     try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: m.imageUrl, type: 'image' })); } catch {}
                                     e.dataTransfer.setData('text/uri-list', m.imageUrl!);
@@ -3145,10 +3148,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     <a key={i} href={u} target="_blank" rel="noreferrer">
                                       <img
                                         src={getDisplayUrl(u) || u}
-                                        className="h-20 w-auto rounded border object-cover"
+                                        className="h-20 w-auto rounded border object-cover cursor-pointer hover:opacity-90 transition-opacity"
                                         loading="lazy"
                                         alt="thumb"
                                         draggable
+                                        onClick={() => {
+                                          setViewer({ open: true, src: u, ref: null, gallery: (m as any).images || [] });
+                                        }}
                                         onDragStart={(e)=>{
                                           try { e.dataTransfer.setData('application/x-chat-item', JSON.stringify({ url: u, type: 'image' })); } catch {}
                                           e.dataTransfer.setData('text/uri-list', u);
