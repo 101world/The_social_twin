@@ -4,16 +4,20 @@ compatibility_date = "2024-08-20"
 
 # Environment variables for your RunPod URLs
 [env.production.vars]
-DEFAULT_IMAGE_URL = "https://64e5p2jm3e5r3k-3001.proxy.runpod.net/"
+DEFAULT_IMAGE_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
+RUNPOD_IMAGE_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
+RUNPOD_IMAGE_MODIFY_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
 # Add your other RunPod URLs here
 # RUNPOD_TEXT_URL = "your-text-runpod-url"
 # RUNPOD_VIDEO_URL = "your-video-runpod-url"
-# RUNPOD_IMAGE_MODIFY_URL = "your-modify-runpod-url"
 
 [env.staging.vars]
-DEFAULT_IMAGE_URL = "https://64e5p2jm3e5r3k-3001.proxy.runpod.net/"
+DEFAULT_IMAGE_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
+RUNPOD_IMAGE_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
+RUNPOD_IMAGE_MODIFY_URL = "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/"
 
-# Routes for your custom domain
-[[route]]
-pattern = "runpod.yourdomain.com/*"
-zone_name = "yourdomain.com"
+# Routes for your workers.dev domain (default)
+# You can add a custom domain later in the Cloudflare dashboard
+# [[route]]
+# pattern = "runpod.yourdomain.com/*"
+# zone_name = "yourdomain.com"

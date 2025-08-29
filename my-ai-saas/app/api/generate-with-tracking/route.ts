@@ -1,8 +1,9 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSupabaseClient, createSupabaseAdminClient } from '@/lib/supabase';
+import { createSupabaseClient, createSupabaseAdminClient, getRunpodConfig, pickRunpodUrlFromConfig } from '@/lib/supabase';
 import { uploadUrlToR2 } from '@/lib/r2-upload';
+import { runSocialTwinGeneration } from '@/lib/runpod-socialtwin';
 
 const CREDIT_COSTS = {
   text: 1,
