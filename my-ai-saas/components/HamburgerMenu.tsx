@@ -135,7 +135,7 @@ const HamburgerMenu = () => {
   return (
     <>
       {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-[99999] bg-gradient-to-r from-gray-900 via-gray-900 to-gray-900 backdrop-blur-xl border-b border-gray-700/30">
+      <div className="fixed top-0 left-0 right-0 z-[99999] border-b border-gray-700/30">
         <div className="flex items-center justify-between px-4 py-2">
           {/* Left Side - Hamburger Menu */}
           <div className="flex items-center">
