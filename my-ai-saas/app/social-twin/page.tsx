@@ -4280,7 +4280,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               (url ? (
                                 (!lowDataMode || mediaAllowed.has(it.id)) ? (
                                   <video 
-                                    src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                    src={getDisplayUrl(url)} 
                                     className="h-full w-full object-cover" 
                                     preload="metadata" 
                                     muted
@@ -4307,7 +4307,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             ) : (
                               url ? (
                                 <img 
-                                  src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)} 
+                                  src={getDisplayUrl(url)} 
                                   className="h-full w-full object-cover" 
                                   loading="lazy" 
                                   alt="Generated content"
@@ -5563,9 +5563,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className="relative mb-4">
                 {viewerItem.type === 'video' ? (
                   <video
-                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(getLocationOrigin())) 
-                      ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
-                      : (viewerItem.display_url || viewerItem.result_url)}
+                    src={getDisplayUrl(viewerItem.display_url || viewerItem.result_url)}
                     className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
                     controls
                     autoPlay
@@ -5573,9 +5571,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                 ) : (
                   <img
-                    src={(typeof viewerItem.display_url === 'string' && viewerItem.display_url.startsWith('http') && !viewerItem.display_url.startsWith(getLocationOrigin())) 
-                      ? `/api/social-twin/proxy?url=${encodeURIComponent(viewerItem.display_url)}` 
-                      : (viewerItem.display_url || viewerItem.result_url)}
+                    src={getDisplayUrl(viewerItem.display_url || viewerItem.result_url)}
         className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
                     alt="Generated content"
                   />
@@ -5837,7 +5833,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {quickCreateOpen ? (
         <div className="fixed inset-0 z-[10000]" onClick={()=> setQuickCreateOpen(false)}>
           <div
-            className={`absolute w-[520px] rounded-2xl border p-4 shadow-2xl max-h-[80vh] overflow-y-auto bg-white border-neutral-200 text-black`}
+            className={`absolute w-[520px] rounded-2xl border p-3 shadow-2xl max-h-[80vh] overflow-y-auto bg-white border-neutral-200 text-black`}
             style={{ left: quickCreatePos.x, top: quickCreatePos.y }}
             onClick={(e)=> e.stopPropagation()}
           >
@@ -5885,7 +5881,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             </div>
 
             {/* Mode Selection (enhanced with fade/transition behavior) */}
-            <div className="mb-3">
+            <div className="mb-2">
               <div className="text-xs font-medium mb-1 opacity-80">Mode</div>
               <div className="relative">
                 {/* Mode Selection Buttons */}
@@ -6022,7 +6018,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               const templateNames = Object.keys(templates);
               if (templateNames.length === 0) return null;
               return (
-                <div className="mb-3 space-y-1">
+                <div className="mb-2 space-y-1">
                   <label className="text-xs font-semibold">Content templates</label>
                   <div className="flex gap-2 items-center">
                     <select
@@ -6064,7 +6060,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             })()}
 
             {/* Basic Controls */}
-            <div className="mb-3 grid gap-2" style={{ gridTemplateColumns: (mode === 'image' || mode === 'image-modify') ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+            <div className="mb-2 grid gap-2" style={{ gridTemplateColumns: (mode === 'image' || mode === 'image-modify') ? '1fr 1fr 1fr' : '1fr 1fr' }}>
               {(mode === 'image' || mode === 'image-modify') ? (
                 <>
                   <div>
@@ -6189,7 +6185,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Attachment Preview */}
             {attached && (
-              <div className="mb-3 rounded border p-2 bg-gray-50">
+              <div className="mb-2 rounded border p-2 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray-700">{attached.name}</span>
                   <button onClick={() => setAttached(null)} className="text-xs text-red-600 hover:underline">Remove</button>
@@ -6201,7 +6197,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
             {/* Quick presets (dropdown by mode) - hidden for image (uses style presets). Text mode presets are category-driven. */}
             {mode !== 'image' && (
-            <div className="mb-3 space-y-1">
+            <div className="mb-2 space-y-1">
               <label className="text-xs font-semibold">Quick presets</label>
               <select
                 value={quickPresetSel}
@@ -6301,12 +6297,12 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <textarea 
               value={input} 
               onChange={(e)=> setInput(e.target.value)} 
-              className="mb-3 h-32 w-full resize-none rounded border p-3 text-sm" 
+              className="mb-2 h-24 w-full resize-none rounded border p-2 text-sm" 
             />
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1">
                 {/* File Attachment */}
                 <label className="cursor-pointer rounded-md px-3 py-1 text-sm border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center gap-2" title="Attach file">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -6385,7 +6381,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <button className="rounded border px-3 py-1 text-xs hover:bg-neutral-50" onClick={()=> setQuickCreateOpen(false)}>Cancel</button>
                 
                 {/* Template Save */}
@@ -6439,7 +6435,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Advanced Settings Toggle (now last) */}
             <button
               onClick={() => setShowQuickAdvanced(!showQuickAdvanced)}
-              className={`mt-3 mb-2 flex w-full items-center justify-between rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-900' : 'hover:bg-gray-50'}`}
+              className={`mt-2 mb-2 flex w-full items-center justify-between rounded border px-2 py-1 text-xs ${darkMode ? 'border-neutral-700 hover:bg-neutral-900' : 'hover:bg-gray-50'}`}
             >
               <span>Advanced settings</span>
               <span>{showQuickAdvanced ? '▼' : '▶'}</span>
@@ -7628,7 +7624,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             url ? (
                               (!lowDataMode || mediaAllowed.has(it.id)) ? (
                                 <video
-                                  src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)}
+                                  src={getDisplayUrl(url)}
                                   className="h-full w-full object-cover"
                                   preload="metadata"
                                   muted
@@ -7661,7 +7657,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           ) : (
                             url ? (
                               <img
-                                src={(typeof url==='string' && url.startsWith('http') && !url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(url)}`) : (url as string)}
+                                src={getDisplayUrl(url)}
                                 className="h-full w-full object-cover"
                                 loading="lazy"
                                 alt="Generated content"
@@ -7907,7 +7903,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
         <div className="h-full w-full overflow-hidden relative group">
           <video
             ref={videoRef}
-            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof window!=='undefined' && !item.url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
+            src={getDisplayUrl(item.url)}
             className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02] cursor-pointer"
             preload="metadata"
             // No native controls to avoid overlay interference; click-drag moves node
@@ -7996,7 +7992,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
       ) : item.type==='image' ? (
         <div className="h-full w-full overflow-hidden relative">
           <img
-            src={(typeof item.url==='string' && item.url.startsWith('http') && typeof window!=='undefined' && !item.url.startsWith(getLocationOrigin())) ? (`/api/social-twin/proxy?url=${encodeURIComponent(item.url)}`) : (item.url as string)}
+            src={getDisplayUrl(item.url)}
             className="h-full w-full origin-center object-contain transition-transform duration-200 group-hover:scale-[1.02]"
             loading="lazy"
             alt="canvas"
