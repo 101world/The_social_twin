@@ -4142,15 +4142,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
                   <div className="grid grid-cols-2 gap-1.5 mt-3" style={{ marginTop: '22px' }}>
-                    {/* Top row: Send + Atom AI Toggle */}
+                    {/* Top row: Send + AI Toggle */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
                       className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                         darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
                       } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
-                      title={canAffordGeneration ? `Send to Atom AI` : `Need ${generationCost} credits`}
-                      aria-label="Send to Atom AI"
+                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
+                      aria-label="Send"
                     >
                       {/* Clean Send Arrow SVG Icon */}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
@@ -4173,7 +4173,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </svg>
                     </button>
 
-                    {/* Atom AI Toggle button - moved to top row */}
+                    {/* AI Toggle button - moved to top row */}
                     <button
                       title="Toggle AI Controls"
                       onClick={() => setModeRowExpanded(!modeRowExpanded)}
@@ -4181,7 +4181,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
                       }`}
                     >
-                      {/* Enhanced Atom SVG Icon - More Descriptive */}
+                      {/* Enhanced AI SVG Icon - More Descriptive */}
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
                         {/* Central nucleus with gradient effect */}
                         <circle cx="12" cy="12" r="2.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
@@ -4197,9 +4197,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <circle cx="4" cy="12" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
                         <circle cx="12" cy="4" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
                         <circle cx="12" cy="20" r="1.5" fill={modeRowExpanded ? 'rgb(6,182,212)' : 'currentColor'} className="transition-colors"/>
-
-                        {/* Atomic symbol "A" hint in center */}
-                        <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
                       </svg>
                     </button>
 
