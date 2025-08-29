@@ -4115,7 +4115,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </div>
 
                 {/* Prompt input area with underglow effect */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'p-1.5' : 'p-1.5'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
+                <div className={`flex gap-2 items-end ${isMobile ? 'p-px' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
