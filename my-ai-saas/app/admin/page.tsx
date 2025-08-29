@@ -19,7 +19,9 @@ interface RunPodConfig {
 }
 
 interface CloudflareConfig {
-  worker_url: string;
+  account_id: string;
+  r2_access_key_id: string;
+  r2_secret_access_key: string;
   r2_bucket: string;
   r2_public_url: string;
 }
@@ -79,7 +81,9 @@ interface ScalingData {
 export default function AdminPage() {
   const [configs, setConfigs] = useState<RunPodConfig[]>([]);
   const [cloudflareConfig, setCloudflareConfig] = useState<CloudflareConfig>({
-    worker_url: '',
+    account_id: '',
+    r2_access_key_id: '',
+    r2_secret_access_key: '',
     r2_bucket: '',
     r2_public_url: ''
   });
@@ -586,12 +590,31 @@ export default function AdminPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="worker-url">Worker URL</Label>
+                    <Label htmlFor="account-id">Cloudflare Account ID</Label>
                     <Input
-                      id="worker-url"
-                      value={cloudflareConfig.worker_url}
-                      onChange={(e) => setCloudflareConfig(prev => ({ ...prev, worker_url: e.target.value }))}
-                      placeholder="https://your-worker.workers.dev"
+                      id="account-id"
+                      value={cloudflareConfig.account_id}
+                      onChange={(e) => setCloudflareConfig(prev => ({ ...prev, account_id: e.target.value }))}
+                      placeholder="3ff138c0d92e8be71bc0b0ae8078bdf9"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="r2-access-key">R2 Access Key ID</Label>
+                    <Input
+                      id="r2-access-key"
+                      value={cloudflareConfig.r2_access_key_id}
+                      onChange={(e) => setCloudflareConfig(prev => ({ ...prev, r2_access_key_id: e.target.value }))}
+                      placeholder="95e50b675daf79a34ce0defbc8578200"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="r2-secret-key">R2 Secret Access Key</Label>
+                    <Input
+                      id="r2-secret-key"
+                      type="password"
+                      value={cloudflareConfig.r2_secret_access_key}
+                      onChange={(e) => setCloudflareConfig(prev => ({ ...prev, r2_secret_access_key: e.target.value }))}
+                      placeholder="c86abfbec5d3caa2e568981194459a34442d61aad15a0460a3fd43315feede98"
                     />
                   </div>
                   <div>
@@ -600,7 +623,7 @@ export default function AdminPage() {
                       id="r2-bucket"
                       value={cloudflareConfig.r2_bucket}
                       onChange={(e) => setCloudflareConfig(prev => ({ ...prev, r2_bucket: e.target.value }))}
-                      placeholder="your-bucket-name"
+                      placeholder="the-social-twin-storage"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -609,7 +632,7 @@ export default function AdminPage() {
                       id="r2-public-url"
                       value={cloudflareConfig.r2_public_url}
                       onChange={(e) => setCloudflareConfig(prev => ({ ...prev, r2_public_url: e.target.value }))}
-                      placeholder="https://your-account.r2.cloudflarestorage.com"
+                      placeholder="https://ced616f33f6492fd708a8e897b61b953.r2.cloudflarestorage.com"
                     />
                   </div>
                 </div>
@@ -651,15 +674,27 @@ export default function AdminPage() {
                     <h4 className="font-semibold mb-2">Cloudflare Status</h4>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span>Worker URL:</span>
-                        <span className={`text-sm ${cloudflareConfig.worker_url ? 'text-green-600' : 'text-red-600'}`}>
-                          {cloudflareConfig.worker_url ? '✅ Set' : '❌ Missing'}
+                        <span>Account ID:</span>
+                        <span className={`text-sm ${cloudflareConfig.account_id ? 'text-green-600' : 'text-red-600'}`}>
+                          {cloudflareConfig.account_id ? '✅ Set' : '❌ Missing'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>R2 Access Key:</span>
+                        <span className={`text-sm ${cloudflareConfig.r2_access_key_id ? 'text-green-600' : 'text-red-600'}`}>
+                          {cloudflareConfig.r2_access_key_id ? '✅ Set' : '❌ Missing'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>R2 Bucket:</span>
                         <span className={`text-sm ${cloudflareConfig.r2_bucket ? 'text-green-600' : 'text-red-600'}`}>
                           {cloudflareConfig.r2_bucket ? '✅ Set' : '❌ Missing'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>R2 Public URL:</span>
+                        <span className={`text-sm ${cloudflareConfig.r2_public_url ? 'text-green-600' : 'text-red-600'}`}>
+                          {cloudflareConfig.r2_public_url ? '✅ Set' : '❌ Missing'}
                         </span>
                       </div>
                     </div>

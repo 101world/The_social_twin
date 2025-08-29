@@ -19,9 +19,11 @@ export async function GET(req: NextRequest) {
 
     // Get Cloudflare configuration from environment variables or database
     const cloudflareConfig = {
-      worker_url: process.env.CLOUDFLARE_WORKER_URL || '',
-      r2_bucket: process.env.CLOUDFLARE_R2_BUCKET || '',
-      r2_public_url: process.env.CLOUDFLARE_R2_PUBLIC_URL || ''
+      account_id: process.env.CLOUDFLARE_ACCOUNT_ID || '',
+      r2_access_key_id: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+      r2_secret_access_key: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+      r2_bucket: process.env.R2_BUCKET_NAME || '',
+      r2_public_url: process.env.R2_PUBLIC_URL || ''
     };
 
     return NextResponse.json(cloudflareConfig);
@@ -34,33 +36,27 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { code, ...configData } = body;
+    const { code } = body;
 
     if (!code || code !== ADMIN_CODE) {
       return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
     }
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
 
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
-    const { worker_url, r2_bucket, r2_public_url } = configData;
-
-    // Here you could save to database or update environment variables
-    // For now, we'll just return success since these are typically set via env vars
-    const updatedConfig = {
-      worker_url: worker_url || process.env.CLOUDFLARE_WORKER_URL || '',
-      r2_bucket: r2_bucket || process.env.CLOUDFLARE_R2_BUCKET || '',
-      r2_public_url: r2_public_url || process.env.CLOUDFLARE_R2_PUBLIC_URL || ''
+    // Return current configuration since these are set via environment variables
+    const currentConfig = {
+      account_id: process.env.CLOUDFLARE_ACCOUNT_ID || '',
+      r2_access_key_id: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+      r2_secret_access_key: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+      r2_bucket: process.env.R2_BUCKET_NAME || '',
+      r2_public_url: process.env.R2_PUBLIC_URL || ''
     };
 
     return NextResponse.json({
-      message: 'Cloudflare configuration updated successfully',
-      config: updatedConfig
+      message: 'Cloudflare configuration retrieved successfully',
+      config: currentConfig
     });
   } catch (error) {
-    console.error('Error updating Cloudflare config:', error);
+    console.error('Error fetching Cloudflare config:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
