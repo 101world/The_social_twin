@@ -3983,7 +3983,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
                   <div className="grid grid-cols-3 gap-1.5 mt-2">
-                    {/* Top row: Send + Upload + Library */}
+                    {/* Top row: Send + Upload */}
                     <button
                       onClick={handleSend}
                       disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
@@ -4090,21 +4090,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       />
                     </label>
                     
-                    {/* Library button */}
-                    <button
-                      onClick={() => setShowLibraryModal(true)}
-                      className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
-                      title="View Library"
-                      aria-label="Open Library"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
-                        <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor"/>
-                        <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor"/>
-                      </svg>
-                    </button>
-                    
-                    {/* Bottom row: Atom AI Toggle + Generated Bin Button */}
+                    {/* Bottom row: Atom AI Toggle + Library */}
                     <button 
                       title="Toggle AI Controls" 
                       onClick={() => setModeRowExpanded(!modeRowExpanded)}
@@ -4133,17 +4119,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <text x="12" y="12.5" textAnchor="middle" fontSize="3" fill={modeRowExpanded ? 'white' : 'currentColor'} className="transition-colors" opacity="0.7">A</text>
                       </svg>
                     </button>
-                    {/* Generated Bin button */}
+                    
+                    {/* Library button - moved to bottom row */}
                     <button
-                      onClick={() => setShowBin(true)}
+                      onClick={() => setShowLibraryModal(true)}
                       className={`${isMobile ? 'h-8 w-8' : 'h-8 w-8'} rounded-lg transition-all flex items-center justify-center ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105' : 'hover:bg-gray-100 hover:scale-105'}`}
-                      title="View Generated Items"
-                      aria-label="Open Generated Bin"
+                      title="View Library"
+                      aria-label="Open Library"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor"/>
-                        <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="2" stroke="currentColor"/>
-                        <polyline points="21,15 16,10 5,21" strokeWidth="2" stroke="currentColor"/>
+                        <path d="M7 7h10M7 12h8M7 17h6" strokeWidth="2" stroke="currentColor"/>
+                        <circle cx="16" cy="16" r="3" strokeWidth="2" stroke="currentColor"/>
                       </svg>
                     </button>
                   </div>
