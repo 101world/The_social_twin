@@ -777,7 +777,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       const items = Array.isArray(j.items) ? j.items : [];
       
       // Enhanced filtering and processing for R2/Cloudflare storage
-      const processedItems = items.map(item => {
+      const processedItems = items.map((item: any) => {
         // Ensure we have proper URLs for display
         const displayUrl = item.display_url || item.result_url || item.media_url;
         const thumbnailUrl = item.thumbnail_url || displayUrl;
@@ -4356,7 +4356,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     controls={hoverVideoIds.has(it.id)}
                                     onClick={(e) => e.stopPropagation()}
                                     onError={(e) => {
-                                      console.error('Generated tab video load error:', e, 'URL:', finalUrl);
+                                      console.error('Generated tab video load error:', e, 'URL:', getDisplayUrl(url));
                                     }}
                                   />
                                 ) : (
