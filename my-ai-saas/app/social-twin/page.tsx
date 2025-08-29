@@ -4035,7 +4035,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     disabled={isGeneratingBatch}
                   />
                     {/* Action buttons in 2x2 grid for more text box space */}
-                  <div className="grid grid-cols-2 gap-1.5 mt-3">
+                  <div className="grid grid-cols-2 gap-1.5 mt-3" style={{ marginTop: '22px' }}>
                     {/* Top row: Send + Atom AI Toggle */}
                     <button
                       onClick={handleSend}
