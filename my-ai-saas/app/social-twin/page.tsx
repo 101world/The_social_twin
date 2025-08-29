@@ -15,6 +15,22 @@ function getLocationOrigin(): string {
   return '';
 }
 
+// Utility function to handle URL display logic for media content
+function getDisplayUrl(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  try {
+    // R2 URLs are already public and don't need proxying
+    if (raw.includes('r2.cloudflarestorage.com') || raw.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '')) {
+      return raw;
+    }
+    // Only proxy external URLs that are not from our domain
+    if (typeof window !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(getLocationOrigin())) {
+      return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
+    }
+  } catch {}
+  return raw;
+}
+
 // Small icon-only button used across Creator Studio for a minimal aesthetic
 function IconButton({ children, title, onClick, className }: { children: React.ReactNode; title?: string; onClick?: () => void; className?: string }) {
   return (
@@ -1392,21 +1408,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       return () => clearTimeout(timer);
     }
   }, [userId, messages.length, canvasItems.length, searchParams]);
-
-  function getDisplayUrl(raw?: string | null): string | undefined {
-    if (!raw) return undefined;
-    try {
-      // R2 URLs are already public and don't need proxying
-      if (raw.includes('r2.cloudflarestorage.com') || raw.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '')) {
-        return raw;
-      }
-      // Only proxy external URLs that are not from our domain
-      if (typeof window !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(getLocationOrigin())) {
-        return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
-      }
-    } catch {}
-    return raw;
-  }
 
   function getRawUrl(display?: string | null): string | undefined {
     try {
