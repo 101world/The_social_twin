@@ -26,7 +26,7 @@ function getDisplayUrl(raw?: string | null): string | undefined {
   
   try {
     // R2 URLs are already public and don't need proxying
-    if (raw.includes('r2.cloudflarestorage.com') || raw.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '')) {
+    if (raw.includes('r2.cloudflarestorage.com') || raw.includes('https://ced616f33f6492fd708a8e897b61b953.r2.cloudflarestorage.com')) {
       return raw;
     }
     
@@ -2284,7 +2284,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       // Replace placeholder with final
       setMessages((prev)=> prev.map(m=> m.id===tempId ? ({
         ...m,
-        content: aiText || (aiImage ? 'Generated image' : (aiVideo || firstVideo || remappedFromImages) ? 'Generated video' : 'Done.'),
+        content: trimmed || (aiImage ? 'Generated image' : (aiVideo || firstVideo || remappedFromImages) ? 'Generated video' : 'Done.'),
         imageUrl: aiImage,
         videoUrl: aiVideo || firstVideo || remappedFromImages,
         images: (batchImages && batchImages.length ? batchImages : undefined),
@@ -3066,15 +3066,16 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   <button
                                     onClick={() => {
                                       try {
+                                        const displayUrl = getDisplayUrl(m.imageUrl);
                                         const link = document.createElement('a');
-                                        link.href = m.imageUrl!;
+                                        link.href = displayUrl || m.imageUrl!;
                                         link.download = `generated-image-${Date.now()}.png`;
                                         link.target = '_blank';
                                         link.rel = 'noopener noreferrer';
                                         
                                         // For cross-origin images, try to fetch and download as blob
-                                        if (m.imageUrl!.startsWith('http') && !m.imageUrl!.includes(window.location.hostname)) {
-                                          fetch(m.imageUrl!, { mode: 'cors' })
+                                        if ((displayUrl || m.imageUrl!).startsWith('http') && !(displayUrl || m.imageUrl!).includes(window.location.hostname)) {
+                                          fetch(displayUrl || m.imageUrl!, { mode: 'cors' })
                                             .then(response => response.blob())
                                             .then(blob => {
                                               const url = URL.createObjectURL(blob);
@@ -3085,7 +3086,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                               URL.revokeObjectURL(url);
                                             })
                                             .catch(() => {
-                                              // Fallback to direct download
+                                              // Fallback: try direct download without blob
+                                              link.download = `generated-image-${Date.now()}.png`;
+                                              link.target = '';
+                                              link.rel = '';
                                               document.body.appendChild(link);
                                               link.click();
                                               document.body.removeChild(link);
@@ -3097,8 +3101,15 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         }
                                       } catch (error) {
                                         console.error('Download failed:', error);
-                                        // Fallback: open in new tab
-                                        window.open(m.imageUrl!, '_blank');
+                                        // Final fallback: try direct download
+                                        const link = document.createElement('a');
+                                        link.href = getDisplayUrl(m.imageUrl) || m.imageUrl!;
+                                        link.download = `generated-image-${Date.now()}.png`;
+                                        link.target = '';
+                                        link.rel = '';
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        document.body.removeChild(link);
                                       }
                                     }}
                                     className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
@@ -3139,8 +3150,35 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         <button
                                           onClick={() => {
                                             const text = 'Check out this amazing image!';
-                                            const url = m.imageUrl || '';
-                                            window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+                                            const url = getDisplayUrl(m.imageUrl) || m.imageUrl || '';
+                                            
+                                            // Try WhatsApp app deep link first, fallback to web
+                                            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                                            let whatsappUrl;
+                                            
+                                            if (isMobile) {
+                                              // Try WhatsApp app deep link
+                                              if (/Android/i.test(navigator.userAgent)) {
+                                                // Android WhatsApp deep link
+                                                whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text + ' ' + url)}`;
+                                              } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                                                // iOS WhatsApp deep link
+                                                whatsappUrl = `whatsapp://send?text=${encodeURIComponent(text + ' ' + url)}`;
+                                              } else {
+                                                // Fallback to web version
+                                                whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+                                              }
+                                              
+                                              // Fallback to web if app isn't available
+                                              setTimeout(() => {
+                                                window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+                                              }, 1000);
+                                            } else {
+                                              // Desktop: use web version
+                                              whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+                                            }
+                                            
+                                            window.open(whatsappUrl, '_blank');
                                             document.getElementById(`share-menu-${m.id}`)?.classList.add('hidden');
                                           }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-800 text-white rounded text-left"
@@ -3153,8 +3191,34 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         <button
                                           onClick={() => {
                                             const text = 'Check out this amazing image!';
-                                            const url = m.imageUrl || '';
-                                            window.open(`https://www.instagram.com/create/story/?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+                                            const url = getDisplayUrl(m.imageUrl) || m.imageUrl || '';
+                                            
+                                            // Try Instagram app deep link first, fallback to web
+                                            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                                            let instagramUrl;
+                                            
+                                            if (isMobile) {
+                                              if (/Android/i.test(navigator.userAgent)) {
+                                                // Android Instagram deep link for sharing
+                                                instagramUrl = `intent://share?text=${encodeURIComponent(text + ' ' + url)}#Intent;package=com.instagram.android;scheme=https;end`;
+                                              } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                                                // iOS Instagram deep link for sharing
+                                                instagramUrl = `instagram://share?text=${encodeURIComponent(text + ' ' + url)}`;
+                                              } else {
+                                                // Fallback to web version
+                                                instagramUrl = `https://www.instagram.com/create/story/?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+                                              }
+                                              
+                                              // Fallback to web if app isn't available
+                                              setTimeout(() => {
+                                                window.open(`https://www.instagram.com/create/story/?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+                                              }, 1000);
+                                            } else {
+                                              // Desktop: use web version
+                                              instagramUrl = `https://www.instagram.com/create/story/?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+                                            }
+                                            
+                                            window.open(instagramUrl, '_blank');
                                             document.getElementById(`share-menu-${m.id}`)?.classList.add('hidden');
                                           }}
                                           className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-800 text-white rounded text-left"
@@ -5803,7 +5867,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className="relative mb-4">
                 {viewerItem.type === 'video' ? (
                   <video
-                    src={getDisplayUrl(viewerItem.display_url || viewerItem.result_url)}
+                    src={viewerItem.display_url || viewerItem.result_url}
                     className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
                     controls
                     autoPlay
@@ -5811,8 +5875,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   />
                 ) : (
                   <img
-                    src={getDisplayUrl(viewerItem.display_url || viewerItem.result_url)}
-        className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
+                    src={viewerItem.display_url || viewerItem.result_url}
+                    className="max-w-[76vw] max-h-[68vh] rounded-xl border border-neutral-800 bg-neutral-950 object-contain shadow-[0_10px_40px_rgba(0,0,0,0.5)]"
                     alt="Generated content"
                   />
                 )}
@@ -7837,7 +7901,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {binItems.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {[...binItems].sort((a,b)=> new Date(b.created_at||b.createdAt||0).getTime() - new Date(a.created_at||a.createdAt||0).getTime()).map((it, index) => {
-                    // Try multiple URL sources in order of preference
+                    // Use display_url directly if available (already processed by history API), otherwise try other sources
                     const url = it.display_url || it.thumbnail_url || it.result_url || it.media_url;
                     const isVideo = it.type === 'video' || it.generation_type === 'video';
 
@@ -7857,7 +7921,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             url ? (
                               (!lowDataMode || mediaAllowed.has(it.id)) ? (
                                 <video
-                                  src={getDisplayUrl(url)}
+                                  src={url}
                                   className="h-full w-full object-cover"
                                   preload="metadata"
                                   muted
@@ -7890,7 +7954,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           ) : (
                             url ? (
                               <img
-                                src={getDisplayUrl(url)}
+                                src={url}
                                 className="h-full w-full object-cover"
                                 loading="lazy"
                                 alt="Generated content"
@@ -7898,7 +7962,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   // Successfully loaded, no action needed
                                 }}
                                 onError={(e) => {
-                                  console.warn('Library image failed to load:', url, 'Processed:', getDisplayUrl(url));
+                                  console.warn('Library image failed to load:', url);
                                   const status = it.status || 'completed';
                                   const statusEmoji = status === 'completed' ? '🎨' : status === 'pending' ? '⏳' : status === 'processing' ? '⚙️' : '❌';
                                   const statusText = status === 'completed' ? 'Generated' : status.charAt(0).toUpperCase() + status.slice(1);

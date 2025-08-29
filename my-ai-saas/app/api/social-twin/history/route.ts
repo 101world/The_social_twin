@@ -59,13 +59,26 @@ export async function GET(req: NextRequest) {
           const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
           if (!signed.error) display_url = signed.data.signedUrl;
         }
-        // Priority 2: generation_params.result_urls (transient runpod URLs or data: URIs)
+        // Priority 2: R2 URLs (Cloudflare R2 storage) - these are already public and permanent
+        if (!display_url && typeof it.result_url === 'string' && 
+            (it.result_url.includes('r2.cloudflarestorage.com') || 
+             it.result_url.includes('https://ced616f33f6492fd708a8e897b61b953.r2.cloudflarestorage.com'))) {
+          display_url = it.result_url;
+        }
+        // Priority 3: R2 thumbnail URLs
+        if (!display_url && typeof it.thumbnail_url === 'string' && 
+            (it.thumbnail_url.includes('r2.cloudflarestorage.com') || 
+             it.thumbnail_url.includes('https://ced616f33f6492fd708a8e897b61b953.r2.cloudflarestorage.com'))) {
+          display_url = it.thumbnail_url;
+        }
+        // Priority 4: generation_params.result_urls (transient runpod URLs or data: URIs)
         if (!display_url && it.generation_params && Array.isArray(it.generation_params.result_urls) && it.generation_params.result_urls.length) {
           const candidate = it.generation_params.result_urls[0];
           if (typeof candidate === 'string') display_url = candidate;
         }
-        // Priority 3: if result_url is a plain URL (not storage:), use it directly
-        if (!display_url && typeof it.result_url === 'string' && !it.result_url.startsWith('storage:')) {
+        // Priority 5: if result_url is a plain URL (not storage:, not R2), use it directly (fallback to RunPod)
+        if (!display_url && typeof it.result_url === 'string' && !it.result_url.startsWith('storage:') && 
+            !it.result_url.includes('r2.cloudflarestorage.com')) {
           display_url = it.result_url;
         }
       } catch (e) {
