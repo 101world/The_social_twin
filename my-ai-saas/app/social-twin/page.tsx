@@ -181,6 +181,30 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     } catch {}
   }, []);
 
+  // Initialize AI personality from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ai_personality');
+      if (saved && ['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(saved)) {
+        setAiPersonality(saved as any);
+      }
+    } catch {}
+  }, []);
+
+  // Listen for AI personality changes from HamburgerMenu
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ai_personality' && e.newValue) {
+        if (['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(e.newValue)) {
+          setAiPersonality(e.newValue as any);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Expose and persist Simple/Pro so Navbar can toggle it from outside
   useEffect(() => {
     (window as any).__getSimpleMode = () => simpleMode;
@@ -1319,6 +1343,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   function getDisplayUrl(raw?: string | null): string | undefined {
     if (!raw) return undefined;
     try {
+      // R2 URLs are already public and don't need proxying
+      if (raw.includes('r2.cloudflarestorage.com') || raw.includes(process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '')) {
+        return raw;
+      }
+      // Only proxy external URLs that are not from our domain
       if (typeof window !== 'undefined' && /^https?:\/\//i.test(raw) && !raw.startsWith(getLocationOrigin())) {
         return `/api/social-twin/proxy?url=${encodeURIComponent(raw)}`;
       }
@@ -2476,7 +2505,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           )}
         </button>
         )}
-  <header className={`flex items-center justify-between gap-3 px-3 py-2 ${darkMode ? '' : 'bg-white'}`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
+  <header className={`flex items-center justify-between gap-3 px-3 py-2 bg-blue-500`} style={{ display: (!simpleMode && chatCollapsed) ? 'none' : undefined }}>
           {/* Mobile: Hamburger menu on the left */}
           {isMobile && (
             <button
@@ -2503,31 +2532,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Desktop: Empty div for spacing, Mobile: Hidden */}
           {!isMobile && <div></div>}
           
-          {/* Center: AI Personality Dropdown (Chat tab) or Atom title (other tabs) */}
-          {activeTab === 'chat' ? (
-            <div className="absolute left-1/2 transform -translate-x-1/2">
-              <select
-                value={aiPersonality}
-                onChange={(e) => setAiPersonality(e.target.value as any)}
-                className={`text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-md px-3 py-1 transition-colors ${
-                  darkMode 
-                    ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
-                    : 'bg-gray-100 text-black hover:bg-gray-200'
-                } focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50`}
-              >
-                <option value="creative">🎨 Creative</option>
-                <option value="news">📰 News</option>
-                <option value="police">👮 Police</option>
-                <option value="lawyer">⚖️ Lawyer</option>
-                <option value="accountant">📊 Accountant</option>
-                <option value="teacher">🎓 Teacher</option>
-              </select>
-            </div>
-          ) : (
-            <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
-              Atom
-            </h1>
-          )}
+          {/* Center: Atom title for all tabs */}
+          <h1 className="text-base md:text-lg font-semibold tracking-tight absolute left-1/2 transform -translate-x-1/2">
+            Atom
+          </h1>
           
           {/* Right side: Credits - removed duplicate display, using HamburgerMenu green bar */}
           <div className="flex items-center gap-2">
@@ -2832,7 +2840,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 {!lowDataMode || mediaAllowed.has(m.id) ? (
                                   <img
                                   alt="generated"
-                                  src={m.imageUrl.startsWith('http') && !m.imageUrl.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.imageUrl)}`) : m.imageUrl}
+                                  src={getDisplayUrl(m.imageUrl) || m.imageUrl}
                                   className="max-h-80 w-full rounded-lg border"
                                   loading="lazy"
                                   draggable
@@ -2869,7 +2877,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                   (m as any).images.map((u: string, i: number) => (
                                     <a key={i} href={u} target="_blank" rel="noreferrer">
                                       <img
-                                        src={u.startsWith('http') && !u.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(u)}`) : u}
+                                        src={getDisplayUrl(u) || u}
                                         className="h-20 w-auto rounded border object-cover"
                                         loading="lazy"
                                         alt="thumb"
@@ -2893,7 +2901,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             {m.videoUrl ? (
                               (!lowDataMode || mediaAllowed.has(m.id)) ? (
                                 <video
-                                  src={m.videoUrl.startsWith('http') && !m.videoUrl.startsWith(getLocationOrigin()) ? (`/api/social-twin/proxy?url=${encodeURIComponent(m.videoUrl)}`) : m.videoUrl}
+                                  src={getDisplayUrl(m.videoUrl) || m.videoUrl}
                                   className="mt-2 max-h-80 w-full rounded-lg border"
                                   controls
                                   preload="metadata"

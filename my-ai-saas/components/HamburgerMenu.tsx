@@ -24,6 +24,16 @@ const HamburgerMenu = () => {
   // Hide hamburger menu on home page - MUST be before any useEffect hooks
   const isHomePage = pathname === '/' || pathname === '';
   
+  // Load AI personality from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ai_personality');
+      if (saved && ['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(saved)) {
+        setAiPersonality(saved as any);
+      }
+    } catch {}
+  }, []);
+  
   // Load credits - run on all pages to avoid React hook order issues
   useEffect(() => {
     let ignore = false;
@@ -158,7 +168,13 @@ const HamburgerMenu = () => {
             <div className="relative">
               <select
                 value={aiPersonality}
-                onChange={(e) => setAiPersonality(e.target.value as any)}
+                onChange={(e) => {
+                  const newPersonality = e.target.value as any;
+                  setAiPersonality(newPersonality);
+                  try {
+                    localStorage.setItem('ai_personality', newPersonality);
+                  } catch {}
+                }}
                 className="text-sm md:text-base font-semibold tracking-tight border-none outline-none cursor-pointer rounded-lg pl-10 pr-10 py-2 min-w-[140px] bg-gradient-to-r from-gray-700/20 to-gray-600/20 border border-gray-500/30 text-white hover:from-gray-600/30 hover:to-gray-500/30 transition-all duration-200 focus:ring-2 focus:ring-gray-400/50 focus:border-gray-400/50 backdrop-blur-sm appearance-none"
               >
                 <option value="creative" className="bg-gray-800 text-white">Creative</option>
