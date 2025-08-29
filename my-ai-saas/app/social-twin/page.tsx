@@ -7656,7 +7656,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   {binItems.length} generations
                 </div>
                 <button
-                  onClick={refreshGeneratedHistory}
+                  onClick={() => refreshGeneratedHistory()}
                   className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
                 >
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
