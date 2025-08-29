@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,7 +77,6 @@ interface ScalingData {
 }
 
 export default function AdminPage() {
-  const { user } = useUser();
   const [configs, setConfigs] = useState<RunPodConfig[]>([]);
   const [cloudflareConfig, setCloudflareConfig] = useState<CloudflareConfig>({
     worker_url: '',
@@ -90,19 +88,38 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [accessCode, setAccessCode] = useState('9820571837');
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [authError, setAuthError] = useState('');
 
-  // Check if user is admin (you can customize this logic)
-  const isAdmin = user?.id === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                  process.env.ADMIN_USER_IDS?.split(',').includes(user?.id || '');
+  // Check if user entered correct access code
+  const ADMIN_CODE = '9820571837';
+
+  const handleCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (accessCode === ADMIN_CODE) {
+      setIsAuthenticated(true);
+      setAuthError('');
+      loadConfigs();
+      loadCloudflareConfig();
+      loadAnalytics();
+      loadScaling();
+    } else {
+      setAuthError('Invalid access code. Please try again.');
+      setAccessCode('');
+    }
+  };
 
   useEffect(() => {
-    if (isAdmin) {
+    // Auto-authenticate with the correct code
+    if (accessCode === ADMIN_CODE && !isAuthenticated) {
+      setIsAuthenticated(true);
       loadConfigs();
       loadCloudflareConfig();
       loadAnalytics();
       loadScaling();
     }
-  }, [isAdmin]);
+  }, [accessCode, isAuthenticated]);
 
   // Clear message after 5 seconds
   useEffect(() => {
@@ -114,7 +131,7 @@ export default function AdminPage() {
 
   const loadConfigs = async () => {
     try {
-      const response = await fetch('/api/admin/runpod-config');
+      const response = await fetch(`/api/admin/runpod-config?code=${accessCode}`);
       if (response.ok) {
         const data = await response.json();
         setConfigs(data.configs || []);
@@ -128,7 +145,7 @@ export default function AdminPage() {
 
   const loadCloudflareConfig = async () => {
     try {
-      const response = await fetch('/api/admin/cloudflare-config');
+      const response = await fetch(`/api/admin/cloudflare-config?code=${accessCode}`);
       if (response.ok) {
         const data = await response.json();
         setCloudflareConfig(data);
@@ -140,7 +157,7 @@ export default function AdminPage() {
 
   const loadAnalytics = async () => {
     try {
-      const response = await fetch('/api/admin/analytics');
+      const response = await fetch(`/api/admin/analytics?code=${accessCode}`);
       if (response.ok) {
         const data = await response.json();
         setAnalytics(data);
@@ -152,7 +169,7 @@ export default function AdminPage() {
 
   const loadScaling = async () => {
     try {
-      const response = await fetch('/api/admin/scaling');
+      const response = await fetch(`/api/admin/scaling?code=${accessCode}`);
       if (response.ok) {
         const data = await response.json();
         setScaling(data);
@@ -169,7 +186,7 @@ export default function AdminPage() {
       const response = await fetch('/api/admin/runpod-config', {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify({ ...config, code: accessCode })
       });
 
       if (response.ok) {
@@ -195,7 +212,7 @@ export default function AdminPage() {
       const response = await fetch('/api/admin/runpod-config', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ id, code: accessCode })
       });
 
       if (response.ok) {
@@ -213,7 +230,7 @@ export default function AdminPage() {
       const response = await fetch('/api/admin/cloudflare-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cloudflareConfig)
+        body: JSON.stringify({ ...cloudflareConfig, code: accessCode })
       });
 
       if (response.ok) {
@@ -240,22 +257,7 @@ export default function AdminPage() {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Access Denied</CardTitle>
-            <CardDescription className="text-center">
-              You don't have permission to access the admin panel.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  if (loading) {
+  if (loading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin" />

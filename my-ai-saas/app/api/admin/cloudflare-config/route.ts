@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -7,21 +6,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET() {
+const ADMIN_CODE = '9820571837';
+
+export async function GET(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
+    const url = new URL(req.url);
+    const accessCode = url.searchParams.get('code');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!accessCode || accessCode !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
     }
 
     // Get Cloudflare configuration from environment variables or database
@@ -40,22 +33,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
+    const body = await req.json();
+    const { code, ...configData } = body;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!code || code !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
     }
-
-    // Check if user is admin
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
                     process.env.ADMIN_USER_IDS?.split(',').includes(userId);
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const { worker_url, r2_bucket, r2_public_url } = await req.json();
+    const { worker_url, r2_bucket, r2_public_url } = configData;
 
     // Here you could save to database or update environment variables
     // For now, we'll just return success since these are typically set via env vars

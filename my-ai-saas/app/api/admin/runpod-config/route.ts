@@ -1,23 +1,16 @@
 export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { createSupabaseAdminClient } from '@/lib/supabase';
 
-export async function GET() {
+const ADMIN_CODE = '9820571837';
+
+export async function GET(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
+    const url = new URL(req.url);
+    const accessCode = url.searchParams.get('code');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin (you can customize this logic)
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    if (!accessCode || accessCode !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
     }
 
     const supabase = createSupabaseAdminClient();
@@ -42,23 +35,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
     const body = await req.json();
-    const { mode, url, is_active = true } = body;
+    const { mode, url, is_active = true, code } = body;
+
+    if (!code || code !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
+    }
 
     if (!mode || !url) {
       return NextResponse.json({ error: 'Mode and URL are required' }, { status: 400 });
@@ -93,23 +75,12 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
     const body = await req.json();
-    const { id, mode, url, is_active } = body;
+    const { id, mode, url, is_active, code } = body;
+
+    if (!code || code !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
+    }
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -144,23 +115,12 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const authResult = await auth();
-    const userId = authResult.userId;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const isAdmin = userId === process.env.NEXT_PUBLIC_ADMIN_USER_ID ||
-                    process.env.ADMIN_USER_IDS?.split(',').includes(userId);
-
-    if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
     const body = await req.json();
-    const { id } = body;
+    const { id, code } = body;
+
+    if (!code || code !== ADMIN_CODE) {
+      return NextResponse.json({ error: 'Invalid access code' }, { status: 403 });
+    }
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
