@@ -172,6 +172,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [mode, setMode] = useState<Mode>('text');
   const [chatMode, setChatMode] = useState<'normal' | 'prompt' | 'creative' | 'think'>('normal');
   const [aiPersonality, setAiPersonality] = useState<'creative' | 'news' | 'police' | 'lawyer' | 'accountant' | 'teacher' | 'atom'>('atom');
+  
+  // Disable AI personality dropdown completely for desktop layout
+  const showAiPersonalitySelector = false;
   const [attached, setAttached] = useState<{ name: string; type: string; dataUrl: string } | null>(null);
   const [modifyImageUrl, setModifyImageUrl] = useState<string | null>(null);
   const [feedCursor, setFeedCursor] = useState<string | null>(null);
@@ -229,28 +232,28 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     } catch {}
   }, []);
 
-  // Initialize AI personality from localStorage
+  // Initialize AI personality from localStorage - DISABLED to remove top center dropdown
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ai_personality');
-      if (saved && ['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(saved)) {
-        setAiPersonality(saved as any);
-      }
-    } catch {}
+    // try {
+    //   const saved = localStorage.getItem('ai_personality');
+    //   if (saved && ['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(saved)) {
+    //     setAiPersonality(saved as any);
+    //   }
+    // } catch {}
   }, []);
 
-  // Listen for AI personality changes from HamburgerMenu
+  // Listen for AI personality changes from HamburgerMenu - DISABLED
   useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'ai_personality' && e.newValue) {
-        if (['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(e.newValue)) {
-          setAiPersonality(e.newValue as any);
-        }
-      }
-    };
+    // const handleStorageChange = (e: StorageEvent) => {
+    //   if (e.key === 'ai_personality' && e.newValue) {
+    //     if (['creative', 'news', 'police', 'lawyer', 'accountant', 'teacher'].includes(e.newValue)) {
+    //       setAiPersonality(e.newValue as any);
+    //     }
+    //   }
+    // };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    // window.addEventListener('storage', handleStorageChange);
+    // return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   // Expose and persist Simple/Pro so Navbar can toggle it from outside
