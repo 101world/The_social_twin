@@ -4059,6 +4059,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </select>
                     </div>
 
+                    {/* AI Personality dropdown removed from desktop layout per user request */}
+
                     {/* Mode-specific controls */}
                     {mode === 'text' && (
                       <div className="flex items-center gap-2">
