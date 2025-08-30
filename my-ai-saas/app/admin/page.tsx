@@ -313,9 +313,48 @@ export default function AdminPage() {
     }
   };
 
-  const addRunPodEndpoint = async (stableEndpointId: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => {
+  const addRunPodEndpoint = async (mode: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => {
     setSaving(true);
     try {
+      // Find or create the stable endpoint for this mode
+      let stableEndpointId = null;
+      const existingEndpoint = stableEndpoints.find(ep => ep.mode === mode);
+      
+      if (existingEndpoint) {
+        stableEndpointId = existingEndpoint.id;
+      } else {
+        // Create a stable endpoint for this mode if it doesn't exist
+        const stableUrls = {
+          'image': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-generation',
+          'video': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/video-generation',
+          'text': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/text-generation',
+          'image-modify': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-modify'
+        };
+
+        const response = await fetch('/api/admin/stable-endpoints', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            mode,
+            cloudflare_url: stableUrls[mode as keyof typeof stableUrls],
+            is_active: true,
+            code: accessCode 
+          })
+        });
+
+        if (response.ok) {
+          const newEndpoint = await response.json();
+          stableEndpointId = newEndpoint.endpoint.id;
+          loadStableEndpoints(); // Refresh the list
+        } else {
+          throw new Error('Failed to create stable endpoint');
+        }
+      }
+
+      if (!stableEndpointId) {
+        throw new Error('Could not determine stable endpoint ID');
+      }
+
       const response = await fetch('/api/admin/runpod-endpoints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -566,7 +605,7 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="stable-endpoints" className="flex items-center gap-2">
               <Server className="w-4 h-4" />
-              Stable Endpoints
+              RunPod Backends
             </TabsTrigger>
             <TabsTrigger value="runpod" className="flex items-center gap-2">
               <Server className="w-4 h-4" />
@@ -815,43 +854,58 @@ export default function AdminPage() {
           <TabsContent value="stable-endpoints" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Stable Cloudflare Endpoints Management</CardTitle>
+                <CardTitle>RunPod Backend Management</CardTitle>
                 <CardDescription>
-                  Manage stable Cloudflare URLs with multiple RunPod backends for high availability and easy scaling.
-                  Each stable endpoint maintains a constant URL while you can add/remove RunPod backends as needed.
+                  Manage RunPod backends under your stable Cloudflare R2 URLs. 
+                  The Cloudflare URLs are permanent infrastructure - you can only add/remove RunPod backends for scaling.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Add New Stable Endpoint */}
-                <Card className="border-dashed">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Create New Stable Endpoint</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <StableEndpointForm onSave={saveStableEndpoint} saving={saving} />
-                  </CardContent>
-                </Card>
-
-                {/* Existing Stable Endpoints */}
+                {/* Predefined Stable Endpoints */}
                 <div className="space-y-6">
-                  {stableEndpoints.map((endpoint) => (
-                    <StableEndpointCard
-                      key={endpoint.id}
-                      endpoint={endpoint}
-                      onAddRunPod={addRunPodEndpoint}
-                      onToggleRunPod={toggleRunPodEndpoint}
-                      onDeleteRunPod={deleteRunPodEndpoint}
-                      saving={saving}
-                    />
-                  ))}
-                  
-                  {stableEndpoints.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Server className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                      <h3 className="text-lg font-medium mb-2">No Stable Endpoints</h3>
-                      <p>Create your first stable endpoint to start managing RunPod backends efficiently</p>
-                    </div>
-                  )}
+                  {/* Image Generation Section */}
+                  <PrebuiltEndpointCard
+                    mode="image"
+                    cloudflareUrl="https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-generation"
+                    runpodEndpoints={stableEndpoints.find(ep => ep.mode === 'image')?.runpod_endpoints || []}
+                    onAddRunPod={addRunPodEndpoint}
+                    onToggleRunPod={toggleRunPodEndpoint}
+                    onDeleteRunPod={deleteRunPodEndpoint}
+                    saving={saving}
+                  />
+
+                  {/* Video Generation Section */}
+                  <PrebuiltEndpointCard
+                    mode="video"
+                    cloudflareUrl="https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/video-generation"
+                    runpodEndpoints={stableEndpoints.find(ep => ep.mode === 'video')?.runpod_endpoints || []}
+                    onAddRunPod={addRunPodEndpoint}
+                    onToggleRunPod={toggleRunPodEndpoint}
+                    onDeleteRunPod={deleteRunPodEndpoint}
+                    saving={saving}
+                  />
+
+                  {/* Text Generation Section (if needed) */}
+                  <PrebuiltEndpointCard
+                    mode="text"
+                    cloudflareUrl="https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/text-generation"
+                    runpodEndpoints={stableEndpoints.find(ep => ep.mode === 'text')?.runpod_endpoints || []}
+                    onAddRunPod={addRunPodEndpoint}
+                    onToggleRunPod={toggleRunPodEndpoint}
+                    onDeleteRunPod={deleteRunPodEndpoint}
+                    saving={saving}
+                  />
+
+                  {/* Image Modify Section */}
+                  <PrebuiltEndpointCard
+                    mode="image-modify"
+                    cloudflareUrl="https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-modify"
+                    runpodEndpoints={stableEndpoints.find(ep => ep.mode === 'image-modify')?.runpod_endpoints || []}
+                    onAddRunPod={addRunPodEndpoint}
+                    onToggleRunPod={toggleRunPodEndpoint}
+                    onDeleteRunPod={deleteRunPodEndpoint}
+                    saving={saving}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1615,16 +1669,20 @@ function StableEndpointForm({ onSave, saving }: { onSave: (endpoint: StableEndpo
   );
 }
 
-// Component for managing stable endpoints and their RunPod backends
-function StableEndpointCard({
-  endpoint,
+// Component for managing predefined stable endpoints with RunPod backends
+function PrebuiltEndpointCard({
+  mode,
+  cloudflareUrl,
+  runpodEndpoints,
   onAddRunPod,
   onToggleRunPod,
   onDeleteRunPod,
   saving
 }: {
-  endpoint: StableEndpoint;
-  onAddRunPod: (stableEndpointId: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => void;
+  mode: string;
+  cloudflareUrl: string;
+  runpodEndpoints: RunPodEndpoint[];
+  onAddRunPod: (mode: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => void;
   onToggleRunPod: (endpointId: string, isActive: boolean) => void;
   onDeleteRunPod: (endpointId: string) => void;
   saving: boolean;
@@ -1636,9 +1694,9 @@ function StableEndpointCard({
 
   const handleAddRunPod = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!endpoint.id || !newEndpointName || !newEndpointUrl) return;
+    if (!newEndpointName || !newEndpointUrl) return;
 
-    onAddRunPod(endpoint.id, {
+    onAddRunPod(mode, {
       name: newEndpointName,
       url: newEndpointUrl,
       is_active: true,
@@ -1652,29 +1710,54 @@ function StableEndpointCard({
     setShowAddForm(false);
   };
 
-  const activeEndpoints = endpoint.runpod_endpoints?.filter(ep => ep.is_active) || [];
-  const inactiveEndpoints = endpoint.runpod_endpoints?.filter(ep => !ep.is_active) || [];
+  const activeEndpoints = runpodEndpoints?.filter(ep => ep.is_active) || [];
+  const inactiveEndpoints = runpodEndpoints?.filter(ep => !ep.is_active) || [];
+
+  const getModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'image': return '🖼️';
+      case 'video': return '🎬';
+      case 'text': return '📝';
+      case 'image-modify': return '🎨';
+      default: return '⚡';
+    }
+  };
+
+  const getModeTitle = (mode: string) => {
+    switch (mode) {
+      case 'image': return 'Image Generation';
+      case 'video': return 'Video Generation';
+      case 'text': return 'Text Generation';
+      case 'image-modify': return 'Image Modification';
+      default: return mode;
+    }
+  };
 
   return (
-    <Card className={`transition-all ${endpoint.is_active ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+    <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <span className="capitalize">{endpoint.mode} Generation</span>
-              <span className={`px-2 py-1 text-xs rounded-full ${endpoint.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                {endpoint.is_active ? 'Active' : 'Inactive'}
-              </span>
+            <CardTitle className="flex items-center gap-3">
+              <span className="text-2xl">{getModeIcon(mode)}</span>
+              <div>
+                <div className="capitalize">{getModeTitle(mode)}</div>
+                <div className="text-sm font-normal text-muted-foreground">Stable Cloudflare Endpoint</div>
+              </div>
             </CardTitle>
-            <CardDescription className="font-mono break-all">
-              {endpoint.cloudflare_url}
+            <CardDescription className="mt-2 font-mono text-blue-700 bg-blue-100 px-3 py-1 rounded-md break-all">
+              {cloudflareUrl}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <div className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">
+              ✅ Always Active
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowAddForm(!showAddForm)}
+              className="bg-white"
             >
               Add RunPod Backend
             </Button>
@@ -1684,14 +1767,14 @@ function StableEndpointCard({
       <CardContent className="space-y-4">
         {/* Add RunPod Form */}
         {showAddForm && (
-          <Card className="border-dashed">
+          <Card className="border-dashed bg-white">
             <CardContent className="pt-4">
               <form onSubmit={handleAddRunPod} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="endpoint-name">Backend Name</Label>
+                    <Label htmlFor={`endpoint-name-${mode}`}>Backend Name</Label>
                     <Input
-                      id="endpoint-name"
+                      id={`endpoint-name-${mode}`}
                       value={newEndpointName}
                       onChange={(e) => setNewEndpointName(e.target.value)}
                       placeholder="Main GPU Server"
@@ -1699,9 +1782,9 @@ function StableEndpointCard({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="endpoint-url">RunPod URL</Label>
+                    <Label htmlFor={`endpoint-url-${mode}`}>RunPod URL</Label>
                     <Input
-                      id="endpoint-url"
+                      id={`endpoint-url-${mode}`}
                       value={newEndpointUrl}
                       onChange={(e) => setNewEndpointUrl(e.target.value)}
                       placeholder="https://your-runpod-endpoint.com"
@@ -1709,9 +1792,9 @@ function StableEndpointCard({
                     />
                   </div>
                   <div>
-                    <Label htmlFor="endpoint-priority">Priority (1-10)</Label>
+                    <Label htmlFor={`endpoint-priority-${mode}`}>Priority (1-10)</Label>
                     <Input
-                      id="endpoint-priority"
+                      id={`endpoint-priority-${mode}`}
                       type="number"
                       min="1"
                       max="10"
@@ -1737,10 +1820,13 @@ function StableEndpointCard({
         {/* Active RunPod Endpoints */}
         {activeEndpoints.length > 0 && (
           <div>
-            <h4 className="font-medium text-green-700 mb-2">Active Backends ({activeEndpoints.length})</h4>
+            <h4 className="font-medium text-green-700 mb-2 flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              Active Backends ({activeEndpoints.length})
+            </h4>
             <div className="space-y-2">
               {activeEndpoints.map((runpodEndpoint) => (
-                <div key={runpodEndpoint.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+                <div key={runpodEndpoint.id} className="flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full bg-green-500"></div>
                     <div>
@@ -1784,7 +1870,10 @@ function StableEndpointCard({
         {/* Inactive RunPod Endpoints */}
         {inactiveEndpoints.length > 0 && (
           <div>
-            <h4 className="font-medium text-gray-700 mb-2">Inactive Backends ({inactiveEndpoints.length})</h4>
+            <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+              Inactive Backends ({inactiveEndpoints.length})
+            </h4>
             <div className="space-y-2">
               {inactiveEndpoints.map((runpodEndpoint) => (
                 <div key={runpodEndpoint.id} className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg">
@@ -1820,11 +1909,11 @@ function StableEndpointCard({
         )}
 
         {/* No backends message */}
-        {(!endpoint.runpod_endpoints || endpoint.runpod_endpoints.length === 0) && (
+        {(!runpodEndpoints || runpodEndpoints.length === 0) && (
           <div className="text-center py-8 text-gray-500">
             <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>No RunPod backends configured</p>
-            <p className="text-sm">Add your first backend to start routing traffic</p>
+            <p>No RunPod backends configured for {getModeTitle(mode)}</p>
+            <p className="text-sm">Add your first backend to start routing traffic through the stable Cloudflare URL</p>
           </div>
         )}
       </CardContent>
