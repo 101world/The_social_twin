@@ -23,13 +23,14 @@ type CategoryAgg = {
   with_youtube: number;
 };
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function GET(request: NextRequest) {
   try {
+    // Initialize Supabase client inside the function to avoid build-time issues
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     const { searchParams } = new URL(request.url);
   const mediaType = searchParams.get('type') || 'all'; // 'images', 'videos', 'youtube', 'all'
   const limit = Number.parseInt(searchParams.get('limit') || '20', 10) || 20;
