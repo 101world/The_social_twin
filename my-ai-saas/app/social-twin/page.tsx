@@ -4024,6 +4024,23 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       )}
                     </div>
 
+                    {/* Mode-specific controls for mobile */}
+                    {mode === 'text' && (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={chatMode}
+                          onChange={(e) => setChatMode(e.target.value as any)}
+                          className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                          title="AI Profiles"
+                        >
+                          <option value="normal">General</option>
+                          <option value="creative">Creative</option>
+                          <option value="prompt">Prompt</option>
+                          <option value="think">Think</option>
+                        </select>
+                      </div>
+                    )}
+
                     {/* Projects button removed - will be repositioned above send/upload buttons */}
                   </div>
                 ) : (
@@ -4147,7 +4164,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                   {/* Projects button positioned above upload/send buttons */}
                   {isMobile && (
-                    <div className="relative mb-1 flex justify-center">
+                    <div className="relative mb-0 flex justify-center">
                       <button
                         onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
                         className={`h-7 w-24 rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
