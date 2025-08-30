@@ -4147,7 +4147,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                   {/* Projects button positioned above upload/send buttons */}
                   {isMobile && (
-                    <div className="relative mb-1 flex justify-center">
+                    <div className="relative mb-0 flex justify-center">
                       <button
                         onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
                         className={`h-7 w-24 rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
