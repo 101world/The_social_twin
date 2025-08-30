@@ -3936,8 +3936,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode selector and controls - always visible above text input */}
-                <div className={`mb-0 mt-0 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
+                {/* Mode selector and controls - ZERO space, aligned right like projects dropdown */}
+                <div className={`mb-0 mt-0 flex items-center gap-2 ${isMobile ? 'flex-wrap justify-end' : ''} transition-all duration-300`}>
                   {/* Mode Selector Dropdown */}
                   <div className="flex items-center gap-2">
                     <select
@@ -4232,8 +4232,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
 
-                {/* Prompt input area with improved mobile aesthetics */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'pt-0 px-0 pb-0' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
+                {/* Prompt input area with improved mobile aesthetics - ZERO space from dropdowns */}
+                <div className={`flex gap-2 items-end ${isMobile ? 'pt-0 px-0 pb-0 -mt-2' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
                   <div className={`${isMobile ? 'flex-1' : 'flex-1'} relative`}>
                     <textarea
                       value={input}
