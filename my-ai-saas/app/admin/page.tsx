@@ -18,6 +18,30 @@ interface RunPodConfig {
   updated_at?: string;
 }
 
+interface StableEndpoint {
+  id?: string;
+  mode: 'image' | 'video' | 'text' | 'image-modify';
+  cloudflare_url: string;
+  is_active: boolean;
+  runpod_endpoints: RunPodEndpoint[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface RunPodEndpoint {
+  id?: string;
+  stable_endpoint_id?: string;
+  name: string;
+  url: string;
+  is_active: boolean;
+  priority: number;
+  health_status?: 'healthy' | 'unhealthy' | 'unknown';
+  last_checked?: string;
+  response_time?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface CloudflareConfig {
   account_id: string;
   r2_access_key_id: string;
@@ -80,6 +104,7 @@ interface ScalingData {
 
 export default function AdminPage() {
   const [configs, setConfigs] = useState<RunPodConfig[]>([]);
+  const [stableEndpoints, setStableEndpoints] = useState<StableEndpoint[]>([]);
   const [cloudflareConfig, setCloudflareConfig] = useState<CloudflareConfig>({
     account_id: '',
     r2_access_key_id: '',
@@ -110,6 +135,11 @@ export default function AdminPage() {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
   const [uploading, setUploading] = useState(false);
+  
+  // New state for user lookup
+  const [searchUsername, setSearchUsername] = useState('');
+  const [userReport, setUserReport] = useState<any>(null);
+  const [loadingUserReport, setLoadingUserReport] = useState(false);
 
   // Check if user entered correct access code
   const ADMIN_CODE = '9820571837';
@@ -134,6 +164,7 @@ export default function AdminPage() {
     if (accessCode === ADMIN_CODE && !isAuthenticated) {
       setIsAuthenticated(true);
       loadConfigs();
+      loadStableEndpoints();
       loadCloudflareConfig();
       loadAnalytics();
       loadScaling();
@@ -161,6 +192,18 @@ export default function AdminPage() {
       console.error('Failed to load configs:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStableEndpoints = async () => {
+    try {
+      const response = await fetch(`/api/admin/stable-endpoints?code=${accessCode}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStableEndpoints(data.endpoints || []);
+      }
+    } catch (error) {
+      console.error('Failed to load stable endpoints:', error);
     }
   };
 
@@ -244,6 +287,93 @@ export default function AdminPage() {
       setMessage('Error saving configuration');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveStableEndpoint = async (endpoint: StableEndpoint) => {
+    setSaving(true);
+    try {
+      const method = endpoint.id ? 'PUT' : 'POST';
+      const response = await fetch('/api/admin/stable-endpoints', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...endpoint, code: accessCode })
+      });
+
+      if (response.ok) {
+        setMessage('Stable endpoint saved successfully!');
+        loadStableEndpoints();
+      } else {
+        setMessage('Failed to save stable endpoint');
+      }
+    } catch (error) {
+      setMessage('Error saving stable endpoint');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addRunPodEndpoint = async (stableEndpointId: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/runpod-endpoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...runpodEndpoint, 
+          stable_endpoint_id: stableEndpointId,
+          code: accessCode 
+        })
+      });
+
+      if (response.ok) {
+        setMessage('RunPod endpoint added successfully!');
+        loadStableEndpoints();
+      } else {
+        setMessage('Failed to add RunPod endpoint');
+      }
+    } catch (error) {
+      setMessage('Error adding RunPod endpoint');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleRunPodEndpoint = async (endpointId: string, isActive: boolean) => {
+    try {
+      const response = await fetch('/api/admin/runpod-endpoints', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: endpointId,
+          is_active: !isActive,
+          code: accessCode 
+        })
+      });
+
+      if (response.ok) {
+        setMessage('RunPod endpoint updated successfully!');
+        loadStableEndpoints();
+      }
+    } catch (error) {
+      setMessage('Error updating RunPod endpoint');
+    }
+  };
+
+  const deleteRunPodEndpoint = async (endpointId: string) => {
+    try {
+      const response = await fetch('/api/admin/runpod-endpoints', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: endpointId, code: accessCode })
+      });
+
+      if (response.ok) {
+        setMessage('RunPod endpoint deleted successfully!');
+        loadStableEndpoints();
+      }
+    } catch (error) {
+      setMessage('Error deleting RunPod endpoint');
     }
   };
 
@@ -373,6 +503,30 @@ export default function AdminPage() {
     }
   };
 
+  const searchUser = async () => {
+    if (!searchUsername.trim()) return;
+    
+    setLoadingUserReport(true);
+    try {
+      const response = await fetch(`/api/admin/user-report?username=${encodeURIComponent(searchUsername)}&code=${accessCode}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserReport(data);
+        setMessage(`User report generated for ${searchUsername}`);
+      } else {
+        const error = await response.json();
+        setMessage(error.message || 'Failed to fetch user report');
+        setUserReport(null);
+      }
+    } catch (error) {
+      setMessage('Error fetching user report');
+      setUserReport(null);
+    } finally {
+      setLoadingUserReport(false);
+    }
+  };
+
   if (loading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -401,7 +555,7 @@ export default function AdminPage() {
         )}
 
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-9">
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Analytics
@@ -409,6 +563,10 @@ export default function AdminPage() {
             <TabsTrigger value="scaling" className="flex items-center gap-2">
               <Zap className="w-4 h-4" />
               Auto Scaling
+            </TabsTrigger>
+            <TabsTrigger value="stable-endpoints" className="flex items-center gap-2">
+              <Server className="w-4 h-4" />
+              Stable Endpoints
             </TabsTrigger>
             <TabsTrigger value="runpod" className="flex items-center gap-2">
               <Server className="w-4 h-4" />
@@ -421,6 +579,10 @@ export default function AdminPage() {
             <TabsTrigger value="explore" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Explore Content
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              User Lookup
             </TabsTrigger>
             <TabsTrigger value="cloudflare" className="flex items-center gap-2">
               <Cloud className="w-4 h-4" />
@@ -650,6 +812,51 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
+          <TabsContent value="stable-endpoints" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Stable Cloudflare Endpoints Management</CardTitle>
+                <CardDescription>
+                  Manage stable Cloudflare URLs with multiple RunPod backends for high availability and easy scaling.
+                  Each stable endpoint maintains a constant URL while you can add/remove RunPod backends as needed.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Add New Stable Endpoint */}
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Create New Stable Endpoint</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <StableEndpointForm onSave={saveStableEndpoint} saving={saving} />
+                  </CardContent>
+                </Card>
+
+                {/* Existing Stable Endpoints */}
+                <div className="space-y-6">
+                  {stableEndpoints.map((endpoint) => (
+                    <StableEndpointCard
+                      key={endpoint.id}
+                      endpoint={endpoint}
+                      onAddRunPod={addRunPodEndpoint}
+                      onToggleRunPod={toggleRunPodEndpoint}
+                      onDeleteRunPod={deleteRunPodEndpoint}
+                      saving={saving}
+                    />
+                  ))}
+                  
+                  {stableEndpoints.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Server className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">No Stable Endpoints</h3>
+                      <p>Create your first stable endpoint to start managing RunPod backends efficiently</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="runpod" className="space-y-6">
             <Card>
               <CardHeader>
@@ -695,6 +902,230 @@ export default function AdminPage() {
                     />
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Lookup & Reports</CardTitle>
+                <CardDescription>
+                  Search for any user by username or email to view detailed activity reports
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Search Form */}
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="search-username">Username or Email</Label>
+                    <Input
+                      id="search-username"
+                      value={searchUsername}
+                      onChange={(e) => setSearchUsername(e.target.value)}
+                      placeholder="Enter username or email address"
+                      onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+                    />
+                  </div>
+                  <Button 
+                    onClick={searchUser} 
+                    disabled={!searchUsername.trim() || loadingUserReport}
+                    className="px-6"
+                  >
+                    {loadingUserReport ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Users className="w-4 h-4 mr-2" />}
+                    Search User
+                  </Button>
+                </div>
+
+                {/* User Report Results */}
+                {userReport && (
+                  <div className="space-y-6">
+                    {/* User Basic Info */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          User Profile: {userReport.user?.username || userReport.user?.email}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="text-center p-4 bg-blue-50 rounded-lg">
+                            <div className="text-2xl font-bold text-blue-600">{userReport.stats?.totalGenerations || 0}</div>
+                            <div className="text-sm text-blue-800">Total Generations</div>
+                          </div>
+                          <div className="text-center p-4 bg-green-50 rounded-lg">
+                            <div className="text-2xl font-bold text-green-600">{userReport.stats?.currentCredits || 0}</div>
+                            <div className="text-sm text-green-800">Current Credits</div>
+                          </div>
+                          <div className="text-center p-4 bg-purple-50 rounded-lg">
+                            <div className="text-2xl font-bold text-purple-600">
+                              {userReport.user?.created_at ? Math.floor((Date.now() - new Date(userReport.user.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}
+                            </div>
+                            <div className="text-sm text-purple-800">Days Active</div>
+                          </div>
+                          <div className="text-center p-4 bg-orange-50 rounded-lg">
+                            <div className="text-2xl font-bold text-orange-600">{userReport.stats?.last7Days || 0}</div>
+                            <div className="text-sm text-orange-800">Last 7 Days</div>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <h4 className="font-semibold mb-2">Account Details</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>User ID:</span>
+                                <span className="font-mono">{userReport.user?.id}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Email:</span>
+                                <span>{userReport.user?.email || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Username:</span>
+                                <span>{userReport.user?.username || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Joined:</span>
+                                <span>{userReport.user?.created_at ? new Date(userReport.user.created_at).toLocaleDateString() : 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h4 className="font-semibold mb-2">Usage Pattern</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Most Used Mode:</span>
+                                <span className="capitalize">{userReport.stats?.favoriteMode || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Avg Daily Usage:</span>
+                                <span>{userReport.stats?.avgDaily || 0} generations</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Peak Day:</span>
+                                <span>{userReport.stats?.peakDay || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Last Activity:</span>
+                                <span>{userReport.stats?.lastActivity ? new Date(userReport.stats.lastActivity).toLocaleDateString() : 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Recent Activity */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Recent Activity (Last 10 Generations)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {userReport.recentActivity?.length ? (
+                          <div className="space-y-3">
+                            {userReport.recentActivity.map((activity: any, index: number) => (
+                              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-3 h-3 rounded-full ${
+                                    activity.status === 'completed' ? 'bg-green-500' : 
+                                    activity.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'
+                                  }`}></div>
+                                  <div>
+                                    <div className="font-medium capitalize">{activity.mode} Generation</div>
+                                    <div className="text-sm text-gray-600 truncate max-w-md">
+                                      {activity.prompt?.substring(0, 60)}...
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm font-medium">{activity.status}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(activity.created_at).toLocaleString()}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <p>No recent activity found for this user</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Generation Breakdown */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Generation Types</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {userReport.generationTypes ? (
+                            <div className="space-y-3">
+                              {Object.entries(userReport.generationTypes).map(([type, count]: [string, any]) => (
+                                <div key={type} className="flex justify-between items-center">
+                                  <span className="capitalize">{type}</span>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                                      <div 
+                                        className="bg-blue-500 h-2 rounded-full" 
+                                        style={{ width: `${Math.min((count / Math.max(...Object.values(userReport.generationTypes).map(Number))) * 100, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    <span className="text-sm font-medium w-8">{count}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-muted-foreground">No data available</div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Credit History</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {userReport.creditHistory?.length ? (
+                            <div className="space-y-2">
+                              {userReport.creditHistory.slice(0, 5).map((transaction: any, index: number) => (
+                                <div key={index} className="flex justify-between items-center text-sm">
+                                  <span>{transaction.type}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}>
+                                      {transaction.amount > 0 ? '+' : ''}{transaction.amount}
+                                    </span>
+                                    <span className="text-gray-500 text-xs">
+                                      {new Date(transaction.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-muted-foreground">No credit history found</div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {!userReport && !loadingUserReport && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">Search for User Reports</h3>
+                    <p>Enter a username or email address above to generate a detailed user activity report</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1127,6 +1558,275 @@ function RunPodConfigCard({
             </Button>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Component for creating new stable endpoints
+function StableEndpointForm({ onSave, saving }: { onSave: (endpoint: StableEndpoint) => void; saving: boolean }) {
+  const [mode, setMode] = useState<StableEndpoint['mode']>('image');
+  const [cloudflareUrl, setCloudflareUrl] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({ 
+      mode, 
+      cloudflare_url: cloudflareUrl, 
+      is_active: true,
+      runpod_endpoints: []
+    });
+    setCloudflareUrl('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="stable-mode">Generation Mode</Label>
+          <select
+            id="stable-mode"
+            value={mode}
+            onChange={(e) => setMode(e.target.value as StableEndpoint['mode'])}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="image">Image Generation</option>
+            <option value="image-modify">Image Modification</option>
+            <option value="video">Video Generation</option>
+            <option value="text">Text Generation</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="cloudflare-url">Stable Cloudflare URL</Label>
+          <Input
+            id="cloudflare-url"
+            value={cloudflareUrl}
+            onChange={(e) => setCloudflareUrl(e.target.value)}
+            placeholder="https://your-worker.username.workers.dev"
+            required
+          />
+        </div>
+      </div>
+      <Button type="submit" disabled={saving || !cloudflareUrl}>
+        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+        Create Stable Endpoint
+      </Button>
+    </form>
+  );
+}
+
+// Component for managing stable endpoints and their RunPod backends
+function StableEndpointCard({
+  endpoint,
+  onAddRunPod,
+  onToggleRunPod,
+  onDeleteRunPod,
+  saving
+}: {
+  endpoint: StableEndpoint;
+  onAddRunPod: (stableEndpointId: string, runpodEndpoint: Omit<RunPodEndpoint, 'id' | 'stable_endpoint_id'>) => void;
+  onToggleRunPod: (endpointId: string, isActive: boolean) => void;
+  onDeleteRunPod: (endpointId: string) => void;
+  saving: boolean;
+}) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newEndpointName, setNewEndpointName] = useState('');
+  const [newEndpointUrl, setNewEndpointUrl] = useState('');
+  const [newEndpointPriority, setNewEndpointPriority] = useState(1);
+
+  const handleAddRunPod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!endpoint.id || !newEndpointName || !newEndpointUrl) return;
+
+    onAddRunPod(endpoint.id, {
+      name: newEndpointName,
+      url: newEndpointUrl,
+      is_active: true,
+      priority: newEndpointPriority
+    });
+
+    // Reset form
+    setNewEndpointName('');
+    setNewEndpointUrl('');
+    setNewEndpointPriority(1);
+    setShowAddForm(false);
+  };
+
+  const activeEndpoints = endpoint.runpod_endpoints?.filter(ep => ep.is_active) || [];
+  const inactiveEndpoints = endpoint.runpod_endpoints?.filter(ep => !ep.is_active) || [];
+
+  return (
+    <Card className={`transition-all ${endpoint.is_active ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <span className="capitalize">{endpoint.mode} Generation</span>
+              <span className={`px-2 py-1 text-xs rounded-full ${endpoint.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                {endpoint.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </CardTitle>
+            <CardDescription className="font-mono break-all">
+              {endpoint.cloudflare_url}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddForm(!showAddForm)}
+            >
+              Add RunPod Backend
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Add RunPod Form */}
+        {showAddForm && (
+          <Card className="border-dashed">
+            <CardContent className="pt-4">
+              <form onSubmit={handleAddRunPod} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="endpoint-name">Backend Name</Label>
+                    <Input
+                      id="endpoint-name"
+                      value={newEndpointName}
+                      onChange={(e) => setNewEndpointName(e.target.value)}
+                      placeholder="Main GPU Server"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endpoint-url">RunPod URL</Label>
+                    <Input
+                      id="endpoint-url"
+                      value={newEndpointUrl}
+                      onChange={(e) => setNewEndpointUrl(e.target.value)}
+                      placeholder="https://your-runpod-endpoint.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="endpoint-priority">Priority (1-10)</Label>
+                    <Input
+                      id="endpoint-priority"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={newEndpointPriority}
+                      onChange={(e) => setNewEndpointPriority(parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saving || !newEndpointName || !newEndpointUrl}>
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Add Backend
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active RunPod Endpoints */}
+        {activeEndpoints.length > 0 && (
+          <div>
+            <h4 className="font-medium text-green-700 mb-2">Active Backends ({activeEndpoints.length})</h4>
+            <div className="space-y-2">
+              {activeEndpoints.map((runpodEndpoint) => (
+                <div key={runpodEndpoint.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <div>
+                      <div className="font-medium">{runpodEndpoint.name}</div>
+                      <div className="text-sm text-gray-600 font-mono">{runpodEndpoint.url}</div>
+                      <div className="text-xs text-gray-500">Priority: {runpodEndpoint.priority}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {runpodEndpoint.health_status && (
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        runpodEndpoint.health_status === 'healthy' ? 'bg-green-100 text-green-800' :
+                        runpodEndpoint.health_status === 'unhealthy' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {runpodEndpoint.health_status}
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runpodEndpoint.id && onToggleRunPod(runpodEndpoint.id, runpodEndpoint.is_active)}
+                    >
+                      Disable
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runpodEndpoint.id && onDeleteRunPod(runpodEndpoint.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Inactive RunPod Endpoints */}
+        {inactiveEndpoints.length > 0 && (
+          <div>
+            <h4 className="font-medium text-gray-700 mb-2">Inactive Backends ({inactiveEndpoints.length})</h4>
+            <div className="space-y-2">
+              {inactiveEndpoints.map((runpodEndpoint) => (
+                <div key={runpodEndpoint.id} className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                    <div>
+                      <div className="font-medium text-gray-600">{runpodEndpoint.name}</div>
+                      <div className="text-sm text-gray-500 font-mono">{runpodEndpoint.url}</div>
+                      <div className="text-xs text-gray-400">Priority: {runpodEndpoint.priority}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runpodEndpoint.id && onToggleRunPod(runpodEndpoint.id, runpodEndpoint.is_active)}
+                    >
+                      Enable
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => runpodEndpoint.id && onDeleteRunPod(runpodEndpoint.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No backends message */}
+        {(!endpoint.runpod_endpoints || endpoint.runpod_endpoints.length === 0) && (
+          <div className="text-center py-8 text-gray-500">
+            <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>No RunPod backends configured</p>
+            <p className="text-sm">Add your first backend to start routing traffic</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
