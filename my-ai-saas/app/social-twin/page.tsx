@@ -4147,13 +4147,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
                 {/* Prompt input area with improved mobile aesthetics - ZERO space from dropdowns */}
                 <div className={`flex gap-2 items-end ${isMobile ? 'pt-0 px-0 pb-0 -mt-2' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
-                  <div className={`${isMobile ? 'flex-1' : 'flex-1'} relative`}>
+                  <div className={`${isMobile ? 'flex-1' : 'w-full max-w-2xl'} relative`}>
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder=""
-                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px] w-full'} resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                       ref={bottomInputRef}
                       style={{
                         fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
@@ -4162,7 +4162,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     />
                   </div>
 
-                  {/* Upload and Send buttons in bottom row (mobile only) */}
+                  {/* Mobile buttons in separate row */}
                   {isMobile && (
                     <div className="flex items-center gap-2">
                       {/* Upload button */}
@@ -4170,7 +4170,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-white'
                       } shadow-lg`} title="Attach image/video/pdf">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" className="transition-colors group-hover:stroke-gray-400">
-                          <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 717.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <input
                           type="file"
@@ -4277,121 +4277,121 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       </button>
                     </div>
                   )}
-                </div>
 
-                {/* Desktop buttons (unchanged) */}
-                {!isMobile && (
-                  <div className="flex gap-2 items-end">
-                    {/* Upload button */}
-                    <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-colors group-hover:stroke-gray-400">
-                        <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 017.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <input
-                        type="file"
-                        accept="image/*,video/*,application/pdf"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
+                  {/* Desktop buttons inline with textarea */}
+                  {!isMobile && (
+                    <div className="flex items-center gap-2 ml-2">
+                      {/* Upload button */}
+                      <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                          <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 717.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <input
+                          type="file"
+                          accept="image/*,video/*,application/pdf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
 
-                          // Process image files for better AI compatibility
-                          if (f.type.startsWith('image/')) {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            const img = new Image();
+                            // Process image files for better AI compatibility
+                            if (f.type.startsWith('image/')) {
+                              const canvas = document.createElement('canvas');
+                              const ctx = canvas.getContext('2d');
+                              const img = new Image();
 
-                            img.onload = () => {
-                              // Resize if too large (max 1024px on longest side for efficiency)
-                              const maxSize = 1024;
-                              let { width, height } = img;
+                              img.onload = () => {
+                                // Resize if too large (max 1024px on longest side for efficiency)
+                                const maxSize = 1024;
+                                let { width, height } = img;
 
-                              if (width > maxSize || height > maxSize) {
-                                if (width > height) {
-                                  height = (height * maxSize) / width;
-                                  width = maxSize;
-                                } else {
-                                  width = (width * maxSize) / height;
-                                  height = maxSize;
+                                if (width > maxSize || height > maxSize) {
+                                  if (width > height) {
+                                    height = (height * maxSize) / width;
+                                    width = maxSize;
+                                  } else {
+                                    width = (width * maxSize) / height;
+                                    height = maxSize;
+                                  }
                                 }
-                              }
 
-                              canvas.width = width;
-                              canvas.height = height;
-                              ctx?.drawImage(img, 0, 0, width, height);
+                                canvas.width = width;
+                                canvas.height = height;
+                                ctx?.drawImage(img, 0, 0, width, height);
 
-                              // Convert to JPEG for better compatibility and smaller size
-                              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                              setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
-                            };
+                                // Convert to JPEG for better compatibility and smaller size
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                                setAttached({ name: f.name, type: 'image/jpeg', dataUrl });
+                              };
 
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              img.src = String(reader.result || '');
-                            };
-                            reader.readAsDataURL(f);
-                          } else if (f.type === 'application/pdf') {
-                            // For PDF files, convert first page to image for vision processing
-                            const reader = new FileReader();
-                            reader.onload = async () => {
-                              try {
-                                // For now, store PDF as-is and we'll handle conversion in the API
-                                // In the future, we can implement client-side PDF-to-image conversion
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                img.src = String(reader.result || '');
+                              };
+                              reader.readAsDataURL(f);
+                            } else if (f.type === 'application/pdf') {
+                              // For PDF files, convert first page to image for vision processing
+                              const reader = new FileReader();
+                              reader.onload = async () => {
+                                try {
+                                  // For now, store PDF as-is and we'll handle conversion in the API
+                                  // In the future, we can implement client-side PDF-to-image conversion
+                                  const dataUrl = String(reader.result || '');
+                                  setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                                } catch (error) {
+                                  console.error('PDF processing error:', error);
+                                  // Fallback: just store the PDF
+                                  const dataUrl = String(reader.result || '');
+                                  setAttached({ name: f.name, type: 'application/pdf', dataUrl });
+                                }
+                              };
+                              reader.readAsDataURL(f);
+                            } else {
+                              // For other files, use direct FileReader
+                              const reader = new FileReader();
+                              reader.onload = () => {
                                 const dataUrl = String(reader.result || '');
-                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
-                              } catch (error) {
-                                console.error('PDF processing error:', error);
-                                // Fallback: just store the PDF
-                                const dataUrl = String(reader.result || '');
-                                setAttached({ name: f.name, type: 'application/pdf', dataUrl });
-                              }
-                            };
-                            reader.readAsDataURL(f);
-                          } else {
-                            // For other files, use direct FileReader
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const dataUrl = String(reader.result || '');
-                              setAttached({ name: f.name, type: f.type, dataUrl });
-                            };
-                            reader.readAsDataURL(f);
-                          }
-                        }}
-                      />
-                    </label>
+                                setAttached({ name: f.name, type: f.type, dataUrl });
+                              };
+                              reader.readAsDataURL(f);
+                            }
+                          }}
+                        />
+                      </label>
 
-                    {/* Send button */}
-                    <button
-                      onClick={handleSend}
-                      disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                      className={`group relative ${isMobile ? 'h-9 w-9' : 'h-8 w-8'} cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
-                        darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
-                      } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
-                      title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
-                      aria-label="Send"
-                    >
-                      {/* Clean Send Arrow SVG Icon */}
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={isMobile ? "18" : "16"} height={isMobile ? "18" : "16"} fill="none" className="transition-all">
-                        <path
-                          d="M22 2L11 13"
-                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="transition-colors"
-                        />
-                        <path
-                          d="M22 2L15 22L11 13L2 9L22 2Z"
-                          stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="transition-colors"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                      {/* Send button */}
+                      <button
+                        onClick={handleSend}
+                        disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
+                        className={`group relative h-8 w-8 cursor-pointer rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
+                          darkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-100/50'
+                        } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''}`}
+                        title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
+                        aria-label="Send"
+                      >
+                        {/* Clean Send Arrow SVG Icon */}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-all">
+                          <path
+                            d="M22 2L11 13"
+                            stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="transition-colors"
+                          />
+                          <path
+                            d="M22 2L15 22L11 13L2 9L22 2Z"
+                            stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="transition-colors"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
 
                 {attached ? (
