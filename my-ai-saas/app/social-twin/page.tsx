@@ -2567,13 +2567,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }, []);
 
   return (
-  <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-white'} max-w-full`}
+  <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-transparent'} max-w-full`}
          style={{ height: isMobile ? '100vh' : '100vh' }}> 
       {/* Make header icons clickable on top in Normal mode */}
       {simpleMode ? <div className="pointer-events-none fixed inset-0 z-[10001]" /> : null}
       {/* Chat panel docked right (collapsible) */}
       <section
-        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-neutral-900' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-white' : 'bg-white border-neutral-300')} min-w-0`}
+        className={`absolute ${simpleMode ? 'inset-0' : 'right-0 top-0'} z-[10010] pointer-events-auto flex flex-col overflow-hidden ${simpleMode ? '' : 'border-l transition-[width] duration-200'} ${darkMode ? (simpleMode ? 'bg-neutral-900' : 'bg-neutral-900 border-neutral-800') : (simpleMode ? 'bg-transparent' : 'bg-transparent border-neutral-300')} min-w-0`}
          style={{
            height: '100vh',
            ...(simpleMode ? { left: sidebarOpen ? 240 : 0, transition: 'left 150ms ease' } : { width: chatCollapsed ? 40 : 'min(30vw, 520px)', minWidth: chatCollapsed ? 40 : 'min(320px, 100vw)', maxWidth: chatCollapsed ? 40 : 'min(520px, 100vw)' })
@@ -2660,7 +2660,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             
             {/* Menu Panel */}
             <div className={`fixed left-0 top-0 h-full w-80 transform transition-transform duration-300 ease-in-out ${
-              darkMode ? 'bg-neutral-900' : 'bg-white'
+              darkMode ? 'bg-neutral-900' : 'bg-transparent'
             } shadow-xl`}>
               {/* Menu Header */}
               <div className={`flex items-center justify-between p-4 border-b ${
@@ -2875,7 +2875,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 : `max-w-[75%] rounded-2xl border px-3 py-2 break-words overflow-wrap-anywhere ${
                                     isUser
                                       ? (darkMode ? 'bg-gradient-to-r from-cyan-600/80 to-teal-600/80 text-white border-cyan-500/60' : 'bg-gradient-to-r from-cyan-500/80 to-teal-500/80 text-white border-cyan-500/60')
-                                      : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-white text-black border-neutral-400')
+                                      : (darkMode ? 'bg-neutral-900 text-neutral-100 border-neutral-800' : 'bg-transparent text-black border-neutral-400')
                                   }`
                             }
                             style={isAssistantPlain ? undefined : { borderTopLeftRadius: isUser ? 16 : 4, borderTopRightRadius: isUser ? 4 : 16 }}
@@ -2935,7 +2935,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     setInput(m.content);
                                   }}
                                   className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                    darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                   }`}
                                   title="Send to chat"
                                 >
@@ -2951,7 +2951,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     setInput(m.content);
                                   }}
                                   className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                    darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                   }`}
                                   title="Generate image"
                                 >
@@ -2967,7 +2967,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                     setInput(m.content);
                                   }}
                                   className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                    darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                    darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                   }`}
                                   title="Generate video"
                                 >
@@ -3030,7 +3030,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       setInput(`[Image: ${m.imageUrl}]`);
                                     }}
                                     className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                      darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                      darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                     }`}
                                     title="Send to chat"
                                   >
@@ -3055,7 +3055,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       }
                                     }}
                                     className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                      darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                      darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                     }`}
                                     title="Modify image"
                                   >
@@ -3115,7 +3115,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                       }
                                     }}
                                     className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                      darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                      darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                     }`}
                                     title="Download image"
                                   >
@@ -3134,7 +3134,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                         }
                                       }}
                                       className={`p-1 rounded-md transition-colors hover:bg-opacity-20 ${
-                                        darkMode ? 'hover:bg-white text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
+                                        darkMode ? 'hover:bg-transparent text-neutral-400 hover:text-white' : 'hover:bg-black text-gray-500 hover:text-black'
                                       }`}
                                       title="Share image"
                                     >
@@ -3355,7 +3355,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               />
 
   {/* Composer container - removed dark grey background/border, transparent */}
-  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-1 pb-1' : 'absolute bottom-0 left-0 right-0 p-1'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-white'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
+  <div ref={composerRef} className={`${isMobile ? 'fixed bottom-0 left-0 right-0 px-1 pb-1' : 'absolute bottom-0 left-0 right-0 p-1'} ${simpleMode && !isMobile ? 'max-w-2xl mx-auto w-full' : ''} z-[10015] ${activeTab !== 'chat' ? 'hidden' : ''} ${darkMode ? 'bg-neutral-900' : 'bg-transparent'} border-t ${darkMode ? 'border-neutral-700' : 'border-gray-200'}`}
           style={{ 
             bottom: isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 0px)' : '0px',
             paddingTop: isMobile ? '1px' : undefined
@@ -3369,14 +3369,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       placeholder="character.safetensors"
                       value={loraName}
                       onChange={(e) => setLoraName(e.target.value)}
-                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-white border-neutral-300 placeholder-gray-400'}`}
+                      className={`flex-1 rounded border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100 placeholder-neutral-500' : 'bg-transparent border-neutral-300 placeholder-gray-400'}`}
                     />
                   </div>
                 )}
 
                 {/* Advanced Options - Comprehensive Creator Studio Integration */}
                 {advancedOpen && (
-                  <div className={`mb-0 rounded-xl border p-4 space-y-4 ${darkMode ? 'border-neutral-700 bg-neutral-900/50 backdrop-blur-sm' : 'border-neutral-400 bg-white/80 backdrop-blur-sm'} max-h-[60vh] overflow-y-auto`}>
+                  <div className={`mb-0 rounded-xl border p-4 space-y-4 ${darkMode ? 'border-neutral-700 bg-neutral-900/50 backdrop-blur-sm' : 'border-neutral-400 bg-transparent/80 backdrop-blur-sm'} max-h-[60vh] overflow-y-auto`}>
                     
                     {/* Workflow & Model Selection */}
                     <div className="space-y-3">
@@ -3411,7 +3411,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             >
                               <div className="font-medium">{provider.name}</div>
                               <div className="opacity-75 text-[10px]">{provider.desc}</div>
-                              <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] flex items-center justify-center ${darkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>
+                              <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full text-[9px] flex items-center justify-center ${darkMode ? 'bg-transparent text-black' : 'bg-black text-white'}`}>
                                 {provider.cost}
                               </div>
                             </button>
@@ -3517,7 +3517,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <div className="font-mono text-[9px] opacity-60">{model.model}</div>
                                 <div className="mt-1 flex flex-wrap gap-1">
                                   {model.features.map((feature, i) => (
-                                    <span key={i} className="bg-black/20 dark:bg-white/20 px-1 py-0.5 rounded text-[8px]">
+                                    <span key={i} className="bg-black/20 dark:bg-transparent/20 px-1 py-0.5 rounded text-[8px]">
                                       {feature}
                                     </span>
                                   ))}
@@ -3551,7 +3551,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <select
                               value={batchSize === '' ? '' : String(batchSize)}
                               onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                             >
                               <option value="">Auto (1)</option>
                               {BATCH_CHOICES.map((n) => (
@@ -3564,7 +3564,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <select
                               value={aspectRatio}
                               onChange={(e) => setAspectRatio(e.target.value)}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                             >
                               <option value="">Auto (1:1)</option>
                               {AR_CHOICES.map((ar) => (
@@ -3599,7 +3599,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'video' ? '3.0' : '1.0'}
                                 value={cfgScale}
                                 onChange={(e) => setCfgScale(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               />
                             </div>
                             <div className="space-y-1">
@@ -3622,7 +3622,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'image-modify' ? '2.5' : '3.5'}
                                 value={guidance}
                                 onChange={(e) => setGuidance(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               />
                             </div>
                             <div className="space-y-1">
@@ -3644,7 +3644,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder={mode === 'image' ? '23' : mode === 'video' ? '30' : '20'}
                                 value={steps}
                                 onChange={(e) => setSteps(e.target.value === '' ? '' : Number(e.target.value))}
-                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               />
                             </div>
                           </div>
@@ -3656,7 +3656,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Frame Rate</label>
                                 <select
                                   value="25"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                                 >
                                   <option value="24">24 FPS (Cinema)</option>
                                   <option value="25">25 FPS (PAL)</option>
@@ -3667,7 +3667,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Length</label>
                                 <select
                                   value="97"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                                 >
                                   <option value="49">2s (49 frames)</option>
                                   <option value="73">3s (73 frames)</option>
@@ -3679,7 +3679,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Resolution</label>
                                 <select
                                   value="768x512"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                                 >
                                   <option value="768x512">768×512 (HD)</option>
                                   <option value="1024x576">1024×576 (FHD)</option>
@@ -3696,7 +3696,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Sampler</label>
                                 <select
                                   value="euler"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                                 >
                                   <option value="euler">Euler (Default)</option>
                                   <option value="euler_ancestral">Euler Ancestral</option>
@@ -3708,7 +3708,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 <label className="text-xs font-medium opacity-80">Scheduler</label>
                                 <select
                                   value="simple"
-                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                  className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                                 >
                                   <option value="simple">Simple</option>
                                   <option value="normal">Normal</option>
@@ -3738,7 +3738,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setLoraName(loraName || '');
                                 else setLoraName(v);
                               }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
@@ -3757,7 +3757,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder="custom-character.safetensors"
                                 value={loraName}
                                 onChange={(e) => setLoraName(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               />
                             )}
                           </div>
@@ -3795,7 +3795,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 else if (v === 'Custom...') setEffectLora(effectLora || '');
                                 else setEffectLora(v);
                               }}
-                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               disabled={lorasLoading}
                             >
                               {LORA_CHOICES.map((opt) => (
@@ -3813,7 +3813,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                                 placeholder="effects-style.safetensors"
                                 value={effectLora}
                                 onChange={(e) => setEffectLora(e.target.value)}
-                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                                className={`w-full rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                               />
                             )}
                           </div>
@@ -3880,7 +3880,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             <input
                               type="number"
                               placeholder="Random"
-                              className={`flex-1 rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                              className={`flex-1 rounded-md border px-2 py-1 text-xs font-mono ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                             />
                             <button
                               onClick={() => {
@@ -3903,7 +3903,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             min="0"
                             max="1"
                             placeholder={mode === 'image-modify' ? '1.0' : '0.8'}
-                            className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                            className={`w-full rounded-md border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                           />
                         </div>
                       </div>
@@ -3914,7 +3914,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <textarea
                           placeholder={mode === 'video' ? "low quality, worst quality, deformed, distorted, disfigured, motion smear, motion artifacts, fused fingers, bad anatomy, weird hand, ugly" : "low quality, bad anatomy, worst quality, low resolution"}
                           rows={2}
-                          className={`w-full rounded-md border px-2 py-1 text-xs resize-none ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-400'}`}
+                          className={`w-full rounded-md border px-2 py-1 text-xs resize-none ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-400'}`}
                         />
                       </div>
                     </div>
@@ -3949,7 +3949,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={mode}
                           onChange={(e) => setMode(e.target.value as any)}
-                          className={`px-2 py-1.5 text-xs rounded transition-all ${darkMode ? 'bg-neutral-800 text-neutral-100 hover:bg-neutral-700' : 'bg-white hover:bg-neutral-50'} touch-manipulation`}
+                          className="px-2 py-1.5 text-xs border-0 bg-transparent rounded transition-all text-white touch-manipulation"
                         >
                           <option value="text">💬 Text</option>
                           <option value="image">🖼️ Image</option>
@@ -3966,7 +3966,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={batchSize === '' ? '1' : String(batchSize)}
                             onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                             title="Quantity"
                           >
                             {BATCH_CHOICES.map((n) => (
@@ -3978,7 +3978,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={aspectRatio}
                             onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                             title="Aspect Ratio"
                           >
                             <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -3994,7 +3994,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={videoModel}
                             onChange={(e) => setVideoModel(e.target.value as any)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                             title="Video model"
                           >
                             <option value="ltxv">LTXV</option>
@@ -4004,7 +4004,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={batchSize === '' ? '1' : String(batchSize)}
                             onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                             title="Quantity"
                           >
                             {BATCH_CHOICES.map((n) => (
@@ -4015,7 +4015,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={aspectRatio}
                             onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                             title="Aspect Ratio"
                           >
                             <option value="">16:9</option>
@@ -4033,7 +4033,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={textProvider}
                           onChange={(e) => setTextProvider(e.target.value as any)}
-                          className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                          className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-transparent text-white' : 'bg-transparent'} touch-manipulation`}
                           title="AI Providers"
                         >
                           <option value="social">Social</option>
@@ -4053,7 +4053,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <select
                         value={mode}
                         onChange={(e) => setMode(e.target.value as any)}
-                        className="px-3 py-1.5 text-sm rounded transition-all bg-neutral-800 text-neutral-100 hover:bg-neutral-700 touch-manipulation"
+                        className="px-3 py-1.5 text-sm border-0 bg-transparent rounded transition-all text-white touch-manipulation"
                       >
                         <option value="text">💬 Text</option>
                         <option value="image">🖼️ Image</option>
@@ -4070,7 +4070,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={textProvider}
                           onChange={(e)=> setTextProvider(e.target.value as any)}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="AI Provider"
                         >
                           <option value="social">Social AI</option>
@@ -4086,7 +4086,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -4098,7 +4098,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="Aspect Ratio"
                         >
                           <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -4114,7 +4114,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={videoModel}
                           onChange={(e) => setVideoModel(e.target.value as any)}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="Video model"
                         >
                           <option value="ltxv">LTXV Model</option>
@@ -4124,7 +4124,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -4135,7 +4135,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm border-0 bg-transparent rounded text-white touch-manipulation"
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
@@ -4156,7 +4156,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder=""
-                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px] w-full'} resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px] w-full'} resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-transparent text-white placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                       ref={bottomInputRef}
                       style={{
                         fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
@@ -4165,14 +4165,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     />
                   </div>
 
-                  {/* Mobile buttons in separate row */}
+                  {/* Mobile buttons vertically stacked */}
                   {isMobile && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-1">
                       {/* Upload button */}
-                      <label className={`group cursor-pointer rounded-xl p-3 flex items-center justify-center transition-all hover:scale-110 ${
-                        darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-white'
+                      <label className={`group cursor-pointer rounded-xl p-2.5 flex items-center justify-center transition-all hover:scale-110 ${
+                        darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-transparent'
                       } shadow-lg`} title="Attach image/video/pdf">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" className="transition-colors group-hover:stroke-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
                           <path d="M21.44 11.05L12.25 20.24a7 7 0 11-9.9-9.9L11.54 1.15a5 5 0 717.07 7.07L9.42 17.41a3 3 0 01-4.24-4.24L13.4 4.95" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                         <input
@@ -4252,14 +4252,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <button
                         onClick={handleSend}
                         disabled={isGeneratingBatch || !input.trim() || !canAffordGeneration}
-                        className={`group relative flex-shrink-0 h-12 w-12 cursor-pointer rounded-xl flex items-center justify-center transition-all hover:scale-110 ${
-                          darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-white'
+                        className={`group relative flex-shrink-0 h-10 w-10 cursor-pointer rounded-xl flex items-center justify-center transition-all hover:scale-110 ${
+                          darkMode ? 'hover:bg-neutral-800/30 bg-neutral-700' : 'hover:bg-gray-100/50 bg-transparent'
                         } ${!canAffordGeneration || !input.trim() ? 'cursor-not-allowed opacity-50' : ''} shadow-lg`}
                         title={canAffordGeneration ? `Send` : `Need ${generationCost} credits`}
                         aria-label="Send"
                       >
                         {/* Clean Send Arrow SVG Icon */}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" className="transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" className="transition-all">
                           <path
                             d="M22 2L11 13"
                             stroke={canAffordGeneration && input.trim() ? "rgb(6,182,212)" : (darkMode ? "#94a3b8" : "#64748b")}
@@ -4281,9 +4281,9 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   )}
 
-                  {/* Desktop buttons inline with textarea */}
+                  {/* Desktop buttons vertically stacked */}
                   {!isMobile && (
-                    <div className="flex items-center gap-2 ml-2">
+                    <div className="flex flex-col gap-1 ml-2">
                       {/* Upload button */}
                       <label className={`group cursor-pointer rounded-lg p-1.5 flex items-center justify-center transition-all hover:scale-105 hover:bg-gray-500/10`} title="Attach image/video/pdf">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" className="transition-colors group-hover:stroke-gray-400">
@@ -4413,7 +4413,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           </svg>
                         </div>
                       ) : (
-                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-white text-black'}`}>
+                        <div className={`flex ${isMobile ? 'h-10 w-10' : 'h-16 w-16'} items-center justify-center rounded-lg border ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-300' : 'bg-transparent text-black'}`}>
                           📄
                         </div>
                       )}
@@ -4442,11 +4442,11 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className="h-full w-full relative">
                 {/* Floating controls overlay */}
                 <div className="absolute top-4 right-4 z-10 flex items-center gap-3">
-                  <div className={`text-sm px-3 py-2 rounded-full backdrop-blur-md ${darkMode ? 'bg-black/50 text-white' : 'bg-white/80 text-black'}`}>
+                  <div className={`text-sm px-3 py-2 rounded-full backdrop-blur-md ${darkMode ? 'bg-black/50 text-white' : 'bg-transparent/80 text-black'}`}>
                     {binItems.length} generations
                   </div>
                   <button
-                    className={`rounded-full px-4 py-2 text-sm backdrop-blur-md transition-colors ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
+                    className={`rounded-full px-4 py-2 text-sm backdrop-blur-md transition-colors ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-transparent/80 hover:bg-transparent text-black border border-black/20'}`}
                     onClick={async () => {
                       const r = await fetch('/api/social-twin/history?limit=48', { headers: { 'X-User-Id': userId || '' } });
                       const j = await r.json();
@@ -4468,7 +4468,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       return (
                         <div 
                           key={it.id} 
-                          className={`aspect-square relative group cursor-pointer rounded-lg overflow-hidden ${darkMode ? 'bg-neutral-900' : 'bg-white'} transition-all duration-300 hover:scale-105 hover:shadow-xl hover:z-10`}
+                          className={`aspect-square relative group cursor-pointer rounded-lg overflow-hidden ${darkMode ? 'bg-neutral-900' : 'bg-transparent'} transition-all duration-300 hover:scale-105 hover:shadow-xl hover:z-10`}
                           onClick={() => {
                             setViewerItem(it);
                             setViewerOpen(true);
@@ -4565,7 +4565,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   {binCursor && binItems.length > 0 && (
                     <div className="flex justify-center mt-6">
                       <button
-                        className={`rounded-full px-6 py-3 text-sm font-medium backdrop-blur-md transition-all hover:scale-105 ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-white/80 hover:bg-white text-black border border-black/20'}`}
+                        className={`rounded-full px-6 py-3 text-sm font-medium backdrop-blur-md transition-all hover:scale-105 ${darkMode ? 'bg-black/50 hover:bg-black/70 text-white border border-white/20' : 'bg-transparent/80 hover:bg-transparent text-black border border-black/20'}`}
                         onClick={async () => {
                           const r = await fetch(`/api/social-twin/history?limit=24&cursor=${encodeURIComponent(binCursor)}`, { headers: { 'X-User-Id': userId || '' } });
                           const j = await r.json();
@@ -4614,7 +4614,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               </div>
 
               {/* Overview (collapsible) */}
-              <div className={`rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
+              <div className={`rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-transparent/70 backdrop-blur-md border-neutral-200'}`}>
                 <button
                   className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
                   onClick={() => setDashOverviewOpen(v => !v)}
@@ -4681,7 +4681,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               {/* Settings moved to modal opened by top-right icon */}
 
               {/* Projects (collapsible) */}
-              <div className={`mt-4 rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-white/70 backdrop-blur-md border-neutral-200'}`}>
+              <div className={`mt-4 rounded-2xl border ${darkMode ? 'bg-neutral-950/60 border-neutral-800' : 'bg-transparent/70 backdrop-blur-md border-neutral-200'}`}>
                 <button
                   className={`w-full flex items-center justify-between px-4 py-3 text-sm ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-neutral-50'}`}
                   onClick={() => setDashProjectsOpen(v => !v)}
@@ -4714,7 +4714,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <a
                             key={p.id}
                             href={`/social-twin?projectId=${encodeURIComponent(p.id)}`}
-                            className={`group flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 hover:bg-neutral-900' : 'bg-white/70 backdrop-blur-sm border-neutral-200 hover:bg-black/5'}`}
+                            className={`group flex items-center gap-3 rounded-xl border p-2 transition-colors cursor-pointer ${darkMode ? 'bg-neutral-950/60 border-neutral-800 hover:bg-neutral-900' : 'bg-transparent/70 backdrop-blur-sm border-neutral-200 hover:bg-black/5'}`}
                           >
                             <div className={`relative w-40 sm:w-56 aspect-video overflow-hidden rounded-lg border ${darkMode ? 'border-neutral-800 bg-neutral-900' : 'border-neutral-200 bg-neutral-50'}`}>
                               <img
@@ -5180,7 +5180,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {/* Article Preview Modal */}
       {articleModalOpen && selectedArticle && (
         <div className="fixed inset-0 z-[10001] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setArticleModalOpen(false)}>
-          <div className={`w-full max-w-4xl max-h-[90vh] rounded-2xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
+          <div className={`w-full max-w-4xl max-h-[90vh] rounded-2xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-200'} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className={`flex items-center justify-between p-6 border-b ${darkMode ? 'border-neutral-700 bg-neutral-800' : 'border-neutral-200 bg-neutral-50'}`}>
               <div className="flex items-center gap-4">
@@ -5288,8 +5288,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {/* Settings Modal */}
       {settingsOpen && (
         <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
-          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-white/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
+          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-transparent border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
+            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-transparent/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
               <div className="text-sm font-medium">Settings</div>
               <button className={`rounded p-1 ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'}`} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
             </div>
@@ -5345,7 +5345,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </select>
                 </div>
               </div>
-              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-white/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
+              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-transparent/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
                 <div className="flex gap-2 justify-end">
                   <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
                   <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
@@ -5359,7 +5359,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {!simpleMode && (
   <section
     ref={gridSectionRef as any}
-  className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-white'}`}
+  className={`absolute inset-0 z-0 grid-canvas ${darkMode ? 'bg-neutral-950' : 'bg-transparent'}`}
         style={{
           cursor: gridEnabled ? 'grab' : undefined,
           overflow: 'hidden',
@@ -5537,7 +5537,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           <div className="fixed z-[10000]" style={{ left: menu.x, top: menu.y }}
                onClick={()=> setMenu({ open:false, x:0, y:0, targetId:null })}
           >
-            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow relative ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white'}`} onClick={(e)=> e.stopPropagation()}>
+            <div className={`min-w-[160px] overflow-hidden rounded-lg border shadow relative ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-transparent'}`} onClick={(e)=> e.stopPropagation()}>
               {/* Minimal red close button */}
               <button 
                 className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center hover:bg-red-500/20 rounded-full transition-colors"
@@ -5548,18 +5548,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 </svg>
               </button>
               
-              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                 if (menu.targetId) setCanvasItems(prev=> prev.filter(i=> i.id!==menu.targetId));
                 setMenu({ open:false, x:0, y:0, targetId:null });
               }}>Delete</button>
-              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                 if (menu.targetId) {
                   const src = canvasItems.find(i=> i.id===menu.targetId);
                   if (src) setCanvasItems(prev=> [...prev, { ...src, id: generateId(), x:(src.x||0)+20, y:(src.y||0)+20 }]);
                 }
                 setMenu({ open:false, x:0, y:0, targetId:null });
               }}>Duplicate</button>
-              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+              <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                 if (menu.targetId) {
                   const canvasItem = canvasItems.find(i=> i.id===menu.targetId);
                   if (canvasItem && (canvasItem.type === 'image' || canvasItem.type === 'video')) {
@@ -5571,17 +5571,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 {/* Export submenu */}
                 <div className="border-t my-1" />
                 <div className="px-3 py-1 text-xs opacity-70">Export</div>
-                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                   if (!menu.targetId) return;
                   openCompileModalFromNode(menu.targetId);
                   setMenu({ open:false, x:0, y:0, targetId:null });
                 }}>Create Video</button>
-                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                   if (!menu.targetId) return;
                   openComposeModalFromNode(menu.targetId);
                   setMenu({ open:false, x:0, y:0, targetId:null });
                 }}>Compose PDF/PPT</button>
-                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-white/10' : 'hover:bg-black/5'}`} onClick={()=>{
+                <button className={`block w-full text-left px-3 py-2 text-sm ${darkMode? 'hover:bg-transparent/10' : 'hover:bg-black/5'}`} onClick={()=>{
                   if (!menu.targetId) return;
                   {
                     const target = canvasItems.find(i => i.id === menu.targetId);
@@ -5604,7 +5604,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {viewer.open && (
         <div className="fixed inset-0 z-[10040]">
           <div className="absolute inset-0 bg-black/70" onClick={()=> setViewer({ open:false, src:'', ref: undefined })} />
-          <div className={`absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] max-w-6xl rounded-2xl border ${darkMode?'border-white/10 bg-black':'border-black/10 bg-white'} p-4`}>
+          <div className={`absolute left-1/2 top-10 -translate-x-1/2 w-[92vw] max-w-6xl rounded-2xl border ${darkMode?'border-white/10 bg-black':'border-black/10 bg-transparent'} p-4`}>
             <div className="mb-3 flex items-center justify-between text-xs opacity-70">
               <div>Compare</div>
               <button className="rounded border px-2 py-1" onClick={()=> setViewer({ open:false, src:'', ref: undefined })}>Close</button>
@@ -5640,7 +5640,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50" onClick={()=> setCompileOpen(false)} />
           {/* Modal card */}
-          <div className={`absolute left-1/2 top-20 -translate-x-1/2 w-[92vw] max-w-xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-white'}`} role="dialog" aria-modal="true">
+          <div className={`absolute left-1/2 top-20 -translate-x-1/2 w-[92vw] max-w-xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-transparent'}`} role="dialog" aria-modal="true">
             <div className="mb-3 text-lg font-semibold">Compile Video</div>
             <div className="mb-3 text-sm opacity-80">Clips to be compiled (in order):</div>
             <div className="mb-4 max-h-48 overflow-auto rounded border p-2 text-xs">
@@ -5680,7 +5680,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {composeOpen ? (
         <div className="fixed inset-0 z-[10050] pointer-events-auto">
           <div className="absolute inset-0 bg-black/50" onClick={()=> setComposeOpen(false)} />
-          <div className={`absolute left-1/2 top-14 -translate-x-1/2 w-[92vw] max-w-3xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-white'}`}>
+          <div className={`absolute left-1/2 top-14 -translate-x-1/2 w-[92vw] max-w-3xl rounded-2xl border p-4 ${darkMode?'bg-black border-neutral-800 text-neutral-100':'bg-transparent'}`}>
             <div className="mb-3 flex items-center justify-between">
               <div className="text-lg font-semibold">Compose Document</div>
               <div className="flex items-center gap-2 text-sm">
@@ -5699,7 +5699,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <div className="mb-1 text-xs opacity-70">Page {i+1}</div>
                   <div className="h-48 w-full overflow-hidden rounded border">
                     {/* Simple preview: first image + texts */}
-                    <div className="relative h-full w-full bg-white">
+                    <div className="relative h-full w-full bg-transparent">
                       {pg.images[0] ? (
                         
                         <img src={getDisplayUrl(pg.images[0].url)} alt="page" className="h-full w-full object-contain" />
@@ -5761,7 +5761,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             {/* Close button */}
             <button
               onClick={() => setViewerOpen(false)}
-              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/5 text-white hover:bg-white/10 border border-white/10 transition-colors flex items-center justify-center"
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-transparent/5 text-white hover:bg-transparent/10 border border-white/10 transition-colors flex items-center justify-center"
             >
               ✕
             </button>
@@ -5804,7 +5804,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         });
                     }
                   }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-transparent/5 transition-colors"
                 >
                   💬 Show in chat
                 </button>
@@ -5818,7 +5818,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       setViewerOpen(false);
                     }
                   }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-transparent/5 transition-colors"
                 >
                   💭 Send to chat
                 </button>
@@ -5831,7 +5831,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       setViewerOpen(false);
                     }
                   }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-transparent/5 transition-colors"
                 >
                   🎨 Send to canvas
                 </button>
@@ -5863,7 +5863,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         }
                       }}
                       disabled={isSaved}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-white/5 transition-colors ${isSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-700 text-neutral-100 bg-transparent hover:bg-transparent/5 transition-colors ${isSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {isSaved ? '💾 Saved' : '💾 Save to Library'}
                     </button>
@@ -5876,7 +5876,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <div className="mt-3 max-w-[60vw] text-center">
                   <button
                     onClick={() => setViewerDetailsOpen(v => !v)}
-                    className="mx-auto mb-2 inline-flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-1 text-xs text-neutral-100 hover:bg-white/5"
+                    className="mx-auto mb-2 inline-flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-1 text-xs text-neutral-100 hover:bg-transparent/5"
                   >
                     {viewerDetailsOpen ? 'Hide details' : 'Show details'}
                   </button>
@@ -5922,7 +5922,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {showWelcomeModal && (
         <div className="fixed inset-0 z-[10100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowWelcomeModal(false)} />
-          <div className={`relative rounded-2xl border p-8 max-w-md w-full mx-4 ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-200'}`}>
+          <div className={`relative rounded-2xl border p-8 max-w-md w-full mx-4 ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-transparent border-neutral-200'}`}>
             <h2 className="text-2xl font-bold mb-4">Welcome to Social Twin! 🎨</h2>
             <p className={`mb-6 text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
               Start creating with AI-powered content generation and visual project organization. 
@@ -5968,7 +5968,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       )}
       {simpleMode && sidebarOpen && (
-        <aside className={`fixed left-0 top-0 z-[10000] h-screen w-60 border-r ${darkMode ? 'bg-neutral-950 border-neutral-800 text-neutral-100' : 'bg-white'}`}>
+        <aside className={`fixed left-0 top-0 z-[10000] h-screen w-60 border-r ${darkMode ? 'bg-neutral-950 border-neutral-800 text-neutral-100' : 'bg-transparent'}`}>
           <div className="p-3 border-b flex items-center justify-between">
             <div className="font-semibold text-sm">Menu</div>
             <button className="text-xs rounded border px-2 py-1" onClick={()=> setSidebarOpen(false)}>Close</button>
@@ -6030,7 +6030,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {quickCreateOpen ? (
         <div className="fixed inset-0 z-[10000]" onClick={()=> setQuickCreateOpen(false)}>
           <div
-            className={`absolute w-[520px] rounded-2xl border p-3 shadow-2xl max-h-[80vh] overflow-y-auto bg-white border-neutral-200 text-black`}
+            className={`absolute w-[520px] rounded-2xl border p-3 shadow-2xl max-h-[80vh] overflow-y-auto bg-transparent border-neutral-200 text-black`}
             style={{ left: quickCreatePos.x, top: quickCreatePos.y }}
             onClick={(e)=> e.stopPropagation()}
           >
@@ -6230,7 +6230,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           if (t.batchSize!=null) setBatchSize(t.batchSize);
                         }
                       }}
-                      className={`flex-1 rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-white border-neutral-200'}`}
+                      className={`flex-1 rounded border px-2 py-1 text-xs ${darkMode ? 'bg-neutral-900 border-neutral-700 text-neutral-100' : 'bg-transparent border-neutral-200'}`}
                     >
                       <option value="">Select template…</option>
                       {templateNames.map((n)=> (<option key={n} value={n}>{n}</option>))}
@@ -6262,14 +6262,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 <>
                   <div>
                     <label className="text-xs font-medium opacity-80">Aspect Ratio</label>
-                    <select value={aspectRatio} onChange={(e)=> setAspectRatio(e.target.value)} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}>
+                    <select value={aspectRatio} onChange={(e)=> setAspectRatio(e.target.value)} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-transparent border-neutral-200 text-black`}>
                       <option value="">Auto</option>
                       {AR_CHOICES.map((ar)=> (<option key={ar} value={ar}>{ar}</option>))}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs font-medium opacity-80">Quantity</label>
-                    <select value={batchSize===''?'':String(batchSize)} onChange={(e)=> setBatchSize(e.target.value===''?'':Number(e.target.value))} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}>
+                    <select value={batchSize===''?'':String(batchSize)} onChange={(e)=> setBatchSize(e.target.value===''?'':Number(e.target.value))} className={`w-full rounded border px-2 py-1 h-8 text-xs bg-transparent border-neutral-200 text-black`}>
                       <option value="">1</option>
                       {BATCH_CHOICES.map((n)=> (<option key={n} value={n}>{n}</option>))}
                     </select>
@@ -6284,7 +6284,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         else if (v === 'Custom...') setLoraName(loraName || '');
                         else setLoraName(v);
                       }}
-                      className={`w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black`}
+                      className={`w-full rounded border px-2 py-1 h-8 text-xs bg-transparent border-neutral-200 text-black`}
                     >
                       {LORA_CHOICES.map((opt) => (
                         <option key={opt} value={opt}>{opt}</option>
@@ -6299,7 +6299,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   <select
                     value={quickTextCategory}
                     onChange={(e)=> setQuickTextCategory(e.target.value as any)}
-                    className="w-full rounded border px-2 py-1 h-8 text-xs bg-white border-neutral-200 text-black"
+                    className="w-full rounded border px-2 py-1 h-8 text-xs bg-transparent border-neutral-200 text-black"
                   >
                     <option value="instagram">Instagram</option>
                     <option value="linkedin">LinkedIn</option>
@@ -6321,7 +6321,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <button
                         key={t.id}
                         onClick={()=> setQuickImageStyle(t.id)}
-                        className={`px-2 py-1 text-xs ${quickImageStyle===t.id ? (darkMode?'bg-neutral-800 text-white':'bg-neutral-100') : (darkMode?'bg-neutral-900 text-neutral-200':'bg-white text-neutral-700')} border-r last:border-r-0 ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}
+                        className={`px-2 py-1 text-xs ${quickImageStyle===t.id ? (darkMode?'bg-neutral-800 text-white':'bg-neutral-100') : (darkMode?'bg-neutral-900 text-neutral-200':'bg-transparent text-neutral-700')} border-r last:border-r-0 ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}
                       >
                         {t.label}
                       </button>
@@ -6462,7 +6462,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   const text = table[v] || '';
                   if (text) setInput(text);
                 }}
-                className={`w-full rounded border px-2 py-1 text-xs bg-white border-neutral-200 text-black`}
+                className={`w-full rounded border px-2 py-1 text-xs bg-transparent border-neutral-200 text-black`}
               >
                 <option value="">Select preset…</option>
                 {(() => {
@@ -6501,7 +6501,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
             <div className="flex items-center justify-between gap-1">
               <div className="flex items-center gap-1">
                 {/* File Attachment */}
-                <label className="cursor-pointer rounded-md px-3 py-1 text-sm border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center gap-2" title="Attach file">
+                <label className="cursor-pointer rounded-md px-3 py-1 text-sm border border-neutral-200 bg-transparent hover:bg-neutral-50 flex items-center gap-2" title="Attach file">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4" stroke="#111827" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M17 3l4 4M21 3l-4 4" stroke="#111827" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -6819,7 +6819,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       )}
       {/* Sidebar */}
       {showSidebar ? (
-        <aside className={`fixed top-0 left-0 z-40 h-screen w-64 border-r ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-white'}`}>
+        <aside className={`fixed top-0 left-0 z-40 h-screen w-64 border-r ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-transparent'}`}>
           <div className="p-3 flex items-center justify-between border-b">
             <h3 className="text-sm font-semibold">Daily Topics</h3>
             <button className="text-xs rounded border px-2 py-1" onClick={()=>setShowSidebar(false)}>Close</button>
@@ -6842,14 +6842,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       {/* PDF Layout Editor */}
       {pdfEditorOpen && (
         <div className="fixed inset-0 z-[10060] bg-black/50 backdrop-blur-sm">
-          <div className={`absolute left-1/2 top-4 -translate-x-1/2 w-[92vw] max-w-6xl h-[88vh] rounded-xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}>
+          <div className={`absolute left-1/2 top-4 -translate-x-1/2 w-[92vw] max-w-6xl h-[88vh] rounded-xl border shadow-2xl ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-200'}`}>
             {/* Enhanced Header */}
             <div className={`flex flex-col border-b ${darkMode ? 'border-neutral-700' : 'border-neutral-200'}`}>
               {/* Top Row - Main Header */}
       <div className={`flex items-center justify-between p-4 ${darkMode ? 'bg-neutral-800' : 'bg-neutral-50'}`}>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow ${darkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-transparent border border-neutral-200'}`}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M7 9h10M7 13h10M7 17h6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
@@ -6898,7 +6898,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onClick={() => setPdfOrientation('portrait')}
                       className={`px-3 py-1 text-sm ${pdfOrientation === 'portrait' 
                         ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
-                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')}`}
+                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-transparent hover:bg-neutral-50 text-neutral-700')}`}
                     >
                       Portrait
                     </button>
@@ -6906,7 +6906,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onClick={() => setPdfOrientation('landscape')}
                       className={`px-3 py-1 text-sm ${pdfOrientation === 'landscape' 
                         ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
-                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')}`}
+                        : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-transparent hover:bg-neutral-50 text-neutral-700')}`}
                     >
                       Landscape
                     </button>
@@ -6946,7 +6946,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               : page
                           ));
                         }}
-                        className={`rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}
+                        className={`rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-200'}`}
                       >
                         <option value="Arial">Arial</option>
                         <option value="Times New Roman">Times New Roman</option>
@@ -6977,7 +6977,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                               : page
                           ));
                         }}
-                        className={`w-16 rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-neutral-200'}`}
+                        className={`w-16 rounded border px-2 py-1 text-sm ${darkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent border-neutral-200'}`}
                       />
                     </div>
 
@@ -7025,7 +7025,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             className={`px-2 py-1 text-sm ${
                               pdfPages[currentPage]?.items.find(i => i.id === selectedItem)?.textAlign === align
                                 ? (darkMode ? 'bg-neutral-700 text-white' : 'bg-neutral-200 text-neutral-900') 
-                                : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-white hover:bg-neutral-50 text-neutral-700')
+                                : (darkMode ? 'bg-neutral-900 hover:bg-neutral-800 text-neutral-300' : 'bg-transparent hover:bg-neutral-50 text-neutral-700')
                             }`}
                           >
                             {align === 'left' ? 'L' : align === 'center' ? 'C' : 'R'}
@@ -7104,7 +7104,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
               <div className="flex h-full gap-4">
                 {/* Pages Sidebar */}
                 <div className={`w-44 shrink-0 flex flex-col ${darkMode ? 'border-r border-neutral-800' : 'border-r border-neutral-200'}`}>
-                  <div className={`px-2 py-2 sticky top-0 z-10 ${darkMode ? 'bg-neutral-900' : 'bg-white'} ${darkMode ? 'border-b border-neutral-800' : 'border-b border-neutral-200'} flex items-center justify-between`}>
+                  <div className={`px-2 py-2 sticky top-0 z-10 ${darkMode ? 'bg-neutral-900' : 'bg-transparent'} ${darkMode ? 'border-b border-neutral-800' : 'border-b border-neutral-200'} flex items-center justify-between`}>
                     <span className={`text-xs uppercase tracking-wide ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>Pages</span>
                     <button
                       onClick={() => {
@@ -7179,7 +7179,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           selectedItem === item.id 
                             ? (darkMode ? 'border-neutral-500 shadow-lg ring-4 ring-neutral-500/20' : 'border-neutral-500 shadow-lg ring-4 ring-neutral-500/20') 
                             : (darkMode ? 'border-dashed border-neutral-600 hover:border-neutral-500 hover:shadow-md' : 'border-dashed border-neutral-300 hover:border-neutral-400 hover:shadow-md')
-                        } ${item.type === 'text' ? 'bg-white/80 backdrop-blur-sm' : ''}`}
+                        } ${item.type === 'text' ? 'bg-transparent/80 backdrop-blur-sm' : ''}`}
                         style={{
                           left: item.x,
                           top: item.y,
@@ -7342,14 +7342,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                             document.addEventListener('mouseup', handleMouseUp);
                           }}
                         >
-                          <div className="absolute inset-0 bg-white rounded-full scale-50"></div>
+                          <div className="absolute inset-0 bg-transparent rounded-full scale-50"></div>
                         </div>
                       </div>
                     ))}
                   </div>
                   
                   {/* Status Bar */}
-                  <div className={`mt-4 flex items-center justify-between px-4 py-2 rounded-lg ${darkMode ? 'bg-neutral-800 border border-neutral-700' : 'bg-white border border-neutral-200'}`}>
+                  <div className={`mt-4 flex items-center justify-between px-4 py-2 rounded-lg ${darkMode ? 'bg-neutral-800 border border-neutral-700' : 'bg-transparent border border-neutral-200'}`}>
                     <div className="flex items-center gap-4">
                       <div className={`text-sm ${darkMode ? 'text-neutral-400' : 'text-neutral-600'}`}>
                         {pdfPages[currentPage]?.items.length || 0} items on page
@@ -8367,7 +8367,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
           {/* Play overlay when paused */}
           {!videoUi.playing && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className={`rounded-full p-4 ${dark ? 'bg-black/60' : 'bg-white/80'} backdrop-blur-sm shadow-lg`}>
+              <div className={`rounded-full p-4 ${dark ? 'bg-black/60' : 'bg-transparent/80'} backdrop-blur-sm shadow-lg`}>
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M8 5v14l11-7z" fill={dark ? '#ffffff' : '#111111'} />
                 </svg>
@@ -8381,7 +8381,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
             onMouseDown={(e)=>{ e.stopPropagation(); }}
             onClick={(e)=>{ e.stopPropagation(); }}
           >
-            <div className={`mx-auto flex w-full items-center gap-2 rounded-md border px-2 py-1 ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-white/90 border-neutral-300 backdrop-blur'} shadow-lg`}>
+            <div className={`mx-auto flex w-full items-center gap-2 rounded-md border px-2 py-1 ${dark ? 'bg-neutral-900 border-neutral-700' : 'bg-transparent/90 border-neutral-300 backdrop-blur'} shadow-lg`}>
               <button
                 className={`rounded px-2 py-1 text-xs transition-colors ${dark ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-neutral-100 hover:bg-neutral-200'}`}
                 onClick={(e)=>{ e.stopPropagation(); const v = videoRef.current; if (!v) return; if (v.paused) { v.play(); } else { v.pause(); } }}
@@ -8467,7 +8467,7 @@ function DraggableResizableItem({ item, dark, onChange, scale, onStartLink, onFi
         onMouseDown={(e)=>{ e.stopPropagation(); onStartLink && onStartLink('female'); }}
         onMouseUp={(e)=>{ e.stopPropagation(); onFinishLink && onFinishLink('female', item.id); }}
         title="Female port" />
-      <button className={`port absolute z-10 right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-4 w-4 rounded-full border border-white shadow bg-white ${hoverPort && hoverPort.id===item.id && hoverPort.port==='male' ? 'ring-2 ring-white/60' : ''}`}
+      <button className={`port absolute z-10 right-0 top-1/2 -translate-y-1/2 translate-x-1/2 h-4 w-4 rounded-full border border-white shadow bg-transparent ${hoverPort && hoverPort.id===item.id && hoverPort.port==='male' ? 'ring-2 ring-white/60' : ''}`}
         onMouseEnter={()=>{ (window as any).__setHoverPort && (window as any).__setHoverPort({ id:item.id, port:'male' }); }}
         onMouseLeave={()=>{ (window as any).__setHoverPort && (window as any).__setHoverPort(null); }}
         onMouseDown={(e)=>{ e.stopPropagation(); onStartLink && onStartLink('male'); }}
