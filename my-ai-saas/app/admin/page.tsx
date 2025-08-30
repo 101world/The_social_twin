@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Settings, Server, Cloud, RefreshCw, TrendingUp, Activity, AlertTriangle, CheckCircle, Users, BarChart3, Zap, Save } from 'lucide-react';
+import { Loader2, Settings, Server, Cloud, RefreshCw, TrendingUp, Activity, AlertTriangle, CheckCircle, Users, BarChart3, Zap, Save, Upload } from 'lucide-react';
 
 interface RunPodConfig {
   id?: string;
@@ -95,6 +95,21 @@ export default function AdminPage() {
   const [accessCode, setAccessCode] = useState('9820571837');
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [authError, setAuthError] = useState('');
+  
+  // New state for endpoint management
+  const [endpoints, setEndpoints] = useState({
+    textToImage: '',
+    imageToImage: '',
+    textToVideo: '',
+    imageToVideo: ''
+  });
+  
+  // New state for explore content
+  const [exploreContent, setExploreContent] = useState<any[]>([]);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   // Check if user entered correct access code
   const ADMIN_CODE = '9820571837';
@@ -122,6 +137,8 @@ export default function AdminPage() {
       loadCloudflareConfig();
       loadAnalytics();
       loadScaling();
+      loadEndpoints();
+      loadExploreContent();
     }
   }, [accessCode, isAuthenticated]);
 
@@ -180,6 +197,30 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Failed to load scaling data:', error);
+    }
+  };
+
+  const loadEndpoints = async () => {
+    try {
+      const response = await fetch('/api/admin/endpoints');
+      if (response.ok) {
+        const data = await response.json();
+        setEndpoints(data.endpoints);
+      }
+    } catch (error) {
+      console.error('Failed to load endpoints:', error);
+    }
+  };
+
+  const loadExploreContent = async () => {
+    try {
+      const response = await fetch('/api/admin/explore-content');
+      if (response.ok) {
+        const data = await response.json();
+        setExploreContent(data.content);
+      }
+    } catch (error) {
+      console.error('Failed to load explore content:', error);
     }
   };
 
@@ -261,6 +302,77 @@ export default function AdminPage() {
     }
   };
 
+  const saveEndpoints = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/endpoints', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(endpoints)
+      });
+      
+      if (response.ok) {
+        setMessage('Endpoints updated successfully!');
+      } else {
+        throw new Error('Failed to save endpoints');
+      }
+    } catch (error) {
+      setMessage('Error saving endpoints');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadExploreContent = async () => {
+    if (!uploadFile || !uploadTitle) return;
+    
+    setUploading(true);
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('title', uploadTitle);
+      formData.append('description', uploadDescription);
+      
+      const response = await fetch('/api/admin/explore-content', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        const newContent = await response.json();
+        setExploreContent(prev => [...prev, newContent]);
+        setUploadFile(null);
+        setUploadTitle('');
+        setUploadDescription('');
+        setMessage('Content uploaded successfully!');
+      } else {
+        throw new Error('Failed to upload content');
+      }
+    } catch (error) {
+      setMessage('Error uploading content');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeExploreContent = async (contentId: string) => {
+    try {
+      const response = await fetch(`/api/admin/explore-content?id=${contentId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setExploreContent(prev => prev.filter(item => item.id !== contentId));
+        setMessage('Content removed successfully!');
+      } else {
+        throw new Error('Failed to remove content');
+      }
+    } catch (error) {
+      setMessage('Error removing content');
+    }
+  };
+
   if (loading && isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -289,7 +401,7 @@ export default function AdminPage() {
         )}
 
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Analytics
@@ -301,6 +413,14 @@ export default function AdminPage() {
             <TabsTrigger value="runpod" className="flex items-center gap-2">
               <Server className="w-4 h-4" />
               RunPod Config
+            </TabsTrigger>
+            <TabsTrigger value="endpoints" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Endpoints
+            </TabsTrigger>
+            <TabsTrigger value="explore" className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Explore Content
             </TabsTrigger>
             <TabsTrigger value="cloudflare" className="flex items-center gap-2">
               <Cloud className="w-4 h-4" />
@@ -699,6 +819,186 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="endpoints" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>RunPod Endpoint Management</CardTitle>
+                <CardDescription>
+                  Manage and update RunPod endpoints for scaling as your user base grows
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="text-to-image">Text to Image Endpoint</Label>
+                    <Input
+                      id="text-to-image"
+                      value={endpoints.textToImage}
+                      onChange={(e) => setEndpoints(prev => ({ ...prev, textToImage: e.target.value }))}
+                      placeholder="https://api.runpod.ai/v2/your-endpoint-id/run"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="image-to-image">Image to Image Endpoint</Label>
+                    <Input
+                      id="image-to-image"
+                      value={endpoints.imageToImage}
+                      onChange={(e) => setEndpoints(prev => ({ ...prev, imageToImage: e.target.value }))}
+                      placeholder="https://api.runpod.ai/v2/your-endpoint-id/run"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="text-to-video">Text to Video Endpoint</Label>
+                    <Input
+                      id="text-to-video"
+                      value={endpoints.textToVideo}
+                      onChange={(e) => setEndpoints(prev => ({ ...prev, textToVideo: e.target.value }))}
+                      placeholder="https://api.runpod.ai/v2/your-endpoint-id/run"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="image-to-video">Image to Video Endpoint</Label>
+                    <Input
+                      id="image-to-video"
+                      value={endpoints.imageToVideo}
+                      onChange={(e) => setEndpoints(prev => ({ ...prev, imageToVideo: e.target.value }))}
+                      placeholder="https://api.runpod.ai/v2/your-endpoint-id/run"
+                    />
+                  </div>
+                </div>
+                <Button onClick={saveEndpoints} disabled={saving} className="w-full">
+                  {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Update Endpoints
+                </Button>
+                
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-4">Endpoint Status</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(endpoints).map(([key, url]) => (
+                      <div key={key} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div>
+                          <div className="font-medium capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</div>
+                          <div className="text-sm text-muted-foreground font-mono truncate">{url || 'Not configured'}</div>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${url ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="explore" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Explore Content Management</CardTitle>
+                <CardDescription>
+                  Upload and manage content for the explore page to showcase platform capabilities
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Upload New Content */}
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Upload New Content</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="content-file">Select File</Label>
+                      <Input
+                        id="content-file"
+                        type="file"
+                        accept="image/*,video/*"
+                        onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="content-title">Title</Label>
+                      <Input
+                        id="content-title"
+                        value={uploadTitle}
+                        onChange={(e) => setUploadTitle(e.target.value)}
+                        placeholder="Amazing AI Generation"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="content-description">Description</Label>
+                      <Input
+                        id="content-description"
+                        value={uploadDescription}
+                        onChange={(e) => setUploadDescription(e.target.value)}
+                        placeholder="Describe this content..."
+                      />
+                    </div>
+                    <Button 
+                      onClick={uploadExploreContent} 
+                      disabled={!uploadFile || !uploadTitle || uploading}
+                      className="w-full"
+                    >
+                      {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                      Upload to R2 & Add to Explore
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Existing Content */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Current Explore Content</h3>
+                  {exploreContent.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Upload className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No content uploaded yet. Add some content to showcase on the explore page!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {exploreContent.map((content: any, index) => (
+                        <Card key={index}>
+                          <CardContent className="p-4">
+                            <div className="aspect-square bg-neutral-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                              {content.file_type?.startsWith('video/') ? (
+                                <video 
+                                  src={content.file_url} 
+                                  className="w-full h-full object-cover rounded-lg"
+                                  muted
+                                  loop
+                                  onMouseEnter={(e) => e.currentTarget.play()}
+                                  onMouseLeave={(e) => e.currentTarget.pause()}
+                                />
+                              ) : content.file_type?.startsWith('image/') ? (
+                                <img 
+                                  src={content.file_url} 
+                                  alt={content.title}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <div className="text-muted-foreground">File Preview</div>
+                              )}
+                            </div>
+                            <h4 className="font-medium truncate">{content.title}</h4>
+                            <p className="text-sm text-muted-foreground truncate">{content.description}</p>
+                            <div className="flex justify-between items-center mt-3">
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(content.upload_date).toLocaleDateString()}
+                              </span>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => removeExploreContent(content.id)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
