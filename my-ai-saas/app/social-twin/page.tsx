@@ -2567,6 +2567,17 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   }, []);
 
   return (
+  <>
+    <style jsx>{`
+      @keyframes brandPulse {
+        0%, 100% {
+          box-shadow: 0 0 12px rgba(6,182,212,0.2), 0 0 24px rgba(6,182,212,0.1);
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(6,182,212,0.4), 0 0 40px rgba(6,182,212,0.2);
+        }
+      }
+    `}</style>
   <main className={`relative w-screen overflow-hidden ${darkMode ? 'bg-neutral-900 text-neutral-100' : 'bg-transparent'} max-w-full`}
          style={{ height: isMobile ? '100vh' : '100vh' }}> 
       {/* Make header icons clickable on top in Normal mode */}
@@ -4156,10 +4167,18 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder=""
-                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px] w-full'} resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-transparent text-white placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px] w-full'} resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${
+                        input.trim() 
+                          ? 'shadow-[0_0_20px_rgba(6,182,212,0.4)]' 
+                          : 'shadow-[0_0_12px_rgba(6,182,212,0.2)]'
+                      } ${darkMode ? 'bg-neutral-700 text-white placeholder-neutral-400' : 'bg-white text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                       ref={bottomInputRef}
                       style={{
-                        fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
+                        fontSize: isMobile ? '16px' : '14px',  // Prevent zoom on iOS
+                        animation: input.trim() ? 'brandPulse 2s ease-in-out infinite' : 'none',
+                        boxShadow: input.trim() 
+                          ? '0 0 20px rgba(6,182,212,0.4), 0 0 40px rgba(6,182,212,0.2)' 
+                          : '0 0 12px rgba(6,182,212,0.2)'
                       }}
                       disabled={isGeneratingBatch}
                     />
@@ -8178,6 +8197,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       )}
     </main>
+  </>
   );
 }
 
