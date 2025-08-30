@@ -3936,200 +3936,123 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     </div>
                   </div>
                 )}
-                {/* Mode selector and controls - ZERO space, aligned right like projects dropdown */}
-                <div className={`mb-0 mt-0 flex items-center gap-2 ${isMobile ? 'flex-wrap justify-end' : ''} transition-all duration-300`}>
-                  {/* Mode Selector Dropdown */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as any)}
-                      className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1.5 text-sm'} border rounded transition-all ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
-                    >
-                      <option value="text">💬 Text</option>
-                      <option value="image">🖼️ Image</option>
-                      <option value="image-modify">✏️ Modify</option>
-                      <option value="video">🎥 Video</option>
-                    </select>
-                  </div>
+                {/* Combined mode dropdowns and projects button in single row (mobile) */}
+                {isMobile ? (
+                  <div className="flex items-center justify-between gap-2 mb-0">
+                    {/* Mode dropdowns on the left */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Mode Selector Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={mode}
+                          onChange={(e) => setMode(e.target.value as any)}
+                          className={`px-2 py-1.5 text-xs border rounded transition-all ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                        >
+                          <option value="text">💬 Text</option>
+                          <option value="image">🖼️ Image</option>
+                          <option value="image-modify">✏️ Modify</option>
+                          <option value="video">🎥 Video</option>
+                        </select>
+                      </div>
 
-                  {/* Mode-specific controls */}
-                  {mode === 'text' && (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={chatMode}
-                        onChange={(e)=> setChatMode(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="AI Mode"
-                      >
-                        <option value="normal">General</option>
-                        <option value="prompt">Prompt</option>
-                        <option value="creative">Creative</option>
-                        <option value="think">Think</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {(mode === 'image' || mode === 'image-modify') && (
-                    <>
-                      {/* Batch size */}
-                      <select
-                        value={batchSize === '' ? '1' : String(batchSize)}
-                        onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Quantity"
-                      >
-                        {BATCH_CHOICES.map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-
-                      {/* Aspect ratio */}
-                      <select
-                        value={aspectRatio}
-                        onChange={(e) => setAspectRatio(e.target.value)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Aspect Ratio"
-                      >
-                        <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
-                        {AR_CHOICES.map((ar) => (
-                          <option key={ar} value={ar}>{ar}</option>
-                        ))}
-                      </select>
-
-                      {/* Advanced Controls Toggle */}
-                      <button
-                        onClick={() => setShowAdvancedControls(!showAdvancedControls)}
-                        className={`${isMobile ? 'px-2 py-1.5 text-xs' : 'px-3 py-1 text-sm'} border rounded transition-all ${showAdvancedControls ? (darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-500 border-gray-400 text-white') : (darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50')} touch-manipulation`}
-                        title="Advanced Controls"
-                      >
-                        <div className="flex items-center gap-1">
-                          <svg width={isMobile ? "12" : "14"} height={isMobile ? "12" : "14"} viewBox="0 0 24 24" fill="none" className="transition-transform duration-200" style={{ transform: showAdvancedControls ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          {!isMobile && <span>Style</span>}
+                      {/* Mode-specific controls */}
+                      {mode === 'text' && (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={chatMode}
+                            onChange={(e)=> setChatMode(e.target.value as any)}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[80px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="AI Mode"
+                          >
+                            <option value="normal">General</option>
+                            <option value="prompt">Prompt</option>
+                            <option value="creative">Creative</option>
+                            <option value="think">Think</option>
+                          </select>
                         </div>
-                      </button>
+                      )}
 
-                      {showAdvancedControls && (
+                      {(mode === 'image' || mode === 'image-modify') && (
                         <>
-                          {/* Effects LoRA */}
+                          {/* Batch size */}
                           <select
-                            value={isPresetLoRa(effectLora) ? effectLora : (effectLora ? 'Custom...' : 'None')}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === 'None') setEffectLora('');
-                              else if (v === 'Custom...') setEffectLora(effectLora || '');
-                              else setEffectLora(v);
-                            }}
-                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                            title="Effects LoRA"
+                            value={batchSize === '' ? '1' : String(batchSize)}
+                            onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Quantity"
                           >
-                            {(['None','Custom...'] as const).map((opt) => (
-                              <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                            ))}
-                            {availableLoras.map((lora) => (
-                              <option key={lora.filename} value={lora.filename}>
-                                {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                              </option>
+                            {BATCH_CHOICES.map((n) => (
+                              <option key={n} value={n}>{n}</option>
                             ))}
                           </select>
 
-                          {/* Character LoRA */}
+                          {/* Aspect ratio */}
                           <select
-                            value={isPresetLoRa(loraName) ? loraName : (loraName ? 'Custom...' : 'None')}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === 'None') setLoraName('');
-                              else if (v === 'Custom...') setLoraName(loraName || '');
-                              else setLoraName(v);
-                            }}
-                            className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[110px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                            title="Character LoRA"
+                            value={aspectRatio}
+                            onChange={(e) => setAspectRatio(e.target.value)}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Aspect Ratio"
                           >
-                            {(['None','Custom...'] as const).map((opt) => (
-                              <option key={opt} value={opt}>{isMobile ? (opt === 'Custom...' ? 'Custom' : opt) : opt}</option>
-                            ))}
-                            {availableLoras.map((lora) => (
-                              <option key={lora.filename} value={lora.filename}>
-                                {isMobile ? (lora.name || lora.filename).slice(0, 10) : `${lora.name} (${lora.type})`}
-                              </option>
+                            <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                            {AR_CHOICES.map((ar) => (
+                              <option key={ar} value={ar}>{ar}</option>
                             ))}
                           </select>
                         </>
                       )}
 
-                      {mode === 'image' && (
+                      {mode === 'video' && (
                         <>
-                          <button
-                            onClick={() => setImgTab('character')}
-                            className={`${isMobile ? 'px-2 py-1.5 text-xs min-w-0 max-w-[80px]' : 'px-2 py-1 text-sm'} border rounded transition-colors ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                          <select
+                            value={videoModel}
+                            onChange={(e) => setVideoModel(e.target.value as any)}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Video model"
                           >
-                            {isMobile ? 'Char' : 'Character'}
-                          </button>
-                          {loraName && (
-                            <span className={`${isMobile ? 'px-1 py-1 text-xs max-w-[60px] truncate' : 'px-2 py-1 text-xs'} rounded font-mono ${darkMode ? 'bg-neutral-700 text-neutral-300' : 'bg-neutral-100 text-neutral-600'}`}>
-                              {isMobile ? loraName.slice(0, 8) : loraName}
-                            </span>
-                          )}
+                            <option value="ltxv">LTXV</option>
+                            <option value="wan">WAN</option>
+                          </select>
+
+                          <select
+                            value={batchSize === '' ? '1' : String(batchSize)}
+                            onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Quantity"
+                          >
+                            {BATCH_CHOICES.map((n) => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={aspectRatio}
+                            onChange={(e) => setAspectRatio(e.target.value)}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            title="Aspect Ratio"
+                          >
+                            <option value="">16:9</option>
+                            {AR_CHOICES.map((ar) => (
+                              <option key={ar} value={ar}>{ar}</option>
+                            ))}
+                          </select>
                         </>
                       )}
-                    </>
-                  )}
+                    </div>
 
-                  {mode === 'video' && (
-                    <>
-                      <select
-                        value={videoModel}
-                        onChange={(e) => setVideoModel(e.target.value as any)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[70px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Video model"
-                      >
-                        <option value="ltxv">{isMobile ? 'LTXV' : 'LTXV Model'}</option>
-                        <option value="wan">{isMobile ? 'WAN' : 'WAN Model'}</option>
-                      </select>
-
-                      <select
-                        value={batchSize === '' ? '1' : String(batchSize)}
-                        onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Quantity"
-                      >
-                        {BATCH_CHOICES.map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={aspectRatio}
-                        onChange={(e) => setAspectRatio(e.target.value)}
-                        className={`${isMobile ? 'px-1 py-1.5 text-xs min-w-0 max-w-[60px]' : 'px-2 py-1 text-sm'} border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                        title="Aspect Ratio"
-                      >
-                        <option value="">16:9</option>
-                        {AR_CHOICES.map((ar) => (
-                          <option key={ar} value={ar}>{ar}</option>
-                        ))}
-                      </select>
-                    </>
-                  )}
-                </div>
-
-                {/* Mobile project button (above send button) - positioned to align with upload+send buttons */}
-                {isMobile && (
-                  <div className="flex justify-end mb-0">
+                    {/* Projects button on the right */}
                     <div className="relative">
                       <button
                         onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                        className={`h-7 w-[8.5rem] rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
+                        className={`h-7 w-[5.5rem] rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
                         title="Project Management"
                         aria-label="Open Project Menu"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" className="transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="8" height="8" fill="none" className="transition-colors">
                           <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2-2z" stroke="currentColor" strokeWidth="2"/>
                           <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z" stroke="currentColor" strokeWidth="2"/>
                         </svg>
-                        <span className="text-xs font-medium">Projects</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="8" height="8" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
+                        <span className="text-xs font-medium">Proj</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="6" height="6" fill="none" className={`transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`}>
                           <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </button>
@@ -4229,6 +4152,106 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         </div>
                       )}
                     </div>
+                  </div>
+                ) : (
+                  /* Desktop mode selector and controls */
+                  <div className="mb-0 mt-0 flex items-center gap-2 transition-all duration-300">
+                    {/* Mode Selector Dropdown */}
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={mode}
+                        onChange={(e) => setMode(e.target.value as any)}
+                        className="px-3 py-1.5 text-sm border rounded transition-all bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700 touch-manipulation"
+                      >
+                        <option value="text">💬 Text</option>
+                        <option value="image">🖼️ Image</option>
+                        <option value="image-modify">✏️ Modify</option>
+                        <option value="video">🎥 Video</option>
+                      </select>
+                    </div>
+
+                    {/* Mode-specific controls */}
+                    {mode === 'text' && (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={chatMode}
+                          onChange={(e)=> setChatMode(e.target.value as any)}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="AI Mode"
+                        >
+                          <option value="normal">General</option>
+                          <option value="prompt">Prompt</option>
+                          <option value="creative">Creative</option>
+                          <option value="think">Think</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {(mode === 'image' || mode === 'image-modify') && (
+                      <>
+                        {/* Batch size */}
+                        <select
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="Quantity"
+                        >
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+
+                        {/* Aspect ratio */}
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="Aspect Ratio"
+                        >
+                          <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+
+                    {mode === 'video' && (
+                      <>
+                        <select
+                          value={videoModel}
+                          onChange={(e) => setVideoModel(e.target.value as any)}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="Video model"
+                        >
+                          <option value="ltxv">LTXV Model</option>
+                          <option value="wan">WAN Model</option>
+                        </select>
+
+                        <select
+                          value={batchSize === '' ? '1' : String(batchSize)}
+                          onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="Quantity"
+                        >
+                          {BATCH_CHOICES.map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={aspectRatio}
+                          onChange={(e) => setAspectRatio(e.target.value)}
+                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          title="Aspect Ratio"
+                        >
+                          <option value="">16:9</option>
+                          {AR_CHOICES.map((ar) => (
+                            <option key={ar} value={ar}>{ar}</option>
+                          ))}
+                        </select>
+                      </>
+                    )}
                   </div>
                 )}
 
