@@ -3937,7 +3937,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   </div>
                 )}
                 {/* Mode selector and controls - always visible above text input */}
-                <div className={`mb-[-1] mt-2 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
+                <div className={`mb-0 mt-0 flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''} transition-all duration-300`}>
                   {/* Mode Selector Dropdown */}
                   <div className="flex items-center gap-2">
                     <select
@@ -4114,13 +4114,13 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                   )}
                 </div>
 
-                {/* Mobile project button (above send button) */}
+                {/* Mobile project button (above send button) - positioned to align with upload+send buttons */}
                 {isMobile && (
-                  <div className="flex justify-center mb-1">
+                  <div className="flex justify-end mb-0">
                     <div className="relative">
                       <button
                         onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                        className={`${isMobile ? 'h-7 w-24' : 'h-7 w-32'} rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
+                        className={`h-7 w-[8.5rem] rounded-lg transition-all flex items-center justify-center gap-1 ${darkMode ? 'hover:bg-neutral-800/50 hover:scale-105 bg-neutral-800/30' : 'hover:bg-gray-100 hover:scale-105 bg-gray-100/50'} shadow-sm`}
                         title="Project Management"
                         aria-label="Open Project Menu"
                       >
@@ -4233,14 +4233,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 )}
 
                 {/* Prompt input area with improved mobile aesthetics */}
-                <div className={`flex gap-2 items-end ${isMobile ? 'pt-1 px-0 pb-0' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
-                  <div className="flex-1 relative">
+                <div className={`flex gap-2 items-end ${isMobile ? 'pt-0 px-0 pb-0' : 'p-px'} ${isMobile ? 'relative' : ''} transition-all duration-300 ${input.trim() ? 'drop-shadow-[0_8px_16px_rgba(6,182,212,0.15)]' : 'drop-shadow-[0_4px_8px_rgba(6,182,212,0.05)]'}`}>
+                  <div className={`${isMobile ? 'flex-1' : 'flex-1'} relative`}>
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e)=>{ if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder=""
-                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
+                      className={`${isMobile ? 'min-h-[48px] max-h-[120px] text-base pr-4 w-full' : 'min-h-[40px] max-h-[120px]'} flex-1 resize-none rounded-lg ${isMobile ? 'p-4' : 'p-2'} transition-all duration-300 focus:outline-none border-0 ${input.trim() ? 'focus:ring-2 focus:ring-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'focus:ring-2 focus:ring-cyan-400/30 shadow-[0_0_8px_rgba(6,182,212,0.08)]'} ${darkMode ? 'bg-neutral-800 text-neutral-100 placeholder-neutral-400' : 'bg-gray-50 text-neutral-900 placeholder-neutral-500'} ${isMobile ? 'touch-manipulation' : ''}`}
                       ref={bottomInputRef}
                       style={{
                         fontSize: isMobile ? '16px' : '14px'  // Prevent zoom on iOS
