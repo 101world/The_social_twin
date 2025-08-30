@@ -114,7 +114,7 @@ export default function AdminPage() {
   });
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [scaling, setScaling] = useState<ScalingData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [accessCode, setAccessCode] = useState('9820571837');
@@ -190,8 +190,6 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('Failed to load configs:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
