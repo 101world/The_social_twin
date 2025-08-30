@@ -3946,7 +3946,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={mode}
                           onChange={(e) => setMode(e.target.value as any)}
-                          className={`px-2 py-1.5 text-xs border rounded transition-all ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700' : 'bg-white border-neutral-300 hover:bg-neutral-50'} touch-manipulation`}
+                          className={`px-2 py-1.5 text-xs rounded transition-all ${darkMode ? 'bg-neutral-800 text-neutral-100 hover:bg-neutral-700' : 'bg-white hover:bg-neutral-50'} touch-manipulation`}
                         >
                           <option value="text">💬 Text</option>
                           <option value="image">🖼️ Image</option>
@@ -3963,7 +3963,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={batchSize === '' ? '1' : String(batchSize)}
                             onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
                             title="Quantity"
                           >
                             {BATCH_CHOICES.map((n) => (
@@ -3975,7 +3975,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={aspectRatio}
                             onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
                             title="Aspect Ratio"
                           >
                             <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -3991,7 +3991,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={videoModel}
                             onChange={(e) => setVideoModel(e.target.value as any)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
                             title="Video model"
                           >
                             <option value="ltxv">LTXV</option>
@@ -4001,7 +4001,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={batchSize === '' ? '1' : String(batchSize)}
                             onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
                             title="Quantity"
                           >
                             {BATCH_CHOICES.map((n) => (
@@ -4012,7 +4012,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                           <select
                             value={aspectRatio}
                             onChange={(e) => setAspectRatio(e.target.value)}
-                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
+                            className={`px-1 py-1.5 text-xs min-w-0 max-w-[60px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
                             title="Aspect Ratio"
                           >
                             <option value="">16:9</option>
@@ -4028,15 +4028,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {mode === 'text' && (
                       <div className="flex items-center gap-2">
                         <select
-                          value={chatMode}
-                          onChange={(e) => setChatMode(e.target.value as any)}
-                          className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] border rounded ${darkMode ? 'bg-neutral-800 border-neutral-600 text-neutral-100' : 'bg-white border-neutral-300'} touch-manipulation`}
-                          title="AI Profiles"
+                          value={textProvider}
+                          onChange={(e) => setTextProvider(e.target.value as any)}
+                          className={`px-1 py-1.5 text-xs min-w-0 max-w-[70px] rounded ${darkMode ? 'bg-neutral-800 text-neutral-100' : 'bg-white'} touch-manipulation`}
+                          title="AI Providers"
                         >
-                          <option value="normal">General</option>
-                          <option value="creative">Creative</option>
-                          <option value="prompt">Prompt</option>
-                          <option value="think">Think</option>
+                          <option value="social">Social</option>
+                          <option value="openai">OpenAI</option>
+                          <option value="deepseek">DeepSeek</option>
                         </select>
                       </div>
                     )}
@@ -4051,7 +4050,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                       <select
                         value={mode}
                         onChange={(e) => setMode(e.target.value as any)}
-                        className="px-3 py-1.5 text-sm border rounded transition-all bg-neutral-800 border-neutral-600 text-neutral-100 hover:bg-neutral-700 touch-manipulation"
+                        className="px-3 py-1.5 text-sm rounded transition-all bg-neutral-800 text-neutral-100 hover:bg-neutral-700 touch-manipulation"
                       >
                         <option value="text">💬 Text</option>
                         <option value="image">🖼️ Image</option>
@@ -4064,15 +4063,14 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     {mode === 'text' && (
                       <div className="flex items-center gap-2">
                         <select
-                          value={chatMode}
-                          onChange={(e)=> setChatMode(e.target.value as any)}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
-                          title="AI Mode"
+                          value={textProvider}
+                          onChange={(e)=> setTextProvider(e.target.value as any)}
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
+                          title="AI Provider"
                         >
-                          <option value="normal">General</option>
-                          <option value="prompt">Prompt</option>
-                          <option value="creative">Creative</option>
-                          <option value="think">Think</option>
+                          <option value="social">Social AI</option>
+                          <option value="openai">OpenAI</option>
+                          <option value="deepseek">DeepSeek</option>
                         </select>
                       </div>
                     )}
@@ -4083,7 +4081,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -4095,7 +4093,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
                           title="Aspect Ratio"
                         >
                           <option value="">{mode === 'image' ? '1:1' : '1:1'}</option>
@@ -4111,7 +4109,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={videoModel}
                           onChange={(e) => setVideoModel(e.target.value as any)}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
                           title="Video model"
                         >
                           <option value="ltxv">LTXV Model</option>
@@ -4121,7 +4119,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={batchSize === '' ? '1' : String(batchSize)}
                           onChange={(e) => setBatchSize(e.target.value === '1' ? '' : Number(e.target.value))}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
                           title="Quantity"
                         >
                           {BATCH_CHOICES.map((n) => (
@@ -4132,7 +4130,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                         <select
                           value={aspectRatio}
                           onChange={(e) => setAspectRatio(e.target.value)}
-                          className="px-2 py-1 text-sm border rounded bg-neutral-800 border-neutral-600 text-neutral-100 touch-manipulation"
+                          className="px-2 py-1 text-sm rounded bg-neutral-800 text-neutral-100 touch-manipulation"
                           title="Aspect Ratio"
                         >
                           <option value="">16:9</option>
