@@ -327,7 +327,6 @@ export default function AdminPage() {
         const stableUrls = {
           'image': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-generation',
           'video': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/video-generation',
-          'text': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/text-generation',
           'image-modify': 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-modify'
         };
 
@@ -856,7 +855,8 @@ export default function AdminPage() {
               <CardHeader>
                 <CardTitle>RunPod Backend Management</CardTitle>
                 <CardDescription>
-                  Manage RunPod backends under your stable Cloudflare R2 URLs. 
+                  Manage RunPod backends for Image and Video generation under your stable Cloudflare R2 URLs. 
+                  Text generation is already configured with a stable Cloudflare worker and doesn't need admin management.
                   The Cloudflare URLs are permanent infrastructure - you can only add/remove RunPod backends for scaling.
                 </CardDescription>
               </CardHeader>
@@ -885,17 +885,6 @@ export default function AdminPage() {
                     saving={saving}
                   />
 
-                  {/* Text Generation Section (if needed) */}
-                  <PrebuiltEndpointCard
-                    mode="text"
-                    cloudflareUrl="https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/text-generation"
-                    runpodEndpoints={stableEndpoints.find(ep => ep.mode === 'text')?.runpod_endpoints || []}
-                    onAddRunPod={addRunPodEndpoint}
-                    onToggleRunPod={toggleRunPodEndpoint}
-                    onDeleteRunPod={deleteRunPodEndpoint}
-                    saving={saving}
-                  />
-
                   {/* Image Modify Section */}
                   <PrebuiltEndpointCard
                     mode="image-modify"
@@ -906,6 +895,37 @@ export default function AdminPage() {
                     onDeleteRunPod={deleteRunPodEndpoint}
                     saving={saving}
                   />
+
+                  {/* Text Generation Info (Read-only) */}
+                  <Card className="border-2 border-blue-100 bg-gradient-to-r from-blue-25 to-indigo-25 opacity-75">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-3">
+                            <span className="text-2xl">📝</span>
+                            <div>
+                              <div className="capitalize">Text Generation</div>
+                              <div className="text-sm font-normal text-muted-foreground">Already Configured with Stable Cloudflare Worker</div>
+                            </div>
+                          </CardTitle>
+                          <CardDescription className="mt-2 font-mono text-blue-700 bg-blue-100 px-3 py-1 rounded-md break-all">
+                            Using existing stable Cloudflare worker URL
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                            ✅ Pre-configured
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-6 text-blue-600">
+                        <div className="text-sm">Text generation is already configured with a stable Cloudflare worker.</div>
+                        <div className="text-xs mt-1">No admin management needed for this endpoint.</div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
