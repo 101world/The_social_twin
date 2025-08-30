@@ -29,13 +29,14 @@ CREATE INDEX IF NOT EXISTS idx_stable_endpoints_mode_active ON stable_endpoints(
 CREATE INDEX IF NOT EXISTS idx_runpod_endpoints_stable_id ON runpod_endpoints(stable_endpoint_id);
 CREATE INDEX IF NOT EXISTS idx_runpod_endpoints_active_priority ON runpod_endpoints(is_active, priority);
 
--- Insert some example stable endpoints (you can modify these URLs)
+-- Insert stable endpoints with your actual Cloudflare R2 URLs
 INSERT INTO stable_endpoints (mode, cloudflare_url, is_active) VALUES 
-('image', 'https://ai-image-generator.your-domain.workers.dev', true),
-('video', 'https://ai-video-generator.your-domain.workers.dev', true),
-('text', 'https://ai-text-generator.your-domain.workers.dev', true),
-('image-modify', 'https://ai-image-modifier.your-domain.workers.dev', true)
+('image', 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-generation', true),
+('video', 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/video-generation', true),
+('image-modify', 'https://pub-102b16bada6e4980b2f8f0a3a630847c.r2.dev/image-modify', true)
 ON CONFLICT (mode, is_active) WHERE is_active = true DO NOTHING;
+
+-- Note: Text generation already uses stable Cloudflare worker - no entry needed
 
 -- Grant necessary permissions (adjust based on your setup)
 GRANT ALL ON stable_endpoints TO authenticated;

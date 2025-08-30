@@ -130,14 +130,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
-  // Providers and endpoints
+  // Providers (admin-managed endpoints only)
   const [textProvider, setTextProvider] = useState<'social'|'openai'|'deepseek'>('social');
-  const [textUrl, setTextUrl] = useState<string>("");
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [imageModifyUrl, setImageModifyUrl] = useState<string>("");
-  const [videoUrl, setVideoUrl] = useState<string>("");
-  const [videoWanUrl, setVideoWanUrl] = useState<string>("");
-  const [videoKlingUrl, setVideoKlingUrl] = useState<string>("");
 
   // LoRA and params
   const [loraName, setLoraName] = useState<string>(""); // Character LoRA filename
@@ -304,14 +298,8 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [binItems, setBinItems] = useState<any[]>([]);
   const [binCursor, setBinCursor] = useState<string | null>(null);
 
-  // Local storage keys and static choices
+  // Local storage keys for user preferences (admin controls endpoints)
   const LOCAL_KEYS = {
-    text: 'social_twin_text_url',
-    image: 'social_twin_image_url',
-    imageModify: 'social_twin_image_modify_url',
-    video: 'social_twin_video_url',
-    videoWan: 'social_twin_video_wan_url',
-    videoKling: 'social_twin_video_kling_url',
     loraName: 'social_twin_lora_name',
     loraScale: 'social_twin_lora_scale',
     effectLora: 'social_twin_effect_lora',
@@ -476,7 +464,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
   const [dashOverviewOpen, setDashOverviewOpen] = useState(true);
   const [dashSettingsOpen, setDashSettingsOpen] = useState(false);
   const [dashProjectsOpen, setDashProjectsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [generationCost, setGenerationCost] = useState<number>(0);
   const [canAffordGeneration, setCanAffordGeneration] = useState<boolean>(true);
   const [lowDataMode, setLowDataMode] = useState<boolean>(true);
@@ -1739,23 +1726,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
 
   useEffect(() => {
     // Load RunPod endpoints from localStorage with environment variable fallbacks
-    const DEFAULT_TEXT = process.env.NEXT_PUBLIC_RUNPOD_TEXT_URL || "/api/cloudflare-ai";
-    const DEFAULT_IMAGE = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || "https://9wc6zqlr5p7i6a-3001.proxy.runpod.net/";
-    const DEFAULT_IMAGE_MODIFY = process.env.NEXT_PUBLIC_RUNPOD_IMAGE_MODIFY_URL || DEFAULT_IMAGE;
-    const DEFAULT_VIDEO = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_URL || "";
-    const DEFAULT_VIDEO_WAN = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_WAN_URL || "";
-    const DEFAULT_VIDEO_KLING = process.env.NEXT_PUBLIC_RUNPOD_VIDEO_KLING_URL || "";
-    
-    setTextUrl(localStorage.getItem(LOCAL_KEYS.text) || DEFAULT_TEXT);
-    const lsImg = localStorage.getItem(LOCAL_KEYS.image);
-    const lsImgMod = localStorage.getItem(LOCAL_KEYS.imageModify);
-    setImageUrl(lsImg || DEFAULT_IMAGE);
-    setImageModifyUrl(lsImgMod || DEFAULT_IMAGE_MODIFY);
-    if (!lsImg && DEFAULT_IMAGE) localStorage.setItem(LOCAL_KEYS.image, DEFAULT_IMAGE);
-    if (!lsImgMod && DEFAULT_IMAGE_MODIFY) localStorage.setItem(LOCAL_KEYS.imageModify, DEFAULT_IMAGE_MODIFY);
-    setVideoUrl(localStorage.getItem(LOCAL_KEYS.video) || DEFAULT_VIDEO);
-    setVideoWanUrl(localStorage.getItem(LOCAL_KEYS.videoWan) || DEFAULT_VIDEO_WAN);
-    setVideoKlingUrl(localStorage.getItem(LOCAL_KEYS.videoKling) || DEFAULT_VIDEO_KLING);
+    // Load user preferences from localStorage (LoRA and generation settings only)
     setLoraName(localStorage.getItem(LOCAL_KEYS.loraName) || "");
     const lsScale = localStorage.getItem(LOCAL_KEYS.loraScale);
   setLoraScale(lsScale ? Number(lsScale) : "");
@@ -1788,16 +1759,10 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     const loadAvailableLoras = async () => {
       setLorasLoading(true);
       try {
-        // Pass the active RunPod origin so server can query your storage even if config isn't set
-        const pickOrigin = (u?: string) => {
-          try { if (u && /^https?:\/\//i.test(u)) return new URL(u).origin; } catch {}
-          return undefined;
-        };
-        const origin = pickOrigin(imageUrl) || pickOrigin(imageModifyUrl) || pickOrigin(process.env.NEXT_PUBLIC_RUNPOD_IMAGE_URL || '');
-        const url = origin ? `/api/runpod/discover-loras?url=${encodeURIComponent(origin)}` : '/api/runpod/discover-loras';
+        // Let the API automatically determine the correct RunPod endpoint from admin configuration
+        const url = '/api/runpod/discover-loras';
         
-        console.log('🔍 Loading LoRAs from:', url);
-        console.log('RunPod origin detected:', origin);
+        console.log('🔍 Loading LoRAs from admin-configured endpoints:', url);
         
         const response = await fetch(url);
         if (response.ok) {
@@ -1831,7 +1796,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     };
     
     loadAvailableLoras();
-  }, [imageUrl, imageModifyUrl]); // Re-load when URLs change
+  }, []); // Load once on component mount - admin controls endpoints
 
   useEffect(() => {
     try { localStorage.setItem('social_twin_lowData', lowDataMode ? '1' : '0'); } catch {}
@@ -1852,14 +1817,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
       setTimeout(() => bottomInputRef.current?.focus(), 10);
     }
   }, [composerShown]);
-
-  // Lock page scroll when settings modal is open (mobile usability)
-  useEffect(() => {
-    if (!settingsOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [settingsOpen]);
 
   // Auto-load unified chat feed ONLY if no project is being loaded (projectId in URL)
   // This ensures chat area starts empty by default until user chooses a project
@@ -1941,44 +1898,21 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     }));
   }, []);
 
-  const activeEndpoint = useMemo(() => {
-    switch (mode) {
-      case "text":
-        return textUrl;
-      case "image":
-        return imageUrl;
-      case "image-modify":
-        return imageModifyUrl;
-      case "video":
-        if (videoModel==='wan') return videoWanUrl || videoUrl;
-        if (videoModel==='kling') return videoKlingUrl || videoUrl;
-        return videoUrl;
-      default:
-        return "";
-    }
-  }, [mode, textUrl, imageUrl, imageModifyUrl, videoUrl, videoWanUrl, videoKlingUrl, videoModel]);
-
-  function saveSettings() {
-    localStorage.setItem(LOCAL_KEYS.text, textUrl);
-    localStorage.setItem(LOCAL_KEYS.image, imageUrl);
-    localStorage.setItem(LOCAL_KEYS.imageModify, imageModifyUrl);
-    localStorage.setItem(LOCAL_KEYS.video, videoUrl);
-    localStorage.setItem(LOCAL_KEYS.videoWan, videoWanUrl);
-    localStorage.setItem(LOCAL_KEYS.videoKling, videoKlingUrl);
-  localStorage.setItem(LOCAL_KEYS.loraName, loraName);
-  if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
-  if (effectLora) localStorage.setItem(LOCAL_KEYS.effectLora, effectLora);
-  if (effectLoraScale !== "") localStorage.setItem(LOCAL_KEYS.effectLoraScale, String(effectLoraScale));
+  // Save user generation preferences to localStorage (LoRA and settings only)
+  const saveGenerationSettings = () => {
+    localStorage.setItem(LOCAL_KEYS.loraName, loraName);
+    if (loraScale !== "") localStorage.setItem(LOCAL_KEYS.loraScale, String(loraScale));
+    if (effectLora) localStorage.setItem(LOCAL_KEYS.effectLora, effectLora);
+    if (effectLoraScale !== "") localStorage.setItem(LOCAL_KEYS.effectLoraScale, String(effectLoraScale));
     if (batchSize !== "") localStorage.setItem(LOCAL_KEYS.batchSize, String(batchSize));
     localStorage.setItem(LOCAL_KEYS.aspectRatio, aspectRatio);
-  try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
-  }
+    try { localStorage.setItem('social_twin_save_to_library', saveToLibrary ? '1' : '0'); } catch {}
+  };
 
   async function handleSend() {
     console.log('🚀 HANDLE_SEND CALLED');
     console.log('Mode:', mode);
     console.log('Input:', JSON.stringify(input));
-    console.log('Active endpoint:', activeEndpoint);
     console.log('User agent:', navigator.userAgent);
     console.log('Is mobile detected:', isMobile);
     console.log('Window width:', window.innerWidth);
@@ -2043,14 +1977,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
     const userMsg: ChatMessage = { id: generateId(), role: "user", content: trimmed, createdAt: new Date().toISOString() };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-
-    if (!activeEndpoint && mode !== 'text') {
-      setMessages((prev) => [
-        ...prev,
-        { id: generateId(), role: "error", content: `No endpoint configured for '${mode}'. Open settings to set a URL.` },
-      ]);
-      return;
-    }
 
     try {
       // Route all generations through our enhanced tracking API
@@ -2211,8 +2137,7 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         body: JSON.stringify({
           prompt: trimmed,
           mode,
-          // Omit runpodUrl to use server-side DB-backed config unless user explicitly sets an override
-          ...(activeEndpoint && activeEndpoint.trim() ? { runpodUrl: activeEndpoint } : {}),
+          // Always use admin-configured endpoints via server-side database
           provider: textProvider,
           // Character & Effects LoRAs
           lora_character: loraName || undefined,
@@ -2788,19 +2713,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                     }`}
                   >
                     Save Project
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      darkMode
-                        ? 'text-gray-300 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-200'
-                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-cyan-500/10 hover:to-teal-500/10 hover:text-cyan-600'
-                    }`}
-                  >
-                    Settings
                   </button>
                 </div>
 
@@ -4619,17 +4531,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
                 >
                   {darkMode ? 'Light' : 'Dark'}
                 </button>
-                <button
-                  className={`rounded-full p-2 border ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : 'border-neutral-200 hover:bg-gray-50'} ${!darkMode ? 'bg-black' : ''}`}
-                  onClick={() => setSettingsOpen(true)}
-                  title="Settings"
-                >
-                  {/* simple white gear svg */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#fff" strokeWidth="1.6"/>
-                    <path d="M19.4 13.5a7.43 7.43 0 0 0 .06-1.5c0-.5-.02-1-.06-1.5l2.03-1.59a.7.7 0 0 0 .16-.9l-1.93-3.34a.7.7 0 0 0-.86-.31l-2.39.96A7.69 7.69 0 0 0 14.4 3l-.36-2.5a.7.7 0 0 0-.69-.58h-3.7a.7.7 0 0 0-.69.58L8.6 3a7.69 7.69 0 0 0-1.99.82l-2.39-.96a.7.7 0 0 0-.86.31L1.43 6.5a.7.7 0 0 0 .16.9L3.62 9c-.04.5-.06 1-.06 1.5s.02 1 .06 1.5l-2.03 1.59a.7.7 0 0 0-.16.9l1.93 3.34c.18.32.57.45.9.31l2.39-.96c.62.36 1.29.64 1.99.82l.36 2.5c.06.34.35.58.69.58h3.7c.34 0 .63-.24.69-.58l.36-2.5c.7-.18 1.37-.46 1.99-.82l2.39.96c.33.14.72.01.9-.31l1.93-3.34a.7.7 0 0 0-.16-.9L19.4 13.5Z" stroke="#fff" strokeWidth="1.6"/>
-                  </svg>
-                </button>
               </div>
 
               {/* Overview (collapsible) */}
@@ -5304,76 +5205,6 @@ function PageContent({ searchParams }: { searchParams: URLSearchParams }) {
         </div>
       )}
 
-      {/* Settings Modal */}
-      {settingsOpen && (
-        <div className={`fixed inset-0 z-[20000] flex items-center justify-center ${darkMode ? 'bg-black/60' : 'bg-black/40'} overscroll-contain`} onClick={() => setSettingsOpen(false)}>
-          <div className={`w-[94vw] max-w-xl max-h-[85vh] rounded-2xl border shadow-xl ${darkMode ? 'bg-neutral-950 border-neutral-800' : 'bg-transparent border-neutral-200'} ios-smooth-scroll overflow-y-auto`} onClick={(e) => e.stopPropagation()}>
-            <div className={`sticky top-0 z-10 flex items-center justify-between px-4 py-3 ${darkMode ? 'bg-neutral-950/95 border-b border-neutral-800' : 'bg-transparent/95 border-b border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
-              <div className="text-sm font-medium">Settings</div>
-              <button className={`rounded p-1 ${darkMode ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'}`} onClick={() => setSettingsOpen(false)} aria-label="Close">✕</button>
-            </div>
-            <div className="p-4 grid gap-3">
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Text RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={textUrl} onChange={(e) => setTextUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Ratio</label>
-                <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
-                  <option value="">Select</option>
-                  {AR_CHOICES.map((ar) => (<option key={ar} value={ar}>{ar}</option>))}
-                </select>
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Image RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Image Modify RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={imageModifyUrl} onChange={(e) => setImageModifyUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Video RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">WAN Video RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoWanUrl} onChange={(e) => setVideoWanUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Kling Video RunPod URL</label>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="https://..." value={videoKlingUrl} onChange={(e) => setVideoKlingUrl(e.target.value)} />
-              </div>
-              <div className="grid gap-1">
-                <label className="text-sm font-medium">Character (LoRA)</label>
-                <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={isPresetLoRa(loraName) ? loraName : 'Custom...'} onChange={(e) => { const v = e.target.value; if (v === 'None') setLoraName(''); else if (v === 'Custom...') setLoraName(loraName || ''); else setLoraName(v); }}>
-                  {LORA_CHOICES.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-                </select>
-                <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="custom lora filename (optional)" value={loraName} onChange={(e) => setLoraName(e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1">
-                  <label className="text-sm font-medium">LoRA Scale</label>
-                  <input className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100 placeholder-neutral-400' : ''}`} placeholder="0.0 - 1.0" type="number" step="0.01" value={loraScale} onChange={(e) => setLoraScale(e.target.value === '' ? '' : Number(e.target.value))} />
-                </div>
-                <div className="grid gap-1">
-                  <label className="text-sm font-medium">Batch Size</label>
-                  <select className={`rounded border p-2 ${darkMode ? 'bg-neutral-800 border-neutral-700 text-neutral-100' : ''}`} value={batchSize === '' ? '' : String(batchSize)} onChange={(e) => setBatchSize(e.target.value === '' ? '' : Number(e.target.value))}>
-                    <option value="">Select</option>
-                    {BATCH_CHOICES.map((n) => (<option key={n} value={n}>{n}</option>))}
-                  </select>
-                </div>
-              </div>
-              <div className={`sticky bottom-0 mt-2 px-4 py-3 -mx-4 ${darkMode ? 'bg-neutral-950/95 border-t border-neutral-800' : 'bg-transparent/95 border-t border-neutral-200'} backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}>
-                <div className="flex gap-2 justify-end">
-                  <button className={`cursor-pointer rounded px-3 py-2 ${darkMode ? 'bg-neutral-50 text-black' : 'bg-black text-white'}`} onClick={() => { saveSettings(); setSettingsOpen(false); }}>Save</button>
-                  <button className={`cursor-pointer rounded border px-3 py-2 ${darkMode ? 'border-neutral-700 hover:bg-neutral-800' : ''}`} onClick={() => { setTextUrl(''); setImageUrl(''); setImageModifyUrl(''); setVideoUrl(''); saveSettings(); setSettingsOpen(false); }}>Clear</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Canvas grid background */}
       {!simpleMode && (
   <section
